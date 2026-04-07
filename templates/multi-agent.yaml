@@ -1,0 +1,32 @@
+name: multi-agent
+version: "0.1.0"
+status: active
+description: "Multi-agent orchestration with A2A protocol and coordinated workflows"
+repos:
+  - url: https://github.com/example/agent-orchestrator
+    branch: main
+    purpose: "Central orchestrator and agent coordination layer"
+  - url: https://github.com/example/agent-skills
+    branch: main
+    purpose: "Shared agent skill definitions and protocols"
+skills:
+  - name: multi-agent
+    source: root
+  - name: code-review
+    source: root
+  - name: ci-monitor
+    source: root
+knowledge:
+  - name: agent-architecture
+    scope: scenario
+context:
+  summary: ""
+  open_prs: []
+  next_steps:
+    - "Define agent roles and responsibilities"
+    - "Set up inter-agent communication protocol"
+    - "Implement individual agent capabilities"
+    - "Build orchestration and coordination layer"
+    - "Write integration tests for agent workflows"
+  blockers: []
+  notes: ""

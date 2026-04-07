@@ -1,0 +1,32 @@
+name: frontend-app
+version: "0.1.0"
+status: active
+description: "Frontend application with component library and state management"
+repos:
+  - url: https://github.com/example/frontend-app
+    branch: main
+    purpose: "Primary frontend application repository"
+  - url: https://github.com/example/design-system
+    branch: main
+    purpose: "Shared component library and design tokens"
+skills:
+  - name: code-review
+    source: root
+  - name: ci-monitor
+    source: root
+  - name: pr-management
+    source: root
+knowledge:
+  - name: frontend-architecture
+    scope: scenario
+context:
+  summary: ""
+  open_prs: []
+  next_steps:
+    - "Scaffold the frontend application"
+    - "Implement core UI components"
+    - "Set up state management"
+    - "Add routing and navigation"
+    - "Write component tests"
+  blockers: []
+  notes: ""

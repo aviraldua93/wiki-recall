@@ -1,0 +1,30 @@
+name: infra-pipeline
+version: "0.1.0"
+status: active
+description: "CI/CD pipelines, infrastructure as code, and deployment automation"
+repos:
+  - url: https://github.com/example/infra-config
+    branch: main
+    purpose: "Infrastructure configuration and IaC templates"
+  - url: https://github.com/example/deploy-scripts
+    branch: main
+    purpose: "Deployment automation and pipeline definitions"
+skills:
+  - name: ci-monitor
+    source: root
+  - name: pr-management
+    source: root
+knowledge:
+  - name: infrastructure-overview
+    scope: scenario
+context:
+  summary: ""
+  open_prs: []
+  next_steps:
+    - "Define pipeline stages and triggers"
+    - "Configure build and test jobs"
+    - "Set up deployment targets"
+    - "Add monitoring and alerting"
+    - "Document runbooks"
+  blockers: []
+  notes: ""

@@ -1,0 +1,32 @@
+name: web-api
+version: "0.1.0"
+status: active
+description: "REST API with authentication, tests, and CI pipeline"
+repos:
+  - url: https://github.com/example/api-service
+    branch: main
+    purpose: "Primary API service repository"
+  - url: https://github.com/example/api-contracts
+    branch: main
+    purpose: "OpenAPI specs and shared types"
+skills:
+  - name: code-review
+    source: root
+  - name: ci-monitor
+    source: root
+  - name: pr-management
+    source: root
+knowledge:
+  - name: api-architecture
+    scope: scenario
+context:
+  summary: ""
+  open_prs: []
+  next_steps:
+    - "Set up project structure and dependencies"
+    - "Implement API routes and middleware"
+    - "Add authentication and authorization"
+    - "Write integration tests"
+    - "Configure CI pipeline"
+  blockers: []
+  notes: ""

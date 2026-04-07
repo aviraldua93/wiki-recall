@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devcontext.dev/schemas/knowledge-entity.schema.json",
+  "title": "DevContext Knowledge Entity",
+  "description": "Schema for a Karpathy-style knowledge entity — a mental model stored as Markdown with YAML frontmatter.",
+  "type": "object",
+  "required": ["title", "type", "updated"],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Human-readable name of the entity."
+    },
+    "type": {
+      "type": "string",
+      "enum": ["platform", "system", "repo", "tool", "concept", "person", "team"],
+      "description": "Classification of what this entity represents."
+    },
+    "updated": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date when the entity was last updated (YYYY-MM-DD)."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": [],
+      "description": "Searchable tags for categorization."
+    },
+    "related": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": [],
+      "description": "IDs of related knowledge entities."
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,32 @@
+name: dashboard-redesign
+version: "0.2.0"
+status: paused
+description: "Redesigning the analytics dashboard with new visualization components"
+repos:
+  - url: https://github.com/example-org/dashboard-ui
+    branch: feature/chart-redesign
+    purpose: "Frontend dashboard application"
+  - url: https://github.com/example-org/analytics-api
+    branch: main
+    purpose: "Backend API providing analytics data"
+skills:
+  - name: code-review
+    source: root
+  - name: pr-management
+    source: root
+  - name: session-management
+    source: root
+knowledge:
+  - name: component-architecture
+    scope: scenario
+context:
+  summary: "Completed the bar chart component, working on line chart with time-series support"
+  open_prs:
+    - "dashboard-ui#156"
+  next_steps:
+    - "Implement time-series line chart component"
+    - "Add responsive breakpoints for mobile views"
+    - "Write visual regression tests"
+    - "Update Storybook stories"
+  blockers: []
+  notes: "Using a composable chart architecture where each chart type extends BaseChart. Accessibility requirements met via ARIA labels and keyboard navigation."

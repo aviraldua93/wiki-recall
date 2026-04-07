@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devcontext.dev/schemas/scenario.schema.json",
+  "title": "DevContext Scenario Manifest",
+  "description": "Schema for a DevContext working scenario — a portable bundle of repos, skills, knowledge, and session state.",
+  "type": "object",
+  "required": ["name", "version", "status", "description"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique UUID identifier for the scenario (auto-generated)."
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Unique kebab-case identifier for the scenario."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version string (e.g. \"0.1.0\")."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "paused", "handed-off", "archived"],
+      "description": "Current lifecycle state of the scenario."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "One-line human-readable description of the scenario."
+    },
+    "repos": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/RepoRef" },
+      "default": [],
+      "description": "Git repositories associated with this scenario."
+    },
+    "skills": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/SkillRef" },
+      "default": [],
+      "description": "Skills loaded into this scenario."
+    },
+    "knowledge": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/KnowledgeRef" },
+      "default": [],
+      "description": "Knowledge entities attached to this scenario."
+    },
+    "context": {
+      "$ref": "#/$defs/ScenarioContext",
+      "description": "Current working context and session state."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the scenario was created (auto-generated)."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when the scenario was last updated (auto-managed)."
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "RepoRef": {
+      "type": "object",
+      "required": ["url", "branch"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Git repository URL (e.g. https://github.com/org/repo)."
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Git branch to check out."
+        },
+        "purpose": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Why this repo is included in the scenario."
+        }
+      },
+      "additionalProperties": false
+    },
+    "SkillRef": {
+      "type": "object",
+      "required": ["name", "source"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Skill identifier (e.g. \"code-review\")."
+        },
+        "source": {
+          "type": "string",
+          "enum": ["root", "team", "personal"],
+          "description": "Origin layer of the skill."
+        }
+      },
+      "additionalProperties": false
+    },
+    "KnowledgeRef": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Knowledge entity identifier."
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["scenario", "global"],
+          "default": "scenario",
+          "description": "Visibility scope of the knowledge entity."
+        }
+      },
+      "additionalProperties": false
+    },
+    "ScenarioContext": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Free-text summary of current work."
+        },
+        "open_prs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Open pull request references (e.g. \"repo#42\")."
+        },
+        "next_steps": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Ordered list of next actions."
+        },
+        "blockers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Current blockers preventing progress."
+        },
+        "notes": {
+          "type": "string",
+          "default": "",
+          "description": "Free-form notes and observations."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

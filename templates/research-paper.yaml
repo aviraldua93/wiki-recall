@@ -1,0 +1,28 @@
+name: research-paper
+version: "0.1.0"
+status: active
+description: "Research paper with experiment framework, data analysis, and manuscript"
+repos:
+  - url: https://github.com/example/research-experiments
+    branch: main
+    purpose: "Experiment code, data processing, and analysis scripts"
+  - url: https://github.com/example/paper-manuscript
+    branch: main
+    purpose: "LaTeX manuscript, figures, and bibliography"
+skills:
+  - name: session-management
+    source: root
+knowledge:
+  - name: research-methodology
+    scope: scenario
+context:
+  summary: ""
+  open_prs: []
+  next_steps:
+    - "Outline paper structure and contributions"
+    - "Set up experiment framework"
+    - "Run baseline experiments"
+    - "Analyze results and create figures"
+    - "Write and revise manuscript"
+  blockers: []
+  notes: ""

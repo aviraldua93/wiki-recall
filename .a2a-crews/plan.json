@@ -1,0 +1,223 @@
+{
+  "scenario": "Build DevContext: a portable CLI tool for AI-driven working scenarios. Engineers lose 30+ min/day reconstructing context — DevContext bundles repos, skills, knowledge, and session state into resumable packages stored in GitHub. Core features: (1) CLI commands: create, recall, save, list, handoff, teardown, knowledge search. Uses Commander.js. (2) Scenario engine: YAML manifest CRUD, lifecycle management (active/paused/handed-off/archived), JSON Schema validation with ajv. (3) Knowledge wiki: Karpathy-style entity management with Markdown+YAML frontmatter, FTS5 search via better-sqlite3, entity extraction from sessions. (4) Skills system: load/validate Markdown skill files, 5 built-in skills (code-review, ci-monitor, pr-management, session-management, multi-agent). (5) GitHub sync: push/pull scenarios across machines via git, handoff via PR creation. (6) 5 scenario templates (web-api, frontend-app, infra-pipeline, research-paper, multi-agent). Tech: Bun/TypeScript, Commander.js CLI, ajv JSON Schema, better-sqlite3 FTS5, gray-matter, pino, chalk/ora/inquirer. Must have mock providers for all externals. See AGENTS.md and README.md for full architecture. CRITICAL: Zero Microsoft/corporate/internal references — this is public open source.",
+  "feasibility": {
+    "verdict": "go",
+    "confidence": 0.85,
+    "concerns": [
+      "Greenfield project with zero existing source code — all ~4000+ lines must be written from scratch across 7 modules, requiring strict coordination on shared types and interfaces",
+      "better-sqlite3 native module with Bun runtime may have compatibility issues; need to verify native bindings work before building FTS5 search",
+      "GitHub sync module requires careful subprocess git operations (clone, pull, push, branch, PR creation) with proper error handling for network failures and auth edge cases",
+      "MCP server protocol implementation must conform to the Model Context Protocol spec for IDE integration — no existing reference code in the project",
+      "5 built-in skills and 5 templates are content-heavy deliverables that must be technically accurate and follow the Markdown+YAML frontmatter format consistently"
+    ],
+    "recommendation": "Proceed with a foundation-first approach: lock down JSON Schemas and TypeScript types before any module work begins. Verify better-sqlite3/Bun compatibility early. Build scenario engine and knowledge wiki in parallel since they share no runtime dependencies. CLI layer comes last since it integrates all modules."
+  },
+  "rationale": "This is a greenfield TypeScript CLI tool with 7 distinct modules (scenario, knowledge, skills, sync, cli, mcp, providers) that share a common type system and config layer. The team is split by module domain — foundation types, scenario lifecycle, knowledge/search, CLI integration+sync, and content/QA — because each module has distinct technical concerns (ajv validation vs. FTS5 search vs. git operations vs. Commander.js) but all depend on shared schemas and types established by the foundation role.",
+  "roles": [
+    {
+      "key": "foundation-dev",
+      "description": "Creates the JSON Schemas (Draft 2020-12), TypeScript type system, shared config module, and pino logger that every other module depends on. Establishes the project's type contracts and validation infrastructure using ajv.",
+      "model": null,
+      "skills": ["json-schema-design", "typescript-types", "ajv-validation", "pino-logging"],
+      "why": "Every module (scenario, knowledge, skills, CLI) depends on shared types, schemas, and config. Without a locked-down foundation, parallel development will produce incompatible interfaces. This role removes that bottleneck."
+    },
+    {
+      "key": "scenario-engine-dev",
+      "description": "Builds the scenario CRUD engine: YAML manifest read/write with js-yaml, lifecycle state machine (active→paused→handed-off→archived), ajv schema validation, and the 5 scenario templates (web-api, frontend-app, infra-pipeline, research-paper, multi-agent).",
+      "model": null,
+      "skills": ["yaml-manifest-crud", "state-machine-design", "ajv-validation", "template-authoring"],
+      "why": "The scenario engine is the core domain — create/recall/save/list/handoff/teardown all operate on scenario manifests. It needs a dedicated role because it combines YAML serialization, JSON Schema validation, lifecycle state transitions, and template instantiation."
+    },
+    {
+      "key": "knowledge-search-dev",
+      "description": "Builds the Karpathy-style knowledge wiki: entity CRUD using Markdown+YAML frontmatter (gray-matter), FTS5 full-text search via better-sqlite3, entity extraction pipeline, and LLM providers (OpenAI + mock) for automated extraction from sessions.",
+      "model": null,
+      "skills": ["sqlite-fts5", "gray-matter-parsing", "llm-provider-abstraction", "entity-extraction"],
+      "why": "The knowledge system is the most technically complex module — it combines Markdown parsing, SQLite FTS5 indexing, and LLM-powered extraction. These are specialized concerns (native C bindings, search ranking, prompt engineering) that benefit from focused attention."
+    },
+    {
+      "key": "cli-sync-dev",
+      "description": "Builds the Commander.js CLI layer with all 7 commands (create, recall, save, list, handoff, teardown, knowledge), the GitHub sync module (git push/pull/clone, PR creation for handoffs), the skills loading/validation/promotion pipeline, and the MCP server for IDE integration.",
+      "model": null,
+      "skills": ["commander-js-cli", "git-operations", "skill-loading", "mcp-protocol"],
+      "why": "The CLI is the integration layer that wires all modules together, and sync is tightly coupled to CLI commands (save→push, recall→pull, handoff→PR). Skills loading is thin enough to bundle here since it's primarily file I/O with gray-matter parsing. MCP server exposes the same operations as the CLI."
+    },
+    {
+      "key": "content-qa-dev",
+      "description": "Authors all 5 built-in skill Markdown files (code-review, ci-monitor, pr-management, session-management, multi-agent), writes comprehensive unit tests for every module, E2E tests for full scenario lifecycle, example scenarios/entities, and documentation.",
+      "model": null,
+      "skills": ["bun-test", "skill-content-authoring", "e2e-testing", "technical-writing"],
+      "why": "Content and testing are tightly linked — you can't write meaningful tests without understanding the skill/template/entity formats, and you can't validate content without tests. This role ensures all deliverables work end-to-end and the project ships with real, useful content."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "foundation-schemas",
+      "title": "Create JSON Schemas for scenario manifests and knowledge entities",
+      "assignedTo": "foundation-dev",
+      "dependsOn": [],
+      "acceptanceCriteria": [
+        "schemas/scenario.schema.json exists and validates the full scenario manifest format (name, version, status enum, description, repos array, skills array, knowledge array, context object) per AGENTS.md spec",
+        "schemas/knowledge-entity.schema.json exists and validates knowledge entity frontmatter (title, type enum, updated date, tags array, related array) per AGENTS.md spec",
+        "Both schemas use JSON Schema Draft 2020-12 ($schema: https://json-schema.org/draft/2020-12/schema)",
+        "ajv can load and compile both schemas without errors (verified by a test script or inline validation)"
+      ]
+    },
+    {
+      "id": "foundation-types-config",
+      "title": "Create TypeScript types, config module, and pino logger",
+      "assignedTo": "foundation-dev",
+      "dependsOn": ["foundation-schemas"],
+      "acceptanceCriteria": [
+        "src/types.ts exports TypeScript interfaces for Scenario, KnowledgeEntity, Skill, RepoRef, ScenarioContext, and SkillSource matching the JSON Schema definitions",
+        "src/config.ts exports a getConfig() function that reads environment variables (DEVCONTEXT_HOME, DEVCONTEXT_LOG_LEVEL, GITHUB_TOKEN) with sensible defaults",
+        "src/logger.ts exports a configured pino logger instance with structured JSON output and configurable log level from config",
+        "bun run lint (tsc --noEmit) passes with zero errors"
+      ]
+    },
+    {
+      "id": "scenario-crud",
+      "title": "Build scenario CRUD with YAML manifest parsing and ajv validation",
+      "assignedTo": "scenario-engine-dev",
+      "dependsOn": ["foundation-types-config"],
+      "acceptanceCriteria": [
+        "src/scenario/manager.ts exports createScenario(), getScenario(), updateScenario(), deleteScenario(), listScenarios() functions",
+        "Scenarios are persisted as YAML files (js-yaml) in the DEVCONTEXT_HOME directory and validated against scenario.schema.json via ajv on every read/write",
+        "createScenario() generates a UUID, sets status to 'active', timestamps created_at/updated_at, and writes the manifest file",
+        "listScenarios() returns all scenario manifests from the storage directory with name, status, and description"
+      ]
+    },
+    {
+      "id": "scenario-lifecycle",
+      "title": "Build scenario lifecycle management and status transitions",
+      "assignedTo": "scenario-engine-dev",
+      "dependsOn": ["scenario-crud"],
+      "acceptanceCriteria": [
+        "src/scenario/lifecycle.ts exports functions: activateScenario(), pauseScenario(), handoffScenario(), archiveScenario() that enforce valid state transitions (active↔paused, active→handed-off, any→archived)",
+        "Invalid state transitions (e.g., archived→active) throw a descriptive error",
+        "saveScenario() captures current context (summary, open_prs, next_steps, blockers) and updates the manifest with a new timestamp",
+        "recallScenario() reads the manifest, validates it, and returns the full scenario state ready for CLI consumption"
+      ]
+    },
+    {
+      "id": "scenario-templates",
+      "title": "Create 5 scenario templates with template instantiation logic",
+      "assignedTo": "scenario-engine-dev",
+      "dependsOn": ["scenario-crud"],
+      "acceptanceCriteria": [
+        "templates/ contains 5 YAML template files: web-api.yaml, frontend-app.yaml, infra-pipeline.yaml, research-paper.yaml, multi-agent.yaml",
+        "Each template includes pre-configured repos (placeholder URLs), relevant skills, starter context, and a description matching the template's purpose",
+        "src/scenario/templates.ts exports listTemplates() and instantiateTemplate(name, overrides) that creates a new scenario from a template",
+        "All 5 templates validate against scenario.schema.json"
+      ]
+    },
+    {
+      "id": "knowledge-entities",
+      "title": "Build knowledge entity CRUD with Markdown+YAML frontmatter",
+      "assignedTo": "knowledge-search-dev",
+      "dependsOn": ["foundation-types-config"],
+      "acceptanceCriteria": [
+        "src/knowledge/entities.ts exports createEntity(), getEntity(), updateEntity(), deleteEntity(), listEntities() functions",
+        "Entities are stored as .md files with YAML frontmatter parsed via gray-matter, in DEVCONTEXT_HOME/knowledge/ directory",
+        "createEntity() validates frontmatter against knowledge-entity.schema.json, generates a kebab-case filename from the title",
+        "getEntity() returns both parsed frontmatter (as typed object) and raw Markdown body content"
+      ]
+    },
+    {
+      "id": "knowledge-search",
+      "title": "Build FTS5 full-text search engine with better-sqlite3",
+      "assignedTo": "knowledge-search-dev",
+      "dependsOn": ["knowledge-entities"],
+      "acceptanceCriteria": [
+        "src/knowledge/search.ts exports a KnowledgeSearch class that creates/opens a SQLite database with an FTS5 virtual table for entity content",
+        "indexEntity() extracts title, tags, type, and body text from an entity and upserts into the FTS5 index",
+        "search(query) returns ranked results with entity name, title, type, snippet, and relevance score using FTS5 MATCH and rank",
+        "rebuildIndex() scans all entity files and re-indexes them, handling additions/deletions/modifications"
+      ]
+    },
+    {
+      "id": "knowledge-providers",
+      "title": "Build LLM providers for entity extraction (OpenAI + mock)",
+      "assignedTo": "knowledge-search-dev",
+      "dependsOn": ["foundation-types-config"],
+      "acceptanceCriteria": [
+        "src/providers/openai.ts exports an OpenAIProvider class that calls the OpenAI chat completions API to extract knowledge entities from session text",
+        "src/providers/mock.ts exports a MockProvider that returns deterministic fake entity extractions without any API calls (for testing)",
+        "Both providers implement a shared Provider interface with extractEntities(text): Promise<KnowledgeEntity[]>",
+        "src/knowledge/extraction.ts uses the provider interface to extract entities from scenario context/notes and persist them via the entity CRUD"
+      ]
+    },
+    {
+      "id": "skills-system",
+      "title": "Build skills loading, validation, and promotion pipeline",
+      "assignedTo": "cli-sync-dev",
+      "dependsOn": ["foundation-types-config"],
+      "acceptanceCriteria": [
+        "src/skills/loader.ts exports loadSkill(name, source) that reads a Markdown skill file, parses YAML frontmatter with gray-matter, and returns a typed Skill object",
+        "src/skills/validator.ts validates that skill files have required frontmatter fields (name, description, version, source) and non-empty body content",
+        "src/skills/promotion.ts implements the promotion pipeline: personal→team→root with source tracking",
+        "loadSkillsForScenario(scenario) loads all skills referenced in a scenario manifest and returns them as an array"
+      ]
+    },
+    {
+      "id": "cli-commands",
+      "title": "Build Commander.js CLI with all 7 commands",
+      "assignedTo": "cli-sync-dev",
+      "dependsOn": ["scenario-lifecycle", "knowledge-search", "skills-system"],
+      "acceptanceCriteria": [
+        "src/cli/index.ts is a valid Bun entry point that creates a Commander program with version, description, and 7 subcommands",
+        "Commands implemented: create (interactive with inquirer), recall (by name), save (with --summary flag), list (table output with chalk), handoff (with --to flag), teardown (with confirmation), knowledge (search subcommand)",
+        "Each command uses ora for spinners during async operations and chalk for colored output",
+        "bun run src/cli/index.ts --help prints usage information with all 7 commands listed"
+      ]
+    },
+    {
+      "id": "github-sync",
+      "title": "Build GitHub sync module for push/pull and PR-based handoff",
+      "assignedTo": "cli-sync-dev",
+      "dependsOn": ["scenario-lifecycle"],
+      "acceptanceCriteria": [
+        "src/sync/git.ts exports pushScenario(), pullScenario(), cloneScenarioRepo() that shell out to git with proper error handling for auth failures and network errors",
+        "src/sync/handoff.ts exports createHandoffPR() that creates a GitHub PR (via git push + gh CLI or GitHub API) containing the scenario manifest and context for the recipient",
+        "All git operations use the GITHUB_TOKEN from config for authentication",
+        "A MockGitProvider exists in src/sync/mock.ts that simulates git operations for testing without network access"
+      ]
+    },
+    {
+      "id": "skill-content",
+      "title": "Author 5 built-in skill Markdown files with YAML frontmatter",
+      "assignedTo": "content-qa-dev",
+      "dependsOn": ["foundation-schemas"],
+      "acceptanceCriteria": [
+        "skills/code-review/skill.md, skills/ci-monitor/skill.md, skills/pr-management/skill.md, skills/session-management/skill.md, skills/multi-agent/skill.md all exist with valid YAML frontmatter (name, description, version, source: root)",
+        "Each skill file contains actionable instructions (not placeholder text) with at least 3 sections covering when to use, how to execute, and expected outputs",
+        "All 5 skill files parse correctly with gray-matter and contain zero corporate/internal references",
+        "skills/ directory contains no other files or directories beyond the 5 defined skill folders"
+      ]
+    },
+    {
+      "id": "unit-tests",
+      "title": "Write comprehensive unit tests for all modules",
+      "assignedTo": "content-qa-dev",
+      "dependsOn": ["scenario-crud", "knowledge-entities", "skills-system", "knowledge-providers"],
+      "acceptanceCriteria": [
+        "tests/unit/ contains test files for scenario (manager, lifecycle, templates), knowledge (entities, search, extraction), skills (loader, validator, promotion), providers (mock), and config",
+        "All tests use Bun's built-in test runner (import { describe, test, expect } from 'bun:test') with mock providers for all externals",
+        "bun test tests/unit passes with zero failures and covers at least: scenario CRUD, lifecycle transitions, entity CRUD, FTS5 search indexing/querying, skill loading/validation, mock provider extraction",
+        "Tests verify error cases: invalid schema validation, invalid state transitions, missing files, malformed YAML/frontmatter"
+      ]
+    },
+    {
+      "id": "e2e-tests-examples",
+      "title": "Write E2E tests, example scenarios, example entities, and documentation",
+      "assignedTo": "content-qa-dev",
+      "dependsOn": ["cli-commands", "unit-tests"],
+      "acceptanceCriteria": [
+        "tests/e2e/ contains at least one test that exercises the full scenario lifecycle: create→save→recall→handoff→teardown using the CLI entry point",
+        "examples/scenarios/ contains at least 2 example scenario YAML files that validate against the schema",
+        "examples/knowledge/ contains at least 2 example knowledge entity Markdown files with valid frontmatter",
+        "docs/ contains at least architecture.md (system overview diagram) and getting-started.md (quick start guide matching README)"
+      ]
+    }
+  ]
+}

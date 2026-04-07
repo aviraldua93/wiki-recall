@@ -1,0 +1,35 @@
+name: e2e-api-project
+version: "0.1.0"
+status: active
+description: "Building a REST API with retry logic and exponential backoff"
+repos:
+  - url: https://github.com/example-org/api-service
+    branch: feature/retry-logic
+    purpose: "Primary API service implementing retry patterns"
+  - url: https://github.com/example-org/shared-lib
+    branch: main
+    purpose: "Shared utility library used across services"
+skills:
+  - name: code-review
+    source: root
+  - name: ci-monitor
+    source: root
+  - name: pr-management
+    source: root
+knowledge:
+  - name: retry-patterns
+    scope: scenario
+  - name: api-gateway
+    scope: global
+context:
+  summary: "Implementing retry logic with exponential backoff for the HTTP client"
+  open_prs:
+    - "api-service#342"
+    - "shared-lib#89"
+  next_steps:
+    - "Write integration tests for retry handler"
+    - "Add jitter to backoff algorithm"
+    - "Update API docs for new error codes"
+  blockers:
+    - "Waiting on shared-lib v2.1.0 release for updated error types"
+  notes: "Chose exponential backoff over linear because the upstream service recommends it in their rate-limit documentation. Max retries set to 3 with 1s base delay."

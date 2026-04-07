@@ -1,0 +1,36 @@
+name: web-api-project
+version: "0.1.0"
+status: active
+description: "REST API with authentication, rate limiting, and comprehensive test coverage"
+repos:
+  - url: https://github.com/example-org/api-service
+    branch: feature/auth-middleware
+    purpose: "Primary API service — implementing JWT authentication middleware"
+  - url: https://github.com/example-org/shared-types
+    branch: main
+    purpose: "Shared TypeScript type definitions used across services"
+skills:
+  - name: code-review
+    source: root
+  - name: ci-monitor
+    source: root
+  - name: pr-management
+    source: root
+knowledge:
+  - name: rest-api-design
+    scope: scenario
+  - name: jwt-authentication
+    scope: global
+context:
+  summary: "Implementing JWT auth middleware with refresh token rotation. Auth handler done, need integration tests and rate limiter."
+  open_prs:
+    - "api-service#142"
+    - "shared-types#28"
+  next_steps:
+    - "Write integration tests for JWT refresh token flow"
+    - "Add rate limiting middleware using sliding window algorithm"
+    - "Update OpenAPI spec with new auth endpoints"
+    - "Add structured error responses for 401/403 cases"
+  blockers:
+    - "Waiting on shared-types#28 merge for updated UserSession type"
+  notes: "Chose RS256 over HS256 for JWT signing — allows public key verification by downstream services without sharing the secret."

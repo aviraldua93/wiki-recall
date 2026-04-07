@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+*.db
+.DS_Store
+Thumbs.db
+.crews/artifacts/
+.a2a-crews-launch-*
+.a2a-crews-prompt-*
+artifacts/

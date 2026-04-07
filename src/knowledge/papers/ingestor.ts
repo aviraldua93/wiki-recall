@@ -8,11 +8,10 @@
  *  4. Append to ingestion log
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
-import matter from "gray-matter";
 import { createLogger } from "../../logger.js";
-import { createEntity, getEntity, updateEntity, listEntities } from "../entities.js";
+import { createEntity, updateEntity, listEntities } from "../entities.js";
 import type { KnowledgeEntity } from "../../types.js";
 import type { ExtractionProvider } from "../extraction.js";
 import type { ResearchPaper, IngestResult } from "./types.js";

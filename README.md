@@ -133,6 +133,8 @@ devcontext create my-project -i
 | 🤝 | **Handoffs** | Transfer a scenario to a teammate with full context — optionally as a PR |
 | 🏗️ | **Templates** | Pre-built scenario templates for common project types |
 | 🔍 | **Full-Text Search** | FTS5-powered search across your entire knowledge base |
+| 📄 | **Paper Curation** | Discover, score, and ingest research papers from arXiv & Semantic Scholar |
+| 🕸️ | **Visual Artifacts** | Generate interactive HTML knowledge graphs, timelines, and research landscapes |
 | ✅ | **Schema Validation** | JSON Schema (Draft 2020-12) validates every manifest |
 | 🧩 | **Skill Promotion** | Skills promote from personal → team → root as they mature |
 
@@ -145,6 +147,8 @@ devcontext create my-project -i
 | `pr-management` | Full PR lifecycle — creation, review coordination, merging, and cleanup |
 | `session-management` | Checkpointing, resumption, and cross-machine context transfer |
 | `multi-agent` | Parallel agent orchestration using the docs-as-bus communication pattern |
+| `paper-curation` | Research paper discovery, relevance scoring, and knowledge wiki ingestion |
+| `research-loop` | Automated research workflow combining paper curation, ingestion, and visualization |
 
 Skills are Markdown files with YAML frontmatter. Drop one in `skills/` and it's available immediately.
 
@@ -235,6 +239,43 @@ Search your knowledge base instantly:
 ```bash
 devcontext knowledge search "retry patterns"
 ```
+
+## Paper Curation
+
+Discover and ingest research papers directly into your knowledge wiki:
+
+```bash
+# Search arXiv and Semantic Scholar
+devcontext papers search "transformer architectures" --limit 10
+
+# Automated curation — score papers by topic relevance, recency, and citations
+devcontext papers curate --topics "agents,retrieval" --keywords "RAG,multi-agent" --min-score 0.3
+
+# Ingest a paper into the knowledge wiki as a Karpathy-style entity
+devcontext papers ingest arxiv-2301-07041
+```
+
+Papers are scored on a 0–1 scale using topic match (40%), keyword match (30%), recency (20%), and citation signal (10%). Duplicates are automatically detected and merged.
+
+## Visual Artifacts
+
+Generate self-contained interactive HTML visualizations of your knowledge graph:
+
+```bash
+# Interactive network graph (vis.js powered)
+devcontext visualize --type knowledge-graph --output graph.html
+
+# Topic clusters grouped by tags
+devcontext visualize --type topic-clusters
+
+# Chronological timeline of entity updates
+devcontext visualize --type timeline
+
+# Combined research dashboard (graph + clusters + stats)
+devcontext visualize --type research-landscape --open
+```
+
+All visualizations are single-file HTML with dark theme, zero external dependencies at runtime, and can be shared or hosted anywhere.
 
 ## Cross-Machine Sync
 

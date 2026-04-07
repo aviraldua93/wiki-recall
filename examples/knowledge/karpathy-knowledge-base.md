@@ -2,6 +2,7 @@
 title: "Karpathy-Style LLM Knowledge Base"
 type: concept
 updated: "2025-06-15"
+created: "2025-06-01"
 tags:
   - knowledge-management
   - llm
@@ -10,11 +11,63 @@ tags:
   - prompt-engineering
 related:
   - a2a-protocol
+sources:
+  - karpathy-blog-post.md
+source_count: 1
+status: reviewed
 ---
 
 ## What It Is
 
 Andrej Karpathy popularized a knowledge management approach where instead of using RAG (retrieval-augmented generation) to feed context to LLMs, you curate a structured wiki of knowledge entities — concise, opinionated Markdown documents that an LLM can read in full. Each entity captures the mental model a human expert carries: what something is, how it works, common patterns, pitfalls, and relationships to other concepts.
+
+## The 7-Step System
+
+1. **Folder structure**: `raw/`, `wiki/`, `outputs/`, `CLAUDE.md` schema file
+2. **Schema file** (CLAUDE.md): Identity, Architecture, Wiki Conventions (YAML frontmatter, wikilinks, source citations, contradiction flags), Index & Log, Ingest/Query/Lint workflows, Focus Areas
+3. **Raw folder dumping**: Use Obsidian Web Clipper or similar to dump sources — no organizing
+4. **Ingest prompt**: Read source → discuss → create summary → update index → update ALL relevant pages → add backlinks → flag contradictions → log
+5. **Query prompt**: Read index → find pages → synthesize with citations → file answers back
+6. **Monthly lint**: Check for contradictions, stale claims, orphans, missing cross-refs, uncited claims
+7. **Compounding**: File exploration outputs back, visual outputs, git version control
+
+## The 6 Prompts
+
+1. **INGEST**: Process a single source document into wiki pages
+2. **INGEST (batch)**: Process multiple sources in one session
+3. **QUERY**: Answer a question using the wiki knowledge base
+4. **LINT**: Validate and clean up the wiki
+5. **EXPLORE**: Interactively explore and synthesize across the wiki
+6. **BRIEF**: Generate a concise summary of wiki state and recent changes
+
+## YAML Frontmatter Convention
+
+```yaml
+---
+title: "Page Title"
+created: YYYY-MM-DD
+last_updated: YYYY-MM-DD
+source_count: N
+status: draft | reviewed | needs_update
+---
+```
+
+## Source Citations
+
+Every factual claim traces back to a source: `[Source: filename.md]`
+
+## Contradiction Flags
+
+When new information conflicts with existing wiki content:
+```
+> CONTRADICTION: [existing claim] vs [new claim] from [Source: filename.md]
+```
+
+## Wiki Structure
+
+- `wiki/index.md` — Lists every page with one-line description, organized by category
+- `wiki/log.md` — Append-only chronological log: `## [YYYY-MM-DD] action | Description`
+- Ingest should touch 10-15 wiki pages per source (not just create one page)
 
 ## Key Principles
 
@@ -23,6 +76,16 @@ Andrej Karpathy popularized a knowledge management approach where instead of usi
 - **Opinionated and practical**: Entities include "best practices" and "anti-patterns" sections — the kind of knowledge that only exists in senior engineers' heads, not in official docs.
 - **Relationship graph**: Entities reference each other via `related` fields, forming a navigable knowledge graph. An LLM can follow links to gather multi-hop context.
 - **Living documents**: Entities have `updated` dates and are maintained as part of the development workflow, not a separate documentation effort.
+- **Compounding returns**: Query answers are filed back into the wiki, making it grow smarter with use.
+
+## Known Limitations
+
+- **Context ceiling**: ~400K words practical limit for wiki size
+- **Error compounding**: LLM compilation errors propagate across interlinked pages
+- **Hallucination**: Compiled pages may contain LLM-fabricated claims
+- **Cost**: $2-5 per source document compilation
+- **No enterprise scale**: Single-user, single-model architecture
+- **Single-model blind spots**: One LLM's biases shape the entire wiki
 
 ## Structure of a Knowledge Entity
 

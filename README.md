@@ -203,21 +203,26 @@ context:
 
 ## Knowledge Wiki
 
-Inspired by [Andrej Karpathy's approach](https://karpathy.ai/) to persistent memory: **entities, not documents.**
+Implements [Andrej Karpathy's LLM Knowledge Base](https://karpathy.ai/) methodology: **entities, not documents.**
 
-Each knowledge entry is a Markdown file with YAML frontmatter — a mental model of a system, tool, or concept that you carry across projects.
+Each knowledge entry is a Markdown file with YAML frontmatter — a mental model of a system, tool, or concept that you carry across projects. Entities support source citations (`[Source: filename.md]`), contradiction tracking, and lifecycle status (`draft` → `reviewed` → `needs_update`).
 
 ```markdown
 ---
 title: "Google Agent-to-Agent (A2A) Protocol"
 type: concept
 updated: "2025-06-15"
+created: "2025-06-01"
 tags: [multi-agent, protocol, interoperability]
 related: [bun-runtime]
+sources: [a2a-spec-v1.md]
+source_count: 1
+status: reviewed
 ---
 
 ## What It Is
 Open standard for AI agent communication and task delegation.
+[Source: a2a-spec-v1.md]
 
 ## Key Concepts
 - **Agent Card**: JSON capability descriptor (like OpenAPI for agents)

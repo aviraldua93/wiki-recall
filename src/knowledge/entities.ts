@@ -71,6 +71,10 @@ export function createEntity(entity: KnowledgeEntity): { slug: string; entity: K
     updated: entity.updated,
     tags: entity.tags ?? [],
     related: entity.related ?? [],
+    ...(entity.created && { created: entity.created }),
+    ...(entity.sources && entity.sources.length > 0 && { sources: entity.sources }),
+    ...(entity.source_count !== undefined && { source_count: entity.source_count }),
+    ...(entity.status && { status: entity.status }),
   };
 
   const valid = validateEntity(frontmatter);
@@ -114,6 +118,10 @@ export function getEntity(slug: string): KnowledgeEntity {
     tags: parsed.data.tags ?? [],
     related: parsed.data.related ?? [],
     content: parsed.content.trim(),
+    ...(parsed.data.created && { created: parsed.data.created }),
+    ...(parsed.data.sources && { sources: parsed.data.sources }),
+    ...(parsed.data.source_count !== undefined && { source_count: parsed.data.source_count }),
+    ...(parsed.data.status && { status: parsed.data.status }),
   };
 }
 
@@ -130,6 +138,10 @@ export function updateEntity(slug: string, updates: Partial<KnowledgeEntity>): K
     updated: updated.updated,
     tags: updated.tags ?? [],
     related: updated.related ?? [],
+    ...(updated.created && { created: updated.created }),
+    ...(updated.sources && updated.sources.length > 0 && { sources: updated.sources }),
+    ...(updated.source_count !== undefined && { source_count: updated.source_count }),
+    ...(updated.status && { status: updated.status }),
   };
 
   const valid = validateEntity(frontmatter);
@@ -180,6 +192,10 @@ export function listEntities(): KnowledgeEntity[] {
         tags: parsed.data.tags ?? [],
         related: parsed.data.related ?? [],
         content: parsed.content.trim(),
+        ...(parsed.data.created && { created: parsed.data.created }),
+        ...(parsed.data.sources && { sources: parsed.data.sources }),
+        ...(parsed.data.source_count !== undefined && { source_count: parsed.data.source_count }),
+        ...(parsed.data.status && { status: parsed.data.status }),
       } as KnowledgeEntity;
     });
 }

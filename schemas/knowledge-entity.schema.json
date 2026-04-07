@@ -41,6 +41,30 @@
       "uniqueItems": true,
       "default": [],
       "description": "IDs of related knowledge entities."
+    },
+    "created": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date when the entity was created (YYYY-MM-DD)."
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": [],
+      "description": "Source document paths or identifiers this entity was derived from."
+    },
+    "source_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of distinct source documents backing this entity."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "reviewed", "needs_update"],
+      "description": "Entity lifecycle status per Karpathy methodology."
     }
   },
   "additionalProperties": false

@@ -70,8 +70,12 @@ context:
   notes: ""
 ```
 
-## Knowledge Entity Format
+## Knowledge Entity Format (Karpathy Methodology)
 
+Inspired by [Andrej Karpathy's LLM Knowledge Base](https://karpathy.ai/) approach.
+Each entity is a mental model — concise, opinionated Markdown with YAML frontmatter.
+
+### Core Fields
 ```yaml
 ---
 title: "Entity Name"
@@ -81,16 +85,70 @@ tags: [tag1, tag2]
 related:
   - entity-id
 ---
+```
 
+### Extended Fields (Karpathy-style)
+```yaml
+---
+title: "Entity Name"
+type: concept
+updated: 2025-06-15
+created: 2025-06-01
+tags: [tag1, tag2]
+related: [entity-id]
+sources: [path/to/source.md]
+source_count: 1
+status: draft | reviewed | needs_update
+---
+```
+
+### Entity Body Structure
+```markdown
 ## What It Is
 One-paragraph description.
 
 ## Key Concepts
 - term: definition
 
+## Common Patterns
+How the thing is typically used in practice.
+
+## Anti-Patterns / Pitfalls
+What to avoid and why.
+
 ## Related Work
 - Active items and links
 ```
+
+### Source Citations
+Use `[Source: filename.md]` inline for claim attribution.
+
+### Contradiction Tracking
+Flag contradictions with:
+```
+> CONTRADICTION: [existing claim] vs [new claim] from [Source: filename.md]
+```
+
+## Knowledge Workflows
+
+### Extraction (Ingest)
+1. LLM analyzes session text or documents
+2. Extracts structured entities with type classification
+3. Deduplicates against existing knowledge base
+4. Persists via entity CRUD with FTS5 indexing
+
+### Search (Query)
+1. FTS5 full-text search across titles, tags, types, and content
+2. Porter stemming + unicode tokenization for fuzzy matching
+3. BM25 ranking for relevance ordering
+
+### Maintenance (Lint)
+Entities should be periodically reviewed for:
+- Stale content (check `updated` dates)
+- Missing cross-references (`related` field)
+- Orphan entities (not referenced by any scenario)
+- Contradictions between entities
+- Uncited claims (missing source attribution)
 
 ## Testing
 

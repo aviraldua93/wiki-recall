@@ -134,4 +134,12 @@ export interface KnowledgeEntity {
   related?: string[];
   /** Markdown body content (not in frontmatter — populated after parsing). */
   content?: string;
+  /** ISO 8601 date when the entity was created (YYYY-MM-DD). */
+  created?: string;
+  /** Source document paths or identifiers this entity was derived from. */
+  sources?: string[];
+  /** Number of distinct source documents backing this entity. */
+  source_count?: number;
+  /** Entity lifecycle status (Karpathy methodology). */
+  status?: 'draft' | 'reviewed' | 'needs_update';
 }

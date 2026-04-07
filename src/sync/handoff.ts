@@ -6,13 +6,14 @@
  * manifest and context for the recipient.
  */
 
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";
 import { getConfig } from "../config.js";
 import { getScenario } from "../scenario/manager.js";
 import { createLogger } from "../logger.js";
+import { gitAuthArgs, validateBranchName, redactToken } from "./auth.js";
 
 const logger = createLogger("handoff");
 
@@ -43,20 +44,24 @@ function ensureDir(dir: string): void {
   }
 }
 
-function execCmd(cmd: string, cwd?: string): Promise<{ ok: boolean; stdout: string; stderr: string }> {
+/**
+ * Execute a git command safely using execFile (no shell interpolation).
+ * Prevents command injection by passing arguments as an array.
+ */
+function execGitSafe(args: string[], cwd?: string): Promise<{ ok: boolean; stdout: string; stderr: string }> {
+  const token = getConfig().githubToken;
   return new Promise((resolve) => {
     const options: { cwd?: string; env: NodeJS.ProcessEnv } = {
-      env: { ...process.env },
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
     };
     if (cwd) options.cwd = cwd;
-    options.env.GIT_TERMINAL_PROMPT = "0";
 
-    exec(cmd, options, (error, stdout, stderr) => {
+    execFile("git", args, options, (error, stdout, stderr) => {
       if (error) {
         resolve({
           ok: false,
-          stdout: stdout?.toString() ?? "",
-          stderr: stderr?.toString() ?? error.message,
+          stdout: redactToken(stdout?.toString() ?? "", token),
+          stderr: redactToken(stderr?.toString() ?? error.message, token),
         });
       } else {
         resolve({
@@ -67,23 +72,6 @@ function execCmd(cmd: string, cwd?: string): Promise<{ ok: boolean; stdout: stri
       }
     });
   });
-}
-
-/**
- * Inject GITHUB_TOKEN into a git remote URL for HTTPS auth.
- */
-function injectToken(url: string, token: string): string {
-  if (!token) return url;
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol === "https:") {
-      parsed.username = token;
-      return parsed.toString();
-    }
-  } catch {
-    // Not a valid URL
-  }
-  return url;
 }
 
 // ---------------------------------------------------------------------------
@@ -108,9 +96,10 @@ export async function createHandoffPR(
   const config = getConfig();
   const scenario = getScenario(scenarioName);
   const dir = handoffDir(scenarioName);
+  const authArgs = gitAuthArgs(config.githubToken);
   ensureDir(dir);
 
-  const branchName = `handoff/${scenarioName}`;
+  const branchName = validateBranchName(`handoff/${scenarioName}`);
   const title = `[DevContext] Handoff: ${scenarioName}`;
   const body = buildPRBody(scenario, recipientUsername);
 
@@ -124,7 +113,7 @@ export async function createHandoffPR(
 
   // Initialize git repo if needed
   if (!existsSync(join(dir, ".git"))) {
-    await execCmd("git init -b main", dir);
+    await execGitSafe(["init", "-b", "main"], dir);
   }
 
   // Determine the remote URL from scenario repos (first repo, or a default)
@@ -133,33 +122,34 @@ export async function createHandoffPR(
     throw new Error("No repository URL in scenario — cannot create handoff PR");
   }
 
-  const authedUrl = config.githubToken ? injectToken(repoUrl, config.githubToken) : repoUrl;
-
-  // Set up remote
-  const remoteCheck = await execCmd("git remote get-url origin", dir);
+  // Remote URL is stored plain — no embedded token
+  const remoteCheck = await execGitSafe(["remote", "get-url", "origin"], dir);
   if (!remoteCheck.ok) {
-    await execCmd(`git remote add origin ${authedUrl}`, dir);
+    await execGitSafe(["remote", "add", "origin", repoUrl], dir);
   } else {
-    await execCmd(`git remote set-url origin ${authedUrl}`, dir);
+    await execGitSafe(["remote", "set-url", "origin", repoUrl], dir);
   }
 
   // Create and switch to handoff branch
-  await execCmd(`git checkout -B ${branchName}`, dir);
+  await execGitSafe(["checkout", "-B", branchName], dir);
 
   // Stage and commit
-  await execCmd("git add -A", dir);
-  await execCmd(
-    `git commit -m "devcontext: handoff scenario '${scenarioName}'" --allow-empty`,
+  await execGitSafe(["add", "-A"], dir);
+  await execGitSafe(
+    ["commit", "-m", `devcontext: handoff scenario '${scenarioName}'`, "--allow-empty"],
     dir
   );
 
-  // Push the branch
-  const pushResult = await execCmd(`git push -u origin ${branchName} --force`, dir);
+  // Push — auth passed transiently via -c flag, never persisted
+  const pushResult = await execGitSafe(
+    [...authArgs, "push", "-u", "origin", branchName, "--force"],
+    dir
+  );
   if (!pushResult.ok) {
     throw new Error(`Failed to push handoff branch: ${pushResult.stderr}`);
   }
 
-  // Try to create PR using GitHub API via curl
+  // Try to create PR using GitHub API
   const prUrl = await createPRViaAPI(repoUrl, branchName, title, body, config.githubToken);
 
   logger.info({ scenarioName, branchName, prUrl }, "handoff PR created");

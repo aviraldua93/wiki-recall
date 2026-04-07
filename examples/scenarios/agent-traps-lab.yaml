@@ -1,0 +1,26 @@
+name: agent-traps-lab
+version: "0.1.0"
+status: active
+description: "Adversarial testing lab for AI agents — systematic trap generation based on DeepMind failure taxonomy"
+repos:
+  - url: https://github.com/aviraldua93/agent-traps-lab
+    branch: master
+    purpose: "Adversarial experiment framework with trap generators, agent harness, and analysis pipeline"
+skills:
+  - name: multi-agent
+    source: root
+  - name: code-review
+    source: root
+knowledge:
+  - name: a2a-protocol
+    scope: scenario
+context:
+  summary: "Implements adversarial trap categories from DeepMind's agent failure research — instruction following traps, tool misuse traps, context manipulation traps, and multi-step reasoning traps. Each trap is a reproducible experiment with setup, trigger, expected failure mode, and severity classification. 3,480 experiments across trap categories with automated pass/fail scoring and failure mode clustering."
+  open_prs: []
+  next_steps:
+    - "Add new trap category for prompt injection via tool output"
+    - "Build comparative dashboard showing agent resilience scores across models"
+    - "Implement adaptive trap difficulty that increases based on agent performance"
+    - "Publish trap dataset in standardized format for community benchmarking"
+  blockers: []
+  notes: "Trap experiments are fully deterministic — same seed produces identical trap configurations. This enables reliable regression testing when agents are updated. The most effective traps combine subtle context manipulation with multi-step reasoning requirements, where agents fail to propagate constraints across steps."

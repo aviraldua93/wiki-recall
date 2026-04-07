@@ -15,6 +15,7 @@ import { loadSkillsForScenario } from "../skills/loader.js";
 import { searchEntities } from "../knowledge/search.js";
 import { pushScenario, pullScenario, cloneScenarioRepo } from "../sync/git.js";
 import { createHandoffPR } from "../sync/handoff.js";
+import { getConfig } from "../config.js";
 import type { Scenario, ScenarioStatus } from "../types.js";
 
 // ---------------------------------------------------------------------------
@@ -27,6 +28,56 @@ program
   .name("devcontext")
   .description("Portable AI-driven working scenarios — Docker for your engineering brain")
   .version("0.1.0");
+
+// ---------------------------------------------------------------------------
+// init — initialize workspace structure
+// ---------------------------------------------------------------------------
+
+program
+  .command("init")
+  .description("Initialize the DevContext workspace directory structure")
+  .action(async () => {
+    const { existsSync, mkdirSync, writeFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+
+    const home = getConfig().home;
+    const dirs = ["scenarios", "knowledge", "skills"];
+    const created: string[] = [];
+
+    for (const dir of dirs) {
+      const fullPath = join(home, dir);
+      if (!existsSync(fullPath)) {
+        mkdirSync(fullPath, { recursive: true });
+        created.push(dir);
+      }
+    }
+
+    const readmePath = join(home, "README.md");
+    if (!existsSync(readmePath)) {
+      writeFileSync(readmePath, [
+        "# DevContext Workspace",
+        "",
+        "This directory contains your DevContext data.",
+        "",
+        "## Structure",
+        "",
+        "- `scenarios/` — Working scenario manifests (YAML)",
+        "- `knowledge/` — Knowledge entities (Markdown + YAML frontmatter)",
+        "- `skills/`    — Custom skill definitions (Markdown)",
+        "",
+        "Learn more: https://github.com/aviraldua93/devcontext",
+        "",
+      ].join("\n"), "utf8");
+      created.push("README.md");
+    }
+
+    if (created.length > 0) {
+      console.log(chalk.green(`✔ Initialized workspace at ${chalk.bold(home)}`));
+      console.log(chalk.dim(`  Created: ${created.join(", ")}`));
+    } else {
+      console.log(chalk.dim(`Workspace already initialized at ${home}`));
+    }
+  });
 
 // ---------------------------------------------------------------------------
 // create — interactive scenario creation

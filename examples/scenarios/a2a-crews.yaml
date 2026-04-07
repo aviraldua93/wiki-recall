@@ -1,0 +1,28 @@
+name: a2a-crews
+version: "0.1.0"
+status: active
+description: "Turn one command into a team of AI agents — A2A protocol implementation in Bun/TypeScript"
+repos:
+  - url: https://github.com/aviraldua93/a2a-crews
+    branch: master
+    purpose: "Core multi-agent orchestration framework implementing Google's A2A protocol"
+skills:
+  - name: multi-agent
+    source: root
+  - name: code-review
+    source: root
+knowledge:
+  - name: a2a-protocol
+    scope: scenario
+  - name: bun-runtime
+    scope: global
+context:
+  summary: "A2A-compliant multi-agent framework where a single CLI command decomposes into parallel agent crews. Orchestrator splits work into isolated tasks, each agent writes structured artifacts to a shared bus. Built on Bun for fast startup and native TypeScript execution. 149 tests covering agent lifecycle, task decomposition, artifact serialization, and crew coordination."
+  open_prs: []
+  next_steps:
+    - "Add agent health monitoring with configurable timeout thresholds"
+    - "Implement crew-level rollback when a member agent fails"
+    - "Benchmark orchestrator overhead vs direct single-agent execution"
+    - "Add OpenTelemetry tracing spans for cross-agent task flows"
+  blockers: []
+  notes: "Uses docs-as-bus pattern for inter-agent communication — agents write Markdown artifacts to a shared directory rather than passing messages over HTTP. This makes debugging trivial (just read the files) and enables full replay of any orchestration run."

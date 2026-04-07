@@ -16,6 +16,7 @@ import {
   listEntities,
   validateEntityFrontmatter,
 } from "../../src/knowledge/entities.js";
+import { closeSearchDb } from "../../src/knowledge/search.js";
 import type { KnowledgeEntity } from "../../src/types.js";
 
 // ---------------------------------------------------------------------------
@@ -44,8 +45,13 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  if (existsSync(testDir)) {
-    rmSync(testDir, { recursive: true, force: true });
+  closeSearchDb();
+  try {
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  } catch {
+    // Ignore cleanup errors — SQLite WAL files may still be locked briefly on Windows
   }
   resetConfig();
 });

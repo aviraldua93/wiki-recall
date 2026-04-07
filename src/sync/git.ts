@@ -4,13 +4,17 @@
  * Shells out to the `git` CLI with GITHUB_TOKEN authentication.
  * All operations are async and include error handling for common
  * failure modes (auth, network, merge conflicts).
+ *
+ * Auth tokens are passed transiently via `-c http.extraheader`
+ * and are never persisted to .git/config.
  */
 
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { getConfig } from "../config.js";
 import { createLogger } from "../logger.js";
+import { gitAuthArgs, redactToken } from "./auth.js";
 
 const logger = createLogger("sync");
 
@@ -52,46 +56,26 @@ function ensureDir(dir: string): void {
   }
 }
 
-/**
- * Inject GITHUB_TOKEN into a git remote URL for HTTPS auth.
- * Converts https://github.com/org/repo → https://<token>@github.com/org/repo
- */
-function injectToken(url: string, token: string): string {
-  if (!token) return url;
-  try {
-    const parsed = new URL(url);
-    if (parsed.protocol === "https:") {
-      parsed.username = token;
-      return parsed.toString();
-    }
-  } catch {
-    // Not a valid URL — return as-is
-  }
-  return url;
-}
-
 // ---------------------------------------------------------------------------
-// Shell execution
+// Shell execution — uses execFile (no shell) to prevent command injection
 // ---------------------------------------------------------------------------
 
 function execGit(args: string[], cwd?: string): Promise<GitResult> {
+  const config = getConfig();
   return new Promise((resolve) => {
-    const cmd = `git ${args.join(" ")}`;
     const options: { cwd?: string; env: NodeJS.ProcessEnv } = {
-      env: { ...process.env },
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
     };
     if (cwd) options.cwd = cwd;
 
-    // Set GIT_TERMINAL_PROMPT=0 to avoid interactive auth prompts
-    options.env.GIT_TERMINAL_PROMPT = "0";
-
-    exec(cmd, options, (error, stdout, stderr) => {
+    execFile("git", args, options, (error, stdout, stderr) => {
+      const token = config.githubToken;
       if (error) {
-        logger.debug({ cmd, error: error.message, stderr }, "git command failed");
+        logger.debug({ args: args[0], error: redactToken(error.message, token) }, "git command failed");
         resolve({
           ok: false,
-          stdout: stdout?.toString() ?? "",
-          stderr: stderr?.toString() ?? error.message,
+          stdout: redactToken(stdout?.toString() ?? "", token),
+          stderr: redactToken(stderr?.toString() ?? error.message, token),
         });
       } else {
         resolve({
@@ -135,6 +119,7 @@ function classifyGitError(stderr: string): string {
 /**
  * Push a scenario's sync directory to a remote git repository.
  * Initializes the repo if needed, commits changes, and pushes.
+ * Auth tokens are passed transiently — never stored in .git/config.
  */
 export async function pushScenario(
   scenarioName: string,
@@ -143,17 +128,16 @@ export async function pushScenario(
 ): Promise<GitResult> {
   const config = getConfig();
   const syncDir = scenarioSyncDir(scenarioName);
+  const authArgs = gitAuthArgs(config.githubToken);
   ensureDir(syncDir);
 
-  const authedUrl = config.githubToken ? injectToken(repoUrl, config.githubToken) : repoUrl;
-
-  // Initialize git if needed
+  // Initialize git if needed — remote URL is plain (no embedded token)
   if (!existsSync(join(syncDir, ".git"))) {
     const initResult = await execGit(["init", "-b", branch], syncDir);
     if (!initResult.ok) {
       return { ok: false, stdout: "", stderr: classifyGitError(initResult.stderr) };
     }
-    await execGit(["remote", "add", "origin", authedUrl], syncDir);
+    await execGit(["remote", "add", "origin", repoUrl], syncDir);
   }
 
   // Stage, commit, push
@@ -167,7 +151,11 @@ export async function pushScenario(
     return { ok: false, stdout: "", stderr: classifyGitError(commitResult.stderr) };
   }
 
-  const pushResult = await execGit(["push", "-u", "origin", branch, "--force-with-lease"], syncDir);
+  // Auth passed transiently via -c flag — not persisted
+  const pushResult = await execGit(
+    [...authArgs, "push", "-u", "origin", branch, "--force-with-lease"],
+    syncDir
+  );
   if (!pushResult.ok) {
     return { ok: false, stdout: "", stderr: classifyGitError(pushResult.stderr) };
   }
@@ -178,6 +166,7 @@ export async function pushScenario(
 
 /**
  * Pull a scenario from a remote git repository into the sync directory.
+ * Auth tokens are passed transiently — never stored in .git/config.
  */
 export async function pullScenario(
   scenarioName: string,
@@ -186,17 +175,21 @@ export async function pullScenario(
 ): Promise<GitResult> {
   const config = getConfig();
   const syncDir = scenarioSyncDir(scenarioName);
-  const authedUrl = config.githubToken ? injectToken(repoUrl, config.githubToken) : repoUrl;
+  const authArgs = gitAuthArgs(config.githubToken);
 
   // If directory doesn't exist, clone instead
   if (!existsSync(join(syncDir, ".git"))) {
-    return cloneScenarioRepo(authedUrl, syncDir, branch);
+    return cloneScenarioRepo(repoUrl, syncDir, branch);
   }
 
-  // Update remote URL in case token changed
-  await execGit(["remote", "set-url", "origin", authedUrl], syncDir);
+  // Ensure remote URL is plain (no embedded token)
+  await execGit(["remote", "set-url", "origin", repoUrl], syncDir);
 
-  const pullResult = await execGit(["pull", "origin", branch, "--rebase"], syncDir);
+  // Auth passed transiently via -c flag
+  const pullResult = await execGit(
+    [...authArgs, "pull", "origin", branch, "--rebase"],
+    syncDir
+  );
   if (!pullResult.ok) {
     return { ok: false, stdout: "", stderr: classifyGitError(pullResult.stderr) };
   }
@@ -207,6 +200,7 @@ export async function pullScenario(
 
 /**
  * Clone a repository into a target directory.
+ * Auth tokens are passed transiently — never stored in .git/config.
  */
 export async function cloneScenarioRepo(
   repoUrl: string,
@@ -214,7 +208,7 @@ export async function cloneScenarioRepo(
   branch = "main"
 ): Promise<GitResult> {
   const config = getConfig();
-  const authedUrl = config.githubToken ? injectToken(repoUrl, config.githubToken) : repoUrl;
+  const authArgs = gitAuthArgs(config.githubToken);
 
   if (existsSync(targetDir) && existsSync(join(targetDir, ".git"))) {
     return { ok: true, stdout: "Already cloned", stderr: "" };
@@ -222,11 +216,13 @@ export async function cloneScenarioRepo(
 
   ensureDir(targetDir);
 
+  // Auth passed transiently via -c flag — not stored in cloned .git/config
   const cloneResult = await execGit([
+    ...authArgs,
     "clone",
     "--branch", branch,
     "--single-branch",
-    authedUrl,
+    repoUrl,
     targetDir,
   ]);
 

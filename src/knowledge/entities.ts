@@ -13,6 +13,7 @@ import addFormats from "ajv-formats";
 import { getConfig } from "../config.js";
 import type { KnowledgeEntity } from "../types.js";
 import entitySchema from "../../schemas/knowledge-entity.schema.json";
+import { indexEntity as indexSearchEntity, removeFromIndex as removeSearchEntry } from "./search.js";
 
 // ---------------------------------------------------------------------------
 // Schema validator (singleton)
@@ -81,6 +82,10 @@ export function createEntity(entity: KnowledgeEntity): { slug: string; entity: K
 
   const content = matter.stringify(entity.content ?? "", frontmatter);
   writeFileSync(filePath, content, "utf8");
+
+  // Keep FTS5 search index in sync
+  try { indexSearchEntity(slug, entity); } catch { /* index update is best-effort */ }
+
   return { slug, entity };
 }
 
@@ -128,6 +133,10 @@ export function updateEntity(slug: string, updates: Partial<KnowledgeEntity>): K
 
   const content = matter.stringify(updated.content ?? "", frontmatter);
   writeFileSync(entityPath(slug), content, "utf8");
+
+  // Keep FTS5 search index in sync
+  try { indexSearchEntity(slug, updated); } catch { /* index update is best-effort */ }
+
   return updated;
 }
 
@@ -140,6 +149,9 @@ export function deleteEntity(slug: string): void {
     throw new Error(`Entity '${slug}' not found`);
   }
   rmSync(filePath);
+
+  // Keep FTS5 search index in sync
+  try { removeSearchEntry(slug); } catch { /* index update is best-effort */ }
 }
 
 /**

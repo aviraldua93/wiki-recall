@@ -1,0 +1,26 @@
+name: wiki-vs-rag
+version: "0.1.0"
+status: active
+description: "Head-to-head benchmark harness comparing RAG retrieval against Karpathy-style wiki knowledge bases"
+repos:
+  - url: https://github.com/aviraldua93/wiki-vs-rag
+    branch: master
+    purpose: "Benchmark framework with RAGAS metrics, LLM-as-Judge evaluation, and statistical analysis"
+skills:
+  - name: code-review
+    source: root
+  - name: ci-monitor
+    source: root
+knowledge:
+  - name: karpathy-knowledge-base
+    scope: scenario
+context:
+  summary: "Systematic evaluation framework that pits traditional RAG retrieval against curated wiki-style knowledge bases (inspired by Karpathy's approach). Uses RAGAS metrics (faithfulness, answer relevancy, context precision, context recall) plus LLM-as-Judge scoring for qualitative assessment. 503 tests covering metric calculation, judge prompt consistency, result serialization, and statistical significance testing."
+  open_prs: []
+  next_steps:
+    - "Add cost-per-query tracking to compare total ownership cost of each approach"
+    - "Run evaluation on domain-specific datasets (medical, legal, code)"
+    - "Implement confidence intervals for metric comparisons"
+    - "Generate interactive HTML report with per-question drill-down"
+  blockers: []
+  notes: "Early results show RAG excels at factual recall from large corpora while wiki-style knowledge bases produce more coherent multi-hop reasoning. The hybrid approach (wiki for core concepts + RAG for long-tail facts) outperforms either alone. LLM-as-Judge scores correlate 0.87 with human evaluation on the pilot dataset."

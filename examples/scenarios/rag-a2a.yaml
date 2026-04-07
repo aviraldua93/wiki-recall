@@ -1,0 +1,26 @@
+name: rag-a2a
+version: "0.1.0"
+status: active
+description: "Production RAG pipeline exposed as an A2A-compliant agent with hybrid vector + BM25 search"
+repos:
+  - url: https://github.com/aviraldua93/rag-a2a
+    branch: main
+    purpose: "RAG pipeline with Qdrant vector store, BM25 sparse retrieval, and A2A agent interface"
+skills:
+  - name: code-review
+    source: root
+  - name: ci-monitor
+    source: root
+knowledge:
+  - name: a2a-protocol
+    scope: scenario
+context:
+  summary: "Hybrid retrieval-augmented generation pipeline that combines dense vector search (Qdrant) with sparse BM25 scoring via reciprocal rank fusion. Exposed as a standalone A2A agent that other agents can invoke for knowledge retrieval. Chunking strategy uses recursive character splitting with overlap. 236 tests covering retrieval accuracy, chunk boundary handling, fusion scoring, and A2A message serialization."
+  open_prs: []
+  next_steps:
+    - "Add re-ranking step with cross-encoder model after fusion"
+    - "Implement streaming response support for large document contexts"
+    - "Add chunk provenance tracking to link answers back to source documents"
+    - "Benchmark retrieval latency at 100K+ document scale"
+  blockers: []
+  notes: "Reciprocal rank fusion (RRF) with k=60 consistently outperforms either vector or BM25 alone across the evaluation dataset. Qdrant's built-in sparse vector support eliminates the need for a separate BM25 index service."

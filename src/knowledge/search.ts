@@ -60,7 +60,7 @@ export class KnowledgeSearch {
 
     this.db.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_fts USING fts5(
-        slug,
+        slug UNINDEXED,
         title,
         type,
         tags,

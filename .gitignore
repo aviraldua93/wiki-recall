@@ -6,7 +6,9 @@ dist/
 *.db
 .DS_Store
 Thumbs.db
-.crews/artifacts/
+.a2a-crews/
 .a2a-crews-launch-*
 .a2a-crews-prompt-*
+.crews/artifacts/
 artifacts/
+review-round-*.md

@@ -27,23 +27,17 @@ wiki-recall memory query "what's our retry strategy?"
 
 ## Memory Architecture
 
-```mermaid
-graph TD
-    Q[Your Query] --> R[Router]
-    R --> L0[🪪 L0: Identity<br/>~50 tokens • always loaded]
-    R --> L1[📋 L1: Story<br/>~500 tokens • always loaded]
-    R --> L2[📚 L2: Wiki<br/>on demand • domain routed]
-    R --> L3[🔍 L3: Search<br/>on demand • BM25/FTS5]
-    R --> L4[💾 L4: Sessions<br/>reference • full replay]
+| Layer | What | Cost | When |
+|:------|:-----|:-----|:-----|
+| **L0 — Identity** | Who you are, core principles | ~50 tokens | 🟢 Always loaded |
+| **L1 — Essential Story** | Current status, top moments, active projects | ~500 tokens | 🟢 Always loaded |
+| **L2 — Compiled Wiki** | Karpathy-style entities: mental models, decisions, patterns | On demand | 🔵 Domain-routed |
+| **L3 — Semantic Search** | BM25/FTS5 over session history — finds what wiki missed | On demand | 🔵 When wiki gaps exist |
+| **L4 — Raw Sessions** | Full conversation replay by session ID | On demand | ⚪ Reference only |
 
-    style L0 fill:#1a1a2e
-    style L1 fill:#16213e
-    style L2 fill:#0f3460
-    style L3 fill:#533483
-    style L4 fill:#2c2c54
-```
-
-**L0 + L1 load on every query** — 550 tokens, always. L2–L4 activate only when needed, routed by query domain.
+> **L0 + L1 = ~550 tokens.** That's your wake-up cost. Every time. Compare that to 1,500+ token context dumps in typical tools.
+>
+> L2–L4 activate **only when needed**, routed by query domain. The router decides — you don't.
 
 ```bash
 wiki-recall memory query "retry strategy" --layers L0,L1,L2

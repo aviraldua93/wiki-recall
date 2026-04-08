@@ -11,7 +11,7 @@
 |:---:|:---:|:---:|
 | tokens to wake up | L0-L4 memory stack | search, recall, status |
 
-[Quick Start](#quick-start) - [Architecture](#architecture) - [Engine](#python-engine) - [MCP Server](#mcp-server)
+[Quick Start](#quick-start) - [Architecture](#architecture) - [Engine](#python-engine) - [MCP Server](#mcp-server) - [Use Cases](#real-world-use-cases)
 
 ---
 
@@ -182,6 +182,113 @@ These emerged from 6 expert reviews and 18 simulation tests:
 - **Write-back is direct-with-ask** - no staging area (too much friction)
 - **Proactive feedback loop** - Copilot asks "save this decision?" without being prompted
 - **Session IDs link wiki to raw data** - full traceability
+
+---
+
+## Real-World Use Cases
+
+How this actually plays out in daily use.
+
+### Monday Morning Cold Start
+
+```
+# You open terminal. Haven't touched this project in 2 weeks.
+# brain.md auto-loads with your session. ~430 tokens.
+
+> "What was I working on?"
+
+# Copilot already knows:
+# - Your 3 active projects and their status
+# - The PR you left open
+# - The decision you made about retry logic
+# - The blocker waiting on a teammate
+
+# Zero context dump. Zero "let me search my notes."
+# You're productive in 30 seconds.
+```
+
+### Cross-Project Pattern Recognition
+
+```
+# You hit a rate-limiting bug in Project B.
+# You vaguely remember solving something similar in Project A.
+
+> "Have I dealt with rate limiting before?"
+
+# L3 semantic search finds the conversation from 3 months ago:
+# "We used exponential backoff with jitter, max 3 retries,
+#  then dead-letter queue. Decided 2025-11-03."
+
+# The exact solution. From a session you forgot existed.
+```
+
+### The Proactive Feedback Loop
+
+```
+# During a conversation, you make a design decision:
+> "Let's use WebSockets instead of polling for the dashboard"
+
+# Copilot proactively asks:
+> "Save this decision? WebSockets over polling for dashboard updates."
+
+# You say "yes". Written directly to decisions.md.
+# Next month, when someone asks "why WebSockets?", it's there.
+# No staging. No review folder. Conversation IS the review.
+```
+
+### Onboarding a New Team Member
+
+```
+# New engineer joins. You hand them the wiki-recall setup:
+
+wiki-recall setup
+# → Asks their name, GitHub, work domains
+# → Creates ~/.grain/ with empty brain.md
+# → Generates copilot-instructions.md
+
+# Day 1: they have the structure.
+# Week 1: brain.md has their first 5 projects.
+# Month 1: 50+ wiki entities, patterns emerging.
+# Month 3: their AI knows their domain better than most teammates.
+```
+
+### Research Paper Deep Dive
+
+```
+# You're researching a new topic. 15 papers to digest.
+
+wiki-recall papers curate --topics "multi-agent,orchestration" --max 10
+# → Finds 10 papers from arXiv + Semantic Scholar
+# → Scores by relevance, deduplicates
+
+wiki-recall papers ingest arxiv-2301-07041
+# → Creates wiki entity with key concepts, citations
+# → Cross-references with existing entities
+# → Knowledge compounds with each paper
+
+# After 15 papers: structured wiki with connections.
+# You never wrote a summary. The AI compiled it all.
+```
+
+### The "20x Productivity" Effect
+
+```
+# The real magic: after 2 weeks of use, you stop explaining things.
+#
+# Before wiki-recall:
+# > "I'm working on the API service, it uses Express with TypeScript,
+# >  we have a retry handler that does exponential backoff, the tests
+# >  are in tests/unit/, and we decided last week to..."
+#
+# After wiki-recall:
+# > "Fix the flaky test in retry handler"
+#
+# brain.md already loaded your project context.
+# The wiki already has the architecture decisions.
+# The AI already knows your testing patterns.
+#
+# You talk less. You ship more. That's the 20x.
+```
 
 ---
 

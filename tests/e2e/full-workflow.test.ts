@@ -22,6 +22,7 @@ import {
 import {
   createEntity,
   getEntity,
+  updateEntity,
   listEntities,
   deleteEntity,
 } from "../../src/knowledge/entities.js";
@@ -476,5 +477,82 @@ describe("full workflow — benchmark data generation", () => {
     const entities1 = generateMockEntities(5, 42);
     const entities2 = generateMockEntities(5, 42);
     expect(entities1.map(e => e.title)).toEqual(entities2.map(e => e.title));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Knowledge Compounding Loop (Karpathy pattern)
+// ---------------------------------------------------------------------------
+
+describe("full workflow — knowledge compounding loop", () => {
+  test("create A → create B with [[A]] → search A finds B → update A → delete B → verify index", () => {
+    // Step 1: Create entity A and verify FTS5 indexed
+    const { slug: slugA } = createEntity({
+      title: "Retry Patterns",
+      type: "concept",
+      updated: "2025-06-15",
+      tags: ["resilience", "distributed-systems"],
+      content: "Exponential backoff with jitter for transient failures.",
+    });
+    expect(slugA).toBe("retry-patterns");
+    const entityA = getEntity(slugA);
+    indexEntity(slugA, entityA);
+
+    const searchA = searchEntities("retry");
+    expect(searchA.length).toBeGreaterThan(0);
+    expect(searchA[0].slug).toBe("retry-patterns");
+
+    // Step 2: Create entity B with [[A]] wikilink
+    const { slug: slugB } = createEntity({
+      title: "Resilient HTTP Client",
+      type: "system",
+      updated: "2025-06-15",
+      tags: ["http", "resilience"],
+      content: "HTTP client with built-in [[Retry Patterns]] and circuit breaker support.",
+    });
+    expect(slugB).toBe("resilient-http-client");
+    const entityB = getEntity(slugB);
+    indexEntity(slugB, entityB);
+
+    // Step 3: Search for "retry" — B should also appear (contains wikilink text)
+    const searchRetry = searchEntities("retry");
+    expect(searchRetry.length).toBeGreaterThanOrEqual(2);
+    const slugsFound = searchRetry.map(r => r.slug);
+    expect(slugsFound).toContain("retry-patterns");
+    expect(slugsFound).toContain("resilient-http-client");
+
+    // Verify wikilinks create graph edges
+    const entities = loadEntitiesFromDir(join(testDir, "knowledge"));
+    const graph = buildKnowledgeGraph(entities);
+    const edgeFromBtoA = graph.edges.find(
+      e => e.source === "resilient-http-client" && e.target === "retry-patterns"
+    );
+    expect(edgeFromBtoA).toBeDefined();
+
+    // Step 4: Update A — verify search index updates
+    updateEntity(slugA, {
+      content: "Exponential backoff with jitter and circuit breaker integration for transient failures.",
+      updated: "2025-06-16",
+    });
+    const updatedA = getEntity(slugA);
+    expect(updatedA.content).toContain("circuit breaker integration");
+
+    // Re-index and verify updated content is searchable
+    indexEntity(slugA, updatedA);
+    const searchCircuit = searchEntities("circuit breaker integration");
+    const aInResults = searchCircuit.find(r => r.slug === "retry-patterns");
+    expect(aInResults).toBeDefined();
+
+    // Step 5: Delete B — verify search index cleans up
+    deleteEntity(slugB);
+    expect(() => getEntity(slugB)).toThrow();
+
+    // After re-searching, B should no longer be in file-based results
+    expect(listEntities()).toHaveLength(1);
+
+    // Verify A still exists and is searchable
+    const finalSearch = searchEntities("retry");
+    expect(finalSearch.length).toBeGreaterThan(0);
+    expect(finalSearch[0].slug).toBe("retry-patterns");
   });
 });

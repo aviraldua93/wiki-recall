@@ -981,9 +981,13 @@ Examples:
       );
 
       if (opts.open) {
-        const { exec } = await import("node:child_process");
-        const cmd = process.platform === "win32" ? "start" : process.platform === "darwin" ? "open" : "xdg-open";
-        exec(`${cmd} "${opts.output}"`);
+        const { execFile } = await import("node:child_process");
+        if (process.platform === "win32") {
+          execFile("cmd", ["/c", "start", "", opts.output]);
+        } else {
+          const openCmd = process.platform === "darwin" ? "open" : "xdg-open";
+          execFile(openCmd, [opts.output]);
+        }
       }
     } catch (err: unknown) {
       spinner.fail(chalk.red(formatCliError(err)));

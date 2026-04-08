@@ -992,6 +992,260 @@ Examples:
   });
 
 // ---------------------------------------------------------------------------
+// mcp — start MCP server on stdio (for IDE integration)
+// ---------------------------------------------------------------------------
+
+program
+  .command("mcp")
+  .description("Start MCP (Model Context Protocol) server on stdio for IDE integration")
+  .option("--list-tools", "List available MCP tools and exit")
+  .addHelpText("after", `
+Examples:
+  $ devcontext mcp                  # Start MCP server on stdio
+  $ devcontext mcp --list-tools     # List available tools
+`)
+  .action(async (opts: { listTools?: boolean }) => {
+    if (opts.listTools) {
+      const { ALL_TOOLS } = await import("../mcp/tools.js");
+      console.log(chalk.bold(`\nDevContext MCP Tools (${ALL_TOOLS.length}):\n`));
+      for (const tool of ALL_TOOLS) {
+        console.log(`  ${chalk.cyan(tool.name)}`);
+        console.log(`    ${chalk.dim(tool.description)}`);
+      }
+      console.log();
+      return;
+    }
+
+    const { startServer } = await import("../mcp/server.js");
+    await startServer({
+      name: "devcontext",
+      version: "0.1.0",
+      workspaceDir: getConfig().home,
+    });
+  });
+
+// ---------------------------------------------------------------------------
+// memory — 5-layer memory architecture
+// ---------------------------------------------------------------------------
+
+const memoryCmd = new Command("memory")
+  .description("5-layer memory system — identity, story, wiki, semantic search, sessions")
+  .addHelpText("after", `
+Examples:
+  $ devcontext memory query "what did we discuss about retry logic?"
+  $ devcontext memory index
+  $ devcontext memory stats
+  $ devcontext memory identity
+`);
+
+memoryCmd
+  .command("query")
+  .description("Route a query through all memory layers")
+  .argument("<query>", "Query to search across memory layers")
+  .option("--layers <layers>", "Comma-separated layers to include (L0,L1,L2,L3,L4)")
+  .option("--max-tokens <n>", "Maximum token budget", "4000")
+  .option("--domain <domain>", "Domain routing hint for L2 wiki")
+  .action(async (query: string, opts: { layers?: string; maxTokens: string; domain?: string }) => {
+    const spinner = ora();
+    try {
+      spinner.start(chalk.cyan("Querying memory layers…"));
+
+      const { createDefaultMemorySystem } = await import("../memory/index.js");
+      const system = createDefaultMemorySystem();
+
+      const maxLayers = opts.layers
+        ? (opts.layers.split(",").map(l => l.trim()) as import("../memory/types.js").MemoryLayer[])
+        : undefined;
+
+      const result = await system.query({
+        query,
+        maxLayers,
+        maxTokens: parseInt(opts.maxTokens, 10) || 4000,
+        domain: opts.domain,
+      });
+
+      spinner.stop();
+
+      // Display results by layer
+      if (result.layers.L0) {
+        console.log(chalk.bold("\n🧠 L0 — Identity"));
+        console.log(`  ${chalk.cyan(result.layers.L0.name)} (${result.layers.L0.roles.join(", ")})`);
+      }
+
+      if (result.layers.L1) {
+        console.log(chalk.bold("\n📖 L1 — Essential Story"));
+        const { storyToPrompt } = await import("../memory/layers/l1-story.js");
+        const prompt = storyToPrompt(result.layers.L1);
+        for (const line of prompt.split("\n").slice(0, 10)) {
+          console.log(`  ${chalk.dim(line)}`);
+        }
+      }
+
+      if (result.layers.L2) {
+        console.log(chalk.bold(`\n📚 L2 — Wiki (${result.layers.L2.entities.length} entities)`));
+        for (const e of result.layers.L2.entities.slice(0, 5)) {
+          console.log(`  ${chalk.cyan(e.title)} ${chalk.dim(`[${e.type}]`)}`);
+          if (e.excerpt) console.log(`    ${chalk.dim(e.excerpt.slice(0, 100))}`);
+        }
+      }
+
+      if (result.layers.L3) {
+        console.log(chalk.bold(`\n🔍 L3 — Semantic Search (${result.layers.L3.matches.length} matches)`));
+        for (const m of result.layers.L3.matches.slice(0, 5)) {
+          console.log(`  ${chalk.dim(`[${m.source}]`)} ${m.content.slice(0, 120)}`);
+        }
+      }
+
+      if (result.layers.L4) {
+        console.log(chalk.bold(`\n💬 L4 — Session (${result.layers.L4.turns.length} turns)`));
+        for (const t of result.layers.L4.turns.slice(0, 4)) {
+          console.log(`  ${chalk.cyan(t.role)}: ${t.content.slice(0, 100)}`);
+        }
+      }
+
+      console.log(chalk.dim(`\nTotal tokens: ${result.totalTokens}`));
+      console.log(chalk.dim(`Routing: ${result.routingDecision}`));
+
+    } catch (err: unknown) {
+      spinner.fail(chalk.red(formatCliError(err)));
+      process.exit(1);
+    }
+  });
+
+memoryCmd
+  .command("index")
+  .description("Rebuild L3 session search index")
+  .action(async () => {
+    const spinner = ora();
+    try {
+      spinner.start(chalk.cyan("Rebuilding L3 session index…"));
+
+      const { join } = await import("node:path");
+      const { rebuildIndex, getIndexStats } = await import("../memory/layers/l3-semantic.js");
+      const home = getConfig().home;
+      const sessionStorePath = join(home, "session_store.db");
+      const indexDbPath = join(home, "memory", "session-index.db");
+
+      rebuildIndex(sessionStorePath, indexDbPath);
+      const stats = getIndexStats(indexDbPath);
+
+      spinner.succeed(chalk.green(
+        `Index rebuilt: ${chalk.bold(String(stats.sessionCount))} sessions, ` +
+        `${chalk.bold(String(stats.turnCount))} turns indexed`
+      ));
+    } catch (err: unknown) {
+      spinner.fail(chalk.red(formatCliError(err)));
+      process.exit(1);
+    }
+  });
+
+memoryCmd
+  .command("stats")
+  .description("Show memory layer statistics")
+  .action(async () => {
+    try {
+      const { join } = await import("node:path");
+      const { existsSync } = await import("node:fs");
+      const { listEntities } = await import("../knowledge/entities.js");
+      const { getIndexStats } = await import("../memory/layers/l3-semantic.js");
+      const { listRecentSessions } = await import("../memory/layers/l4-sessions.js");
+      const home = getConfig().home;
+
+      console.log(chalk.bold("\n📊 Memory Layer Stats\n"));
+
+      // L0
+      const identityPath = join(home, "identity.yaml");
+      console.log(`  ${chalk.cyan("L0 Identity")}: ${existsSync(identityPath) ? chalk.green("configured") : chalk.yellow("not configured")}`);
+
+      // L1 + L2
+      let entityCount = 0;
+      try { entityCount = listEntities().length; } catch { /* empty */ }
+      console.log(`  ${chalk.cyan("L1 Story / L2 Wiki")}: ${chalk.bold(String(entityCount))} knowledge entities`);
+
+      // L3
+      const indexPath = join(home, "memory", "session-index.db");
+      if (existsSync(indexPath)) {
+        const stats = getIndexStats(indexPath);
+        console.log(`  ${chalk.cyan("L3 Session Index")}: ${chalk.bold(String(stats.sessionCount))} sessions, ${chalk.bold(String(stats.turnCount))} turns`);
+        if (stats.lastIndexed) {
+          console.log(`    ${chalk.dim(`Last indexed: ${stats.lastIndexed}`)}`);
+        }
+      } else {
+        console.log(`  ${chalk.cyan("L3 Session Index")}: ${chalk.yellow("not built")} ${chalk.dim("(run: devcontext memory index)")}`);
+      }
+
+      // L4
+      const sessionStorePath = join(home, "session_store.db");
+      if (existsSync(sessionStorePath)) {
+        const recent = listRecentSessions(sessionStorePath, 3);
+        console.log(`  ${chalk.cyan("L4 Session Store")}: ${chalk.green("available")}`);
+        if (recent.length > 0) {
+          console.log(`    ${chalk.dim("Recent sessions:")}`);
+          for (const s of recent) {
+            console.log(`      ${chalk.dim(s.date)} ${s.summary || s.id}`);
+          }
+        }
+      } else {
+        console.log(`  ${chalk.cyan("L4 Session Store")}: ${chalk.yellow("not found")}`);
+      }
+
+      console.log();
+    } catch (err: unknown) {
+      console.error(chalk.red(formatCliError(err)));
+      process.exit(1);
+    }
+  });
+
+memoryCmd
+  .command("identity")
+  .description("Show or initialize L0 identity")
+  .option("--init <name>", "Initialize a new identity with the given name")
+  .action(async (opts: { init?: string }) => {
+    try {
+      const { join } = await import("node:path");
+      const { existsSync } = await import("node:fs");
+      const { loadIdentity, createDefaultIdentity, saveIdentity, generateIdentityPrompt } = await import("../memory/layers/l0-identity.js");
+      const home = getConfig().home;
+      const identityPath = join(home, "identity.yaml");
+
+      if (opts.init) {
+        const identity = createDefaultIdentity(opts.init);
+        saveIdentity(identity, identityPath);
+        console.log(chalk.green(`\nIdentity initialized for ${chalk.bold(opts.init)}`));
+        console.log(chalk.dim(`  Saved to: ${identityPath}`));
+        console.log(chalk.dim(`  Edit the file to customize your identity.\n`));
+        return;
+      }
+
+      if (!existsSync(identityPath)) {
+        console.log(chalk.yellow("\nNo identity configured."));
+        console.log(chalk.dim(`  Run: devcontext memory identity --init "Your Name"\n`));
+        return;
+      }
+
+      const identity = loadIdentity(identityPath);
+      console.log(chalk.bold("\n🧠 L0 Identity\n"));
+      console.log(`  ${chalk.cyan("Name")}: ${identity.name}`);
+      console.log(`  ${chalk.cyan("Roles")}: ${identity.roles.join(", ") || chalk.dim("none")}`);
+      if (identity.accounts.length > 0) {
+        console.log(`  ${chalk.cyan("Accounts")}:`);
+        for (const a of identity.accounts) {
+          console.log(`    ${a.platform}: ${a.username}`);
+        }
+      }
+      if (identity.coreContext) {
+        console.log(`  ${chalk.cyan("Context")}: ${identity.coreContext}`);
+      }
+      console.log(chalk.dim(`\n  Prompt (~tokens): "${generateIdentityPrompt(identity)}"\n`));
+    } catch (err: unknown) {
+      console.error(chalk.red(formatCliError(err)));
+      process.exit(1);
+    }
+  });
+
+program.addCommand(memoryCmd);
+
+// ---------------------------------------------------------------------------
 // Export for testing
 // ---------------------------------------------------------------------------
 

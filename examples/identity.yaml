@@ -1,0 +1,8 @@
+name: "Developer"
+roles:
+  - "Software Engineer"
+  - "Open Source Contributor"
+accounts:
+  - platform: github
+    username: my-username
+coreContext: "Full-stack developer focused on AI/ML tooling and multi-agent systems."

@@ -3,8 +3,8 @@
 Follow-ups, commitments, and todos detected from sessions.
 Surfaced at session start so nothing falls through the cracks.
 
-## Active
+## Pending
 <!-- Format: - [ ] Action item (source: session-id, date) -->
 
-## Completed
+## Done
 <!-- Move items here when done -->

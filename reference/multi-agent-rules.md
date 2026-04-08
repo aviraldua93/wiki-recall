@@ -1,6 +1,6 @@
 # Multi-Agent Operating Rules
 
-Source: https://github.com/aviraldua93/multi-agent-playbook
+Source: multi-agent-playbook (see your personal config for repo URL)
 
 ## Core Patterns
 1. **Docs-as-Bus**: Agents write to shared files. Pass file PATHS, not content.

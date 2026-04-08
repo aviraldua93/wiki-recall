@@ -67,7 +67,7 @@ wiki-recall fixes this by compiling your session history into a persistent, stru
 ### Setup
 
 ```bash
-git clone https://github.com/aviraldua93/wiki-recall.git
+git clone https://github.com/YOUR_USERNAME/wiki-recall.git
 cd wiki-recall
 
 # Install Python engine dependencies
@@ -255,40 +255,17 @@ wiki-recall setup
 ### Research Paper Deep Dive
 
 ```
-# You're researching a new topic. 15 papers to digest.
-
 wiki-recall papers curate --topics "multi-agent,orchestration" --max 10
-# → Finds 10 papers from arXiv + Semantic Scholar
-# → Scores by relevance, deduplicates
+# → Finds papers from arXiv + Semantic Scholar, scores by relevance
 
 wiki-recall papers ingest arxiv-2301-07041
-# → Creates wiki entity with key concepts, citations
-# → Cross-references with existing entities
-# → Knowledge compounds with each paper
-
-# After 15 papers: structured wiki with connections.
-# You never wrote a summary. The AI compiled it all.
+# → Creates wiki entity with key concepts, citations, cross-references
+# → After 15 papers: structured wiki with connections, zero manual summaries
 ```
 
 ### The "20x Productivity" Effect
 
-```
-# The real magic: after 2 weeks of use, you stop explaining things.
-#
-# Before wiki-recall:
-# > "I'm working on the API service, it uses Express with TypeScript,
-# >  we have a retry handler that does exponential backoff, the tests
-# >  are in tests/unit/, and we decided last week to..."
-#
-# After wiki-recall:
-# > "Fix the flaky test in retry handler"
-#
-# brain.md already loaded your project context.
-# The wiki already has the architecture decisions.
-# The AI already knows your testing patterns.
-#
-# You talk less. You ship more. That's the 20x.
-```
+After 2 weeks of use, you stop explaining things. `brain.md` already loaded your project context. The wiki has your architecture decisions. The AI knows your testing patterns. You talk less. You ship more.
 
 ---
 

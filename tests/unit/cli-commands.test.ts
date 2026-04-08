@@ -55,7 +55,7 @@ describe("CLI error formatting", () => {
   // We test the formatCliError behavior indirectly by checking that CLI
   // commands produce expected error messages for various error conditions
 
-  test("'not found' errors include a hint about 'wikirecall list'", async () => {
+  test("'not found' errors include a hint about 'wiki-recall list'", async () => {
     const program = await getProgram();
     // Trying to recall a nonexistent scenario should throw a "not found" error
     let errorMsg = "";
@@ -86,9 +86,9 @@ describe("CLI error formatting", () => {
 // ---------------------------------------------------------------------------
 
 describe("CLI program structure", () => {
-  test("program name is 'wikirecall'", async () => {
+  test("program name is 'wiki-recall'", async () => {
     const program = await getProgram();
-    expect(program.name()).toBe("wikirecall");
+    expect(program.name()).toBe("wiki-recall");
   });
 
   test("program version is 0.1.0", async () => {

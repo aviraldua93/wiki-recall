@@ -13,7 +13,7 @@
 ```bash
 # Clone the repository
 git clone https://github.com/aviraldua93/wiki-recall.git
-cd wikirecall
+cd wiki-recall
 
 # Install dependencies
 bun install
@@ -32,14 +32,14 @@ bun run build
 
 ```bash
 # Create from scratch
-wikirecall create my-api-project \
+wiki-recall create my-api-project \
   --description "Building a REST API with retry logic" \
   --repo https://github.com/myorg/api-service:feature/retry-logic \
   --skill code-review \
   --skill ci-monitor
 
 # Or use a template
-wikirecall create my-api-project \
+wiki-recall create my-api-project \
   --template web-api \
   --description "Building a REST API with retry logic"
 ```
@@ -51,7 +51,7 @@ This creates a YAML manifest at `~/.wikirecall/scenarios/my-api-project.yaml` wi
 As you work, checkpoint your state:
 
 ```bash
-wikirecall save my-api-project \
+wiki-recall save my-api-project \
   --summary "Implemented retry handler with exponential backoff" \
   --next-step "Write integration tests" \
   --next-step "Add jitter to backoff"
@@ -60,7 +60,7 @@ wikirecall save my-api-project \
 ### 3. Recall Later (or on Another Machine)
 
 ```bash
-wikirecall recall my-api-project
+wiki-recall recall my-api-project
 ```
 
 This clones/pulls all repos listed in the scenario, loads skills, and displays your saved context — summary, next steps, open PRs, and blockers — so you can resume instantly.
@@ -68,7 +68,7 @@ This clones/pulls all repos listed in the scenario, loads skills, and displays y
 Use `--skip-repos` to recall without touching repositories:
 
 ```bash
-wikirecall recall my-api-project --skip-repos
+wiki-recall recall my-api-project --skip-repos
 ```
 
 ### 4. Sync Across Machines
@@ -77,26 +77,26 @@ Push your scenario to GitHub and pull it on another machine:
 
 ```bash
 # Push scenario state to a remote repo
-wikirecall push my-api-project
+wiki-recall push my-api-project
 
 # On another machine: pull the latest state
-wikirecall pull my-api-project
+wiki-recall pull my-api-project
 ```
 
 ### 5. List All Scenarios
 
 ```bash
 # List all scenarios
-wikirecall list
+wiki-recall list
 
 # Filter by status
-wikirecall list --status active
+wiki-recall list --status active
 ```
 
 ### 6. Hand Off to a Colleague
 
 ```bash
-wikirecall handoff my-api-project --to teammate-username
+wiki-recall handoff my-api-project --to teammate-username
 ```
 
 This transitions the scenario to `handed-off` status, preserving all context for your teammate.
@@ -104,43 +104,43 @@ This transitions the scenario to `handed-off` status, preserving all context for
 ### 7. Archive When Done
 
 ```bash
-wikirecall teardown my-api-project
+wiki-recall teardown my-api-project
 ```
 
 This moves the scenario to `archived` status. The manifest is preserved for historical reference.
 
 ## Knowledge Wiki
 
-WikiRecall includes a Karpathy-style knowledge wiki for persistent memory about systems, patterns, and concepts.
+wiki-recall includes a Karpathy-style knowledge wiki for persistent memory about systems, patterns, and concepts.
 
 ### Create a Knowledge Entity
 
 ```bash
-wikirecall knowledge create --title "Retry Patterns" --type concept --tags distributed-systems resilience
+wiki-recall knowledge create --title "Retry Patterns" --type concept --tags distributed-systems resilience
 ```
 
 ### Search Knowledge
 
 ```bash
-wikirecall knowledge search "retry patterns"
+wiki-recall knowledge search "retry patterns"
 ```
 
 ### List All Entities
 
 ```bash
-wikirecall knowledge list
+wiki-recall knowledge list
 ```
 
 ### Get a Specific Entity
 
 ```bash
-wikirecall knowledge get retry-patterns
+wiki-recall knowledge get retry-patterns
 ```
 
 ### Delete an Entity
 
 ```bash
-wikirecall knowledge delete retry-patterns
+wiki-recall knowledge delete retry-patterns
 ```
 
 ### Knowledge Entity Format
@@ -187,18 +187,18 @@ Skills promote through layers: **personal** → **team** → **root** (community
 Start fast with pre-built templates:
 
 ```bash
-wikirecall create my-project --template web-api
-wikirecall create my-project --template frontend-app
-wikirecall create my-project --template infra-pipeline
-wikirecall create my-project --template research-paper
-wikirecall create my-project --template multi-agent
+wiki-recall create my-project --template web-api
+wiki-recall create my-project --template frontend-app
+wiki-recall create my-project --template infra-pipeline
+wiki-recall create my-project --template research-paper
+wiki-recall create my-project --template multi-agent
 ```
 
 Each template provides sensible defaults for skills, context structure, and next steps.
 
 ## Configuration
 
-WikiRecall reads these environment variables:
+wiki-recall reads these environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|

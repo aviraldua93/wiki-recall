@@ -166,3 +166,15 @@ This is a public open-source project. Zero references to:
 - Any proprietary systems or codenames
 
 Use only generic, public GitHub references.
+
+## Proactive Feedback Loop
+
+When working with a user's wiki-recall knowledge base, do these WITHOUT being asked:
+- New topic not in wiki → TELL the user, offer to create a knowledge entity
+- Info contradicts existing wiki → FLAG it, offer to update
+- Decision made in conversation → ASK "save to scenario context?"
+- Session reaching natural end (>5 exchanges) → ASK "save anything to knowledge base?"
+- New project/domain mentioned → Offer to create a scenario or entity
+- Recurring question → Suggest compiling into a permanent wiki entity
+
+**No staging.** When the user confirms, write directly. The conversation is the review process.

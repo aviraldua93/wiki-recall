@@ -12,3 +12,5 @@ Thumbs.db
 .crews/artifacts/
 artifacts/
 review-round-*.md
+final-audit*.md
+audit-*.md

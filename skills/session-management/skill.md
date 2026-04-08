@@ -156,3 +156,16 @@ When transferring work to a colleague:
 - **Keep next steps small**: Each item should be completable in under 2 hours
 - **Clean up before handoff**: Squash WIP commits, resolve TODO comments, close stale branches
 - **Test the resume path**: Periodically verify that recalling your scenario on a fresh machine actually works
+
+## Proactive Feedback Loop
+
+**Do these WITHOUT being asked** — this is the difference between a knowledge base that grows and one that rots:
+
+- **New topic not in wiki** → Tell the user, offer to create a knowledge entity
+- **Info contradicts existing wiki** → Flag it immediately, offer to update the entity
+- **Decision made during conversation** → Ask: "Save this decision to the scenario context?"
+- **Session reaching natural end (>5 exchanges)** → Ask: "Should I save anything from this session to your knowledge base?"
+- **New project/domain mentioned** → Offer to create a scenario or knowledge entity for it
+- **Recurring question** → Suggest compiling the answer into a permanent wiki entity so it's never asked again
+
+**No staging areas.** The confirmation is the conversation itself. When the user says "yes," write directly to the knowledge base. No separate review folders, no manual `mv`, no review backlogs. Staging directories are where knowledge goes to die.

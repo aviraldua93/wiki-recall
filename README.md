@@ -1,10 +1,6 @@
-<div align="center">
-
 # 🧠 wiki-recall
 
-### Compiled knowledge meets layered recall.
-
-**Five memory layers. ~550 tokens to wake up. Wiki understanding + semantic search in one query.**
+**The hybrid no one else built. Compiled knowledge + layered recall.**
 
 [![CI](https://github.com/aviraldua93/wiki-recall/actions/workflows/ci.yml/badge.svg)](https://github.com/aviraldua93/wiki-recall/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-1,060_passing-brightgreen)](https://github.com/aviraldua93/wiki-recall/actions/workflows/ci.yml)
@@ -13,79 +9,51 @@
 [![Bun](https://img.shields.io/badge/Bun-runtime-f9f1e1?logo=bun&logoColor=black)](https://bun.sh)
 [![MCP](https://img.shields.io/badge/MCP-15_tools-purple)](https://modelcontextprotocol.io)
 
-</div>
+| **98.4%** | **1,060** | **~550** |
+|:---:|:---:|:---:|
+| token savings vs dump-everything | tests passing | tokens to wake up |
+
+[Quick Start](#quick-start) · [Memory Stack](#the-approach) · [Benchmarks](#benchmarks) · [MCP Server](#mcp-server)
 
 ---
 
-Every LLM memory system makes the same trade-off: **compile knowledge and lose recall**, or **store everything and understand nothing**. wiki-recall stacks both.
+## The Problem
 
-```bash
-wiki-recall memory query "what's our retry strategy?"
-```
+Every knowledge system makes the same bet. Either you compile what you know into structured documents and accept that anything not compiled is gone forever, or you index every raw conversation and pray that search finds the right needle in a haystack of noise.
+
+**The first approach understands but can't remember. The second remembers but doesn't understand.** Every existing tool picks a side. wiki-recall doesn't.
+
+The insight is simple: these aren't competing strategies. They're complementary layers. A compiled wiki gives you fast, structured understanding at low token cost. A semantic search layer catches everything the wiki missed. Stack them, route queries to the right layer automatically, and you get a memory system that both understands and recalls.
 
 ---
 
-## Memory Architecture
+## The Approach
 
-| Layer | What | Cost | When |
+It starts with your identity — about 50 tokens. Who you are, how you think, your core principles. That's L0. It loads every single time, no exceptions.
+
+On top of that sits your essential story — another 500 tokens. What you're working on right now, your top moments, active projects. That's L1. Also always loaded. **L0 + L1 together cost ~550 tokens.** That's your wake-up cost. Compare that to the 1,500+ token context dumps most tools shove into every request.
+
+The interesting part starts at L2. This is the compiled wiki — Karpathy-style structured entities. Mental models, architectural decisions, recurring patterns. Each entry is a Markdown file with YAML frontmatter, source citations, contradiction tracking, and lifecycle status. It doesn't load unless the query's domain calls for it.
+
+L3 is the safety net. BM25 and FTS5 search over your full session history. **It finds what the wiki doesn't know yet.** If you talked about something three months ago but never compiled it, L3 catches it.
+
+L4 is raw session replay. Full conversations, pulled by session ID. You almost never need it, but when you do, it's there.
+
+| Layer | What | Size | When |
 |:------|:-----|:-----|:-----|
-| **L0 — Identity** | Who you are, core principles | ~50 tokens | 🟢 Always loaded |
-| **L1 — Essential Story** | Current status, top moments, active projects | ~500 tokens | 🟢 Always loaded |
-| **L2 — Compiled Wiki** | Karpathy-style entities: mental models, decisions, patterns | On demand | 🔵 Domain-routed |
-| **L3 — Semantic Search** | BM25/FTS5 over session history — finds what wiki missed | On demand | 🔵 When wiki gaps exist |
-| **L4 — Raw Sessions** | Full conversation replay by session ID | On demand | ⚪ Reference only |
+| L0 — Identity | Core principles, persona | ~50 tokens | Always |
+| L1 — Essential Story | Status, top moments, active work | ~500 tokens | Always |
+| L2 — Compiled Wiki | Entities, decisions, patterns | On demand | Domain-routed |
+| L3 — Semantic Search | BM25/FTS5 over session history | On demand | When wiki gaps exist |
+| L4 — Raw Sessions | Full conversation replay | On demand | Reference only |
 
-> **L0 + L1 = ~550 tokens.** That's your wake-up cost. Every time. Compare that to 1,500+ token context dumps in typical tools.
->
-> L2–L4 activate **only when needed**, routed by query domain. The router decides — you don't.
-
-```bash
-wiki-recall memory query "retry strategy" --layers L0,L1,L2
-wiki-recall memory stats
-wiki-recall memory identity
-```
+The router picks the layers. You don't.
 
 ---
 
-## How It Works
+## Why the Hybrid Matters
 
-> 1. **Save** your working state → repos, branches, context, decisions
-> 2. **Recall** on any machine → everything materializes instantly
-> 3. **Compound** → every query makes the wiki smarter
-
----
-
-## Why Not Just X?
-
-| | Karpathy Wiki | RAG / MemPalace | **WikiRecall** |
-|:---|:---:|:---:|:---:|
-| **Compiled knowledge** | ✅ | ❌ | ✅ |
-| **Semantic search** | ❌ | ✅ | ✅ |
-| **~550 token wake-up** | ❌ | ❌ | ✅ |
-| **Portable scenarios** | ❌ | ❌ | ✅ |
-| **Paper curation** | ❌ | ❌ | ✅ |
-| **Visual artifacts** | ❌ | ❌ | ✅ |
-| **15-tool MCP server** | ❌ | ❌ | ✅ |
-
----
-
-## Benchmarks
-
-> **98.4%** token savings vs dump-everything
->
-> **+33pp** recall over wiki-only
->
-> **+49.5pp** recall over search-only
->
-> **1,000** entities with zero degradation
-
-| Approach | Recall | Tokens | Understands? | Searches? |
-|:---|:---:|:---:|:---:|:---:|
-| Wiki only (Karpathy) | ~60% | Low | ✅ | ❌ |
-| Search only (RAG) | ~45% | High | ❌ | ✅ |
-| **Hybrid (WikiRecall)** | **~93%** | **Low** | **✅** | **✅** |
-
-> All benchmarks use reproducible seeded mock data. Zero API costs.
+Karpathy's wiki understands your codebase but can't recall a conversation you had three months ago. MemPalace recalls every word but doesn't understand what any of it means. **wiki-recall does both.** Compiled knowledge for structure, semantic search for coverage, layered routing so you never pay for what you don't need.
 
 ---
 
@@ -96,174 +64,104 @@ git clone https://github.com/aviraldua93/wiki-recall.git
 cd wiki-recall && bun install && bun link
 wiki-recall init
 wiki-recall create my-api --template web-api
+# ✓ Scenario created: my-api (web-api template, 3 skills loaded)
 ```
 
 ---
 
-## Features
+## Benchmarks
 
-| | | | |
-|:---|:---|:---|:---|
-| 🧠 **5-Layer Memory** | 📦 **Portable Scenarios** | 💾 **Save & Recall** | 🛠️ **Pluggable Skills** |
-| 📚 **Knowledge Wiki** | 📄 **Paper Curation** | 🕸️ **Visual Artifacts** | 🔌 **MCP Server (15 tools)** |
-| 🔄 **Cross-Machine Sync** | 🤝 **Team Handoffs** | 🏗️ **5 Templates** | 🔍 **FTS5 Search** |
-| ✅ **Schema Validation** | 🧩 **Skill Promotion** | | |
+The ablation tells the story. Wiki-only misses anything not yet compiled. Search-only drowns in noise. **The hybrid closes the gap on both sides.**
 
----
+| Approach | Recall | Tokens | Understands? | Searches? |
+|:---------|:------:|:------:|:------------:|:---------:|
+| Wiki only (Karpathy) | ~60% | Low | Yes | No |
+| Search only (RAG) | ~45% | High | No | Yes |
+| **Hybrid (wiki-recall)** | **~93%** | **Low** | **Yes** | **Yes** |
 
-## Portable Scenarios
-
-wiki-recall packages your working state — repos, branches, skills, context — into a **resumable scenario** that syncs via Git.
-
-```bash
-# Friday — save state
-wiki-recall save api-project \
-  --summary "Retry handler done, integration tests next" \
-  --next-step "Write tests for exponential backoff"
-
-# Monday — instant resume
-wiki-recall recall api-project
-```
-
-**Zero context loss.** Push from laptop, pull on desktop. Hand off to a teammate as a PR. No cloud service — just git.
-
-```bash
-wiki-recall push my-project
-wiki-recall pull my-project
-wiki-recall handoff my-project --to teammate --pr
-```
+All benchmarks use reproducible seeded mock data. Zero API costs. Scales to 1,000 entities with zero degradation.
 
 ---
 
-## Knowledge Wiki
+## What's Inside
 
-The L2 layer. Implements [Andrej Karpathy's methodology](https://karpathy.ai/): **entities, not documents.**
-
-Each entry is a Markdown file with YAML frontmatter — mental models with source citations, contradiction tracking, and lifecycle status (`draft` → `reviewed` → `needs_update`).
-
-```bash
-wiki-recall knowledge search "retry patterns"
-wiki-recall knowledge list --type concept
-wiki-recall knowledge get a2a-protocol
-```
+| Feature | Description |
+|:--------|:------------|
+| 5-Layer Memory | L0–L4 stack with automatic query routing |
+| Compiled Wiki | Karpathy-style entities with citations and lifecycle tracking |
+| Semantic Search | BM25 + FTS5 over full session history |
+| Portable Scenarios | Save/recall working state across machines via git |
+| Paper Curation | arXiv + Semantic Scholar discovery, scoring, wiki ingestion |
+| Visual Artifacts | Self-contained interactive HTML — graphs, clusters, timelines |
+| MCP Server | 15 tools for any LLM or IDE |
+| Team Handoffs | Push scenarios as PRs, pull on any machine |
+| Schema Validation | JSON Schema Draft 2020-12 via Ajv |
+| FTS5 Search | Full-text search over all stored knowledge |
 
 ---
 
-## Paper Curation & Visualization
+## Paper Curation
 
-Automated discovery from **arXiv** and **Semantic Scholar**. Papers scored on a 0–1 relevance scale, deduplicated, and **ingested directly into the wiki** as Karpathy-style entities.
+Automated discovery from arXiv and Semantic Scholar. Papers are scored on a 0–1 relevance scale, deduplicated, and **ingested directly into the wiki as structured entities** — not dumped into a folder.
 
 ```bash
-wiki-recall papers search "transformer architectures" --limit 10
 wiki-recall papers curate --topics "agents,retrieval" --min-score 0.3
 wiki-recall papers ingest arxiv-2301-07041
 ```
 
-Generate **self-contained interactive HTML** visualizations — knowledge graphs, topic clusters, timelines, and research dashboards.
+---
+
+## Visual Artifacts
+
+Generate self-contained interactive HTML visualizations — knowledge graphs, topic clusters, research landscapes. **No external dependencies, no server required.** Open the file and explore.
 
 ```bash
 wiki-recall visualize --type knowledge-graph --output graph.html
-wiki-recall visualize --type research-landscape --open
 ```
 
 ---
 
 ## MCP Server
 
-**15 tools** exposed via the [Model Context Protocol](https://modelcontextprotocol.io) — knowledge management, scenario ops, memory queries, paper curation, and visualization. Any LLM, any IDE.
+15 tools. Connect once, your AI handles the rest.
+
+Knowledge management, scenario ops, memory queries, paper curation, and visualization — all exposed via the [Model Context Protocol](https://modelcontextprotocol.io).
 
 ```bash
-wiki-recall mcp              # Start on stdio
-wiki-recall mcp --list-tools # See all 15 tools
-```
-
-```json
-{
-  "mcpServers": {
-    "wikirecall": {
-      "command": "wikirecall",
-      "args": ["mcp"]
-    }
-  }
-}
+claude mcp add wikirecall -- wikirecall mcp
 ```
 
 ---
 
-## Skills & Templates
+## Built-in Skills
 
 | Skill | What it does |
-|:---|:---|
+|:------|:-------------|
 | `code-review` | Five-layer review: security → correctness → style → performance → testing |
 | `ci-monitor` | GitHub Actions monitoring and failure diagnosis |
 | `pr-management` | Full PR lifecycle — creation, review, merging |
 | `session-management` | Checkpointing and cross-machine context transfer |
 | `multi-agent` | Parallel agent orchestration via docs-as-bus |
-| `paper-curation` | Research discovery, scoring, and wiki ingestion |
-| `research-loop` | End-to-end research: curate → ingest → visualize |
+
+---
+
+## Templates
 
 | Template | What you get |
-|:---|:---|
+|:---------|:-------------|
 | `web-api` | REST API with auth, tests, CI, and contracts |
 | `frontend-app` | Dashboard with component library and design system |
 | `infra-pipeline` | CI/CD, build system, and deploy config |
 | `research-paper` | LaTeX paper with experiment tracking |
 | `multi-agent` | A2A orchestration with crew coordination |
 
-```bash
-wiki-recall create my-project --template web-api
-```
-
 ---
 
-## Tech Stack
+## Inspiration
 
-| Component | Technology |
-|:---|:---|
-| Runtime | [Bun](https://bun.sh) (TypeScript, ESM) |
-| CLI | [Commander.js](https://github.com/tj/commander.js) |
-| Validation | [Ajv](https://ajv.js.org/) — JSON Schema Draft 2020-12 |
-| Storage | GitHub repos (git-based sync, zero infra) |
-| Search | FTS5 via [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) |
-| MCP | [Model Context Protocol](https://modelcontextprotocol.io) (15 tools) |
-| Testing | Bun test runner (1,060 tests) |
+wiki-recall stands on three ideas. [Andrej Karpathy](https://karpathy.ai/) showed that knowledge belongs in structured entities, not document dumps — the L2 layer is a direct implementation of that methodology. [MemPalace](https://github.com/codelahoma/mempalace) proved that different memory types deserve different retrieval costs — the L0–L4 layered stack draws from that insight. [Elvis Saravia / DAIR.AI](https://github.com/dair-ai) made research paper curation a first-class engineering activity — the discovery → scoring → ingestion pipeline builds on that work.
 
 ---
-
-## Portfolio
-
-wiki-recall is part of a broader AI agent engineering portfolio:
-
-| Project | What it does |
-|:---|:---|
-| [a2a-crews](https://github.com/aviraldua93/a2a-crews) | Multi-agent orchestration via Google's A2A protocol |
-| [ag-ui-crews](https://github.com/aviraldua93/ag-ui-crews) | Agent ↔ Human real-time UI streaming |
-| [rag-a2a](https://github.com/aviraldua93/rag-a2a) | Agent knowledge retrieval with RAG pipelines |
-| [agent-traps-lab](https://github.com/aviraldua93/agent-traps-lab) | Adversarial testing and failure-mode analysis |
-| [wiki-vs-rag](https://github.com/aviraldua93/wiki-vs-rag) | Head-to-head: wiki vs. RAG evaluation |
-| [multi-agent-playbook](https://github.com/aviraldua93/multi-agent-playbook) | Patterns for multi-agent systems |
-| **wikirecall** | **The developer memory layer — you are here** |
-
----
-
-## Credits
-
-wiki-recall stands on three ideas:
-
-- **[Andrej Karpathy](https://karpathy.ai/)** — The "compiled wiki" methodology. Knowledge as structured entities, not document dumps. WikiRecall's L2 layer is a direct implementation.
-- **[MemPalace](https://github.com/codelahoma/mempalace)** — The layered memory architecture. Different memory types should have different retrieval costs. WikiRecall's L0–L4 stack is inspired by this.
-- **[Elvis Saravia / DAIR.AI](https://github.com/dair-ai)** — Research paper curation as a first-class engineering activity. The discovery → scoring → ingestion pipeline draws from DAIR.AI's work.
-
----
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-```bash
-git clone https://github.com/aviraldua93/wiki-recall.git
-cd wiki-recall && bun install && bun test
-```
 
 ## License
 

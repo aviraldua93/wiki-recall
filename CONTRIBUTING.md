@@ -8,7 +8,7 @@ Thanks for your interest in contributing! This guide covers everything you need 
 2. **Clone and install:**
    ```bash
    git clone https://github.com/aviraldua93/wiki-recall.git
-   cd wikirecall
+   cd wiki-recall
    bun install
    ```
 3. **Run tests:** `bun test`

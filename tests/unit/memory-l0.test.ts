@@ -154,7 +154,7 @@ describe("loadIdentity", () => {
     });
     const identity = loadIdentity(path);
     expect(identity.name).toBe("Frank");
-    expect((identity as Record<string, unknown>).extra).toBeUndefined();
+    expect((identity as unknown as Record<string, unknown>).extra).toBeUndefined();
   });
 });
 

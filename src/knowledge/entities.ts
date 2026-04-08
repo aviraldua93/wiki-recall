@@ -180,12 +180,13 @@ export function listEntities(): KnowledgeEntity[] {
   const dir = knowledgeDir();
   if (!existsSync(dir)) return [];
 
-  return readdirSync(dir)
-    .filter(f => f.endsWith(".md"))
-    .map(f => {
+  const entities: KnowledgeEntity[] = [];
+
+  for (const f of readdirSync(dir).filter(f => f.endsWith(".md"))) {
+    try {
       const raw = readFileSync(join(dir, f), "utf8");
       const parsed = matter(raw);
-      return {
+      entities.push({
         title: parsed.data.title,
         type: parsed.data.type,
         updated: parsed.data.updated,
@@ -196,8 +197,13 @@ export function listEntities(): KnowledgeEntity[] {
         ...(parsed.data.sources && { sources: parsed.data.sources }),
         ...(parsed.data.source_count !== undefined && { source_count: parsed.data.source_count }),
         ...(parsed.data.status && { status: parsed.data.status }),
-      } as KnowledgeEntity;
-    });
+      } as KnowledgeEntity);
+    } catch {
+      // Skip corrupt or unreadable entity files
+    }
+  }
+
+  return entities;
 }
 
 /**

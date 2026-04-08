@@ -1,4 +1,4 @@
-# DevContext Memory Architecture — Benchmark Results
+# WikiRecall Memory Architecture — Benchmark Results
 
 > Generated: 2026-04-08T16:57:07.335Z
 
@@ -124,10 +124,10 @@ Started: 2026-04-08T16:56:47.425Z | Completed: 2026-04-08T16:57:07.320Z
 | Search Only (RAG/MemPalace) | precision | 100 | % |
 | Search Only (RAG/MemPalace) | avg_tokens | 21 | tokens |
 | Search Only (RAG/MemPalace) | token_p95 | 21 | tokens |
-| Hybrid (DevContext) | recall | 49.50 | % |
-| Hybrid (DevContext) | precision | 100 | % |
-| Hybrid (DevContext) | avg_tokens | 216 | tokens |
-| Hybrid (DevContext) | token_p95 | 307.05 | tokens |
+| Hybrid (WikiRecall) | recall | 49.50 | % |
+| Hybrid (WikiRecall) | precision | 100 | % |
+| Hybrid (WikiRecall) | avg_tokens | 216 | tokens |
+| Hybrid (WikiRecall) | token_p95 | 307.05 | tokens |
 | Hybrid vs Wiki Only | recall_delta | 33 | pp |
 | Hybrid vs Search Only | recall_delta | 49.50 | pp |
 

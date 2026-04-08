@@ -1,5 +1,5 @@
 /**
- * MCP Tool Definitions — declares every tool the DevContext MCP server exposes.
+ * MCP Tool Definitions — declares every tool the WikiRecall MCP server exposes.
  *
  * Each entry carries a name, description, and JSON Schema for the input
  * parameters. The handler implementations live in handlers.ts.

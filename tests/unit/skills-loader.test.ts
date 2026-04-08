@@ -23,7 +23,7 @@ function writeSkill(dir: string, name: string, frontmatter: Record<string, unkno
 }
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `devcontext-skills-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(tmpdir(), `wikirecall-skills-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testDir, { recursive: true });
 });
 

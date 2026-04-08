@@ -1,5 +1,5 @@
 /**
- * Scenario Manager — CRUD operations for DevContext scenarios.
+ * Scenario Manager — CRUD operations for WikiRecall scenarios.
  *
  * Handles creation, reading, updating, deletion, and listing of scenario
  * manifests stored as YAML files on disk.

@@ -1,5 +1,5 @@
 /**
- * Environment-based configuration for DevContext.
+ * Environment-based configuration for WikiRecall.
  *
  * Reads from environment variables with sensible defaults. No external
  * config files — keep it simple and twelve-factor friendly.
@@ -12,8 +12,8 @@ import { join } from "node:path";
 // Config interface
 // ---------------------------------------------------------------------------
 
-export interface DevContextConfig {
-  /** Root directory for DevContext data (scenarios, knowledge, skills). */
+export interface WikiRecallConfig {
+  /** Root directory for WikiRecall data (scenarios, knowledge, skills). */
   home: string;
   /** Pino log level. */
   logLevel: string;
@@ -25,31 +25,31 @@ export interface DevContextConfig {
 // Defaults
 // ---------------------------------------------------------------------------
 
-const DEFAULT_HOME = join(homedir(), ".devcontext");
+const DEFAULT_HOME = join(homedir(), ".wikirecall");
 const DEFAULT_LOG_LEVEL = "info";
 
 // ---------------------------------------------------------------------------
 // getConfig — singleton accessor
 // ---------------------------------------------------------------------------
 
-let _config: DevContextConfig | undefined;
+let _config: WikiRecallConfig | undefined;
 
 /**
- * Returns the resolved DevContext configuration.
+ * Returns the resolved WikiRecall configuration.
  *
  * Reads the following environment variables:
- *  - `DEVCONTEXT_HOME`      — Root data directory (default: ~/.devcontext)
- *  - `DEVCONTEXT_LOG_LEVEL` — Log level (default: "info")
+ *  - `WIKIRECALL_HOME`      — Root data directory (default: ~/.wikirecall)
+ *  - `WIKIRECALL_LOG_LEVEL` — Log level (default: "info")
  *  - `GITHUB_TOKEN`         — GitHub PAT for sync (optional)
  *
  * The result is cached after the first call.
  */
-export function getConfig(): DevContextConfig {
+export function getConfig(): WikiRecallConfig {
   if (_config) return _config;
 
   _config = {
-    home: process.env.DEVCONTEXT_HOME ?? DEFAULT_HOME,
-    logLevel: process.env.DEVCONTEXT_LOG_LEVEL ?? DEFAULT_LOG_LEVEL,
+    home: process.env.WIKIRECALL_HOME ?? DEFAULT_HOME,
+    logLevel: process.env.WIKIRECALL_LOG_LEVEL ?? DEFAULT_LOG_LEVEL,
     githubToken: process.env.GITHUB_TOKEN,
   };
 

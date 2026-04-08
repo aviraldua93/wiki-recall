@@ -20,9 +20,9 @@ import { validateBranchName } from "../../src/sync/auth.js";
 let testDir: string;
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `devcontext-handoff-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(tmpdir(), `wikirecall-handoff-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testDir, { recursive: true });
-  process.env.DEVCONTEXT_HOME = testDir;
+  process.env.WIKIRECALL_HOME = testDir;
   process.env.GITHUB_TOKEN = "ghp_handoff_test_token";
   resetConfig();
 });
@@ -236,19 +236,19 @@ describe("Handoff state transitions", () => {
 
 describe("GitHub URL parsing", () => {
   test("HTTPS URL format is parseable", () => {
-    const url = "https://github.com/aviraldua93/devcontext";
+    const url = "https://github.com/aviraldua93/wikirecall";
     const match = url.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
     expect(match).toBeDefined();
     expect(match![1]).toBe("aviraldua93");
-    expect(match![2]).toBe("devcontext");
+    expect(match![2]).toBe("wikirecall");
   });
 
   test("SSH URL format is parseable", () => {
-    const url = "git@github.com:aviraldua93/devcontext.git";
+    const url = "git@github.com:aviraldua93/wikirecall.git";
     const match = url.match(/github\.com[/:]([^/]+)\/([^/.]+)/);
     expect(match).toBeDefined();
     expect(match![1]).toBe("aviraldua93");
-    expect(match![2]).toBe("devcontext");
+    expect(match![2]).toBe("wikirecall");
   });
 
   test("URL with .git suffix is parsed correctly", () => {

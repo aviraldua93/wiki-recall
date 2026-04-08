@@ -12,15 +12,15 @@ import { dispatchToolCall, getRegisteredHandlers } from "../../src/mcp/handlers.
 import type { McpToolCall, McpToolResult } from "../../src/mcp/types.js";
 
 // ---------------------------------------------------------------------------
-// Setup — each test gets a fresh temp directory for DEVCONTEXT_HOME
+// Setup — each test gets a fresh temp directory for WIKIRECALL_HOME
 // ---------------------------------------------------------------------------
 
 let testDir: string;
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `devcontext-mcp-handlers-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(tmpdir(), `wikirecall-mcp-handlers-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testDir, { recursive: true });
-  process.env.DEVCONTEXT_HOME = testDir;
+  process.env.WIKIRECALL_HOME = testDir;
   resetConfig();
 });
 

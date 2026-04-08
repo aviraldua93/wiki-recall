@@ -1,5 +1,5 @@
 /**
- * Benchmark Types — type definitions for the DevContext benchmark suite.
+ * Benchmark Types — type definitions for the WikiRecall benchmark suite.
  *
  * Covers benchmark results, suite metadata, and simulation configuration
  * for reproducible performance evaluation of the 5-layer memory architecture.

@@ -17,9 +17,9 @@ import { validateScenarioManifest, getScenario } from "../../src/scenario/manage
 let testDir: string;
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `devcontext-tpl-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(tmpdir(), `wikirecall-tpl-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testDir, { recursive: true });
-  process.env.DEVCONTEXT_HOME = testDir;
+  process.env.WIKIRECALL_HOME = testDir;
   resetConfig();
 });
 

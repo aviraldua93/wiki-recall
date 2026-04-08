@@ -1,5 +1,5 @@
 /**
- * Memory Architecture Types — 5-layer memory system for DevContext.
+ * Memory Architecture Types — 5-layer memory system for WikiRecall.
  *
  * Inspired by MemPalace's layered approach combined with Karpathy's compiled
  * wiki. Key insight: "Compiled knowledge for speed + verbatim search for

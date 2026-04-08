@@ -30,9 +30,9 @@ const SMALL_CONFIG: SimulationConfig = {
 let testDir: string;
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `devcontext-bench-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(tmpdir(), `wikirecall-bench-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testDir, { recursive: true });
-  process.env.DEVCONTEXT_HOME = testDir;
+  process.env.WIKIRECALL_HOME = testDir;
   resetConfig();
 });
 
@@ -200,7 +200,7 @@ describe("layer-comparison suite", () => {
     const names = new Set(suite.results.map(r => r.name));
     expect(names.has("Wiki Only (Karpathy)")).toBe(true);
     expect(names.has("Search Only (RAG/MemPalace)")).toBe(true);
-    expect(names.has("Hybrid (DevContext)")).toBe(true);
+    expect(names.has("Hybrid (WikiRecall)")).toBe(true);
   });
 
   test("includes recall comparison deltas", async () => {
@@ -258,7 +258,7 @@ describe("reporter", () => {
 
   test("generateMarkdownReport produces valid markdown", () => {
     const md = generateMarkdownReport([mockSuite]);
-    expect(md).toContain("# DevContext Memory Architecture");
+    expect(md).toContain("# WikiRecall Memory Architecture");
     expect(md).toContain("test-suite");
     expect(md).toContain("95.50");
     expect(md).toContain("| Name |");
@@ -267,13 +267,13 @@ describe("reporter", () => {
   test("generateHtmlReport produces valid HTML", () => {
     const html = generateHtmlReport([mockSuite]);
     expect(html).toContain("<!DOCTYPE html>");
-    expect(html).toContain("DevContext Benchmark Results");
+    expect(html).toContain("WikiRecall Benchmark Results");
     expect(html).toContain("test-suite");
   });
 
   test("formatConsoleSummary produces readable output", () => {
     const summary = formatConsoleSummary([mockSuite]);
-    expect(summary).toContain("DevContext Benchmark Results");
+    expect(summary).toContain("WikiRecall Benchmark Results");
     expect(summary).toContain("Test Suite");
   });
 

@@ -1,5 +1,5 @@
 /**
- * MCP Module — barrel export for the DevContext MCP server.
+ * MCP Module — barrel export for the WikiRecall MCP server.
  *
  * Re-exports types, tools, handlers, and server for clean imports.
  */

@@ -1,4 +1,4 @@
-# DevContext — Final Clean-Room Audit
+# WikiRecall — Final Clean-Room Audit
 
 **Auditor:** Copilot CLI (clean-room, no prior context)
 **Date:** 2025-07-17

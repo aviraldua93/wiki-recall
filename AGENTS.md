@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-DevContext is a CLI tool for portable, AI-driven working scenarios. It bundles repos, skills, knowledge, and session state into resumable packages stored in GitHub. Think "Docker for your engineering brain."
+WikiRecall is a CLI tool for portable, AI-driven working scenarios. It bundles repos, skills, knowledge, and session state into resumable packages stored in GitHub. Think "Docker for your engineering brain."
 
 ## Common Commands
 

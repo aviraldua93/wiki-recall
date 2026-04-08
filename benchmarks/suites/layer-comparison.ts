@@ -34,7 +34,7 @@ function setupTestEnvironment(config: SimulationConfig): {
 } {
   const dir = join(
     tmpdir(),
-    `devcontext-bench-ablation-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    `wikirecall-bench-ablation-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
   mkdirSync(dir, { recursive: true });
 
@@ -133,7 +133,7 @@ const CONFIGURATIONS: LayerConfig[] = [
     l3Enabled: true,
   },
   {
-    name: "Hybrid (DevContext)",
+    name: "Hybrid (WikiRecall)",
     description: "Our approach — all layers working together",
     layers: ["L0", "L1", "L2", "L3", "L4"],
     l3Enabled: true,
@@ -150,9 +150,9 @@ export async function runLayerComparisonBenchmark(
   const startedAt = new Date().toISOString();
   const results: BenchmarkResult[] = [];
 
-  const originalHome = process.env.DEVCONTEXT_HOME;
+  const originalHome = process.env.WIKIRECALL_HOME;
   const { dir, memConfig, queries } = setupTestEnvironment(config);
-  process.env.DEVCONTEXT_HOME = dir;
+  process.env.WIKIRECALL_HOME = dir;
 
   try {
     const configResults = new Map<string, { recall: number; precision: number; avgTokens: number }>();
@@ -219,7 +219,7 @@ export async function runLayerComparisonBenchmark(
     }
 
     // Comparison summary
-    const hybrid = configResults.get("Hybrid (DevContext)");
+    const hybrid = configResults.get("Hybrid (WikiRecall)");
     const wikiOnly = configResults.get("Wiki Only (Karpathy)");
     const searchOnly = configResults.get("Search Only (RAG/MemPalace)");
 
@@ -261,7 +261,7 @@ export async function runLayerComparisonBenchmark(
       ].join(" "),
     };
   } finally {
-    process.env.DEVCONTEXT_HOME = originalHome;
+    process.env.WIKIRECALL_HOME = originalHome;
     try {
       if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
     } catch { /* ignore */ }

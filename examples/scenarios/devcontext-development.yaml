@@ -1,11 +1,11 @@
-name: devcontext-development
+name: wikirecall-development
 version: "0.1.0"
 status: active
-description: "Building devcontext itself — the meta-scenario for dogfooding scenario management"
+description: "Building wikirecall itself — the meta-scenario for dogfooding scenario management"
 repos:
-  - url: https://github.com/aviraldua93/devcontext
+  - url: https://github.com/aviraldua93/wikirecall
     branch: master
-    purpose: "DevContext core — scenario engine, skill loader, knowledge search, and CLI"
+    purpose: "WikiRecall core — scenario engine, skill loader, knowledge search, and CLI"
 skills:
   - name: code-review
     source: root
@@ -19,7 +19,7 @@ knowledge:
   - name: bun-runtime
     scope: global
 context:
-  summary: "Dogfooding devcontext by using it to manage its own development. This meta-scenario validates the full lifecycle — scenario creation, skill loading, knowledge entity authoring, context handoff, and session persistence. Every feature added to devcontext is immediately tested by using it in this scenario."
+  summary: "Dogfooding wikirecall by using it to manage its own development. This meta-scenario validates the full lifecycle — scenario creation, skill loading, knowledge entity authoring, context handoff, and session persistence. Every feature added to wikirecall is immediately tested by using it in this scenario."
   open_prs: []
   next_steps:
     - "Implement scenario diff command to show context changes between sessions"

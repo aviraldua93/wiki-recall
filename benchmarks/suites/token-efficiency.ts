@@ -29,7 +29,7 @@ function setupTestEnvironment(config: SimulationConfig): {
 } {
   const dir = join(
     tmpdir(),
-    `devcontext-bench-tokens-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    `wikirecall-bench-tokens-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
   mkdirSync(dir, { recursive: true });
 
@@ -149,9 +149,9 @@ export async function runTokenEfficiencyBenchmark(
   const results: BenchmarkResult[] = [];
 
   // Set up isolated test env
-  const originalHome = process.env.DEVCONTEXT_HOME;
+  const originalHome = process.env.WIKIRECALL_HOME;
   const { dir, memConfig, baselineTokens } = setupTestEnvironment(config);
-  process.env.DEVCONTEXT_HOME = dir;
+  process.env.WIKIRECALL_HOME = dir;
 
   try {
     // Measure tokens for each layer combination
@@ -217,7 +217,7 @@ export async function runTokenEfficiencyBenchmark(
       summary: `Full stack uses ~${fullStackResult?.details?.layerTokens ?? "??"} tokens vs ${baselineTokens} baseline (${fullStackResult?.value ?? "??"}% savings). ${config.entityCount} entities, ${config.sessionCount} sessions.`,
     };
   } finally {
-    process.env.DEVCONTEXT_HOME = originalHome;
+    process.env.WIKIRECALL_HOME = originalHome;
     cleanup(dir);
   }
 }

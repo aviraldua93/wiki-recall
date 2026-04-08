@@ -28,7 +28,7 @@ function setupScaleEnvironment(entityCount: number, sessionCount: number, seed: 
 } {
   const dir = join(
     tmpdir(),
-    `devcontext-bench-scale-${entityCount}-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    `wikirecall-bench-scale-${entityCount}-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
   mkdirSync(dir, { recursive: true });
 
@@ -114,7 +114,7 @@ export async function runScaleStressBenchmark(
 ): Promise<BenchmarkSuite> {
   const startedAt = new Date().toISOString();
   const results: BenchmarkResult[] = [];
-  const originalHome = process.env.DEVCONTEXT_HOME;
+  const originalHome = process.env.WIKIRECALL_HOME;
   const dirsToClean: string[] = [];
 
   try {
@@ -122,7 +122,7 @@ export async function runScaleStressBenchmark(
       const sessionCount = Math.min(entityCount * 2, config.sessionCount);
       const { dir, memConfig } = setupScaleEnvironment(entityCount, sessionCount, config.seed);
       dirsToClean.push(dir);
-      process.env.DEVCONTEXT_HOME = dir;
+      process.env.WIKIRECALL_HOME = dir;
 
       // Measure search latency
       const searchLatency = await measureLatency(async () => {
@@ -195,7 +195,7 @@ export async function runScaleStressBenchmark(
       summary: `Tested ${SCALE_LEVELS.join(", ")} entities. Degradation: ${degradationPoint}. Max latency: ${latencies[latencies.length - 1]?.latency.toFixed(1) ?? "??"}ms at ${SCALE_LEVELS[SCALE_LEVELS.length - 1]} entities.`,
     };
   } finally {
-    process.env.DEVCONTEXT_HOME = originalHome;
+    process.env.WIKIRECALL_HOME = originalHome;
     for (const dir of dirsToClean) {
       try {
         if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });

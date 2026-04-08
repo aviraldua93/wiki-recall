@@ -1,14 +1,14 @@
 {
-  "name": "devcontext",
+  "name": "wiki-recall",
   "version": "0.1.0",
   "description": "Portable AI-driven working scenarios — Docker for your engineering brain",
   "type": "module",
   "bin": {
-    "devcontext": "src/cli/index.ts"
+    "wiki-recall": "src/cli/index.ts"
   },
   "scripts": {
     "dev": "bun run src/cli/index.ts",
-    "build": "bun build src/cli/index.ts --compile --outfile=devcontext",
+    "build": "bun build src/cli/index.ts --compile --outfile=wikirecall",
     "test": "bun test",
     "test:unit": "bun test tests/unit",
     "test:e2e": "bun test tests/e2e",
@@ -42,10 +42,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/aviraldua93/devcontext.git"
+    "url": "https://github.com/aviraldua93/wiki-recall.git"
   },
   "keywords": [
-    "devcontext",
+    "wiki-recall",
     "developer-productivity",
     "working-scenarios",
     "cli",
@@ -58,9 +58,9 @@
   "engines": {
     "bun": ">=1.1.0"
   },
-  "homepage": "https://github.com/aviraldua93/devcontext#readme",
+  "homepage": "https://github.com/aviraldua93/wiki-recall#readme",
   "bugs": {
-    "url": "https://github.com/aviraldua93/devcontext/issues"
+    "url": "https://github.com/aviraldua93/wiki-recall/issues"
   },
   "mcp": {
     "server": {

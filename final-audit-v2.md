@@ -1,4 +1,4 @@
-# DevContext — Final Quality Gate Audit v2
+# WikiRecall — Final Quality Gate Audit v2
 
 **Date:** 2025-07-18
 **Auditor:** Copilot CLI (automated sweep)

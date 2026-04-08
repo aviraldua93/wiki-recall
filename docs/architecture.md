@@ -1,12 +1,12 @@
-# DevContext Architecture
+# WikiRecall Architecture
 
-> System overview for developers contributing to DevContext.
+> System overview for developers contributing to WikiRecall.
 
 ## High-Level Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     DevContext CLI                            │
+│                     WikiRecall CLI                            │
 │  Commands: create | recall | save | list | handoff |         │
 │            teardown | knowledge search                       │
 │  Framework: Commander.js                                     │
@@ -40,7 +40,7 @@
          ▼                                    ▼
   ┌──────────────┐                    ┌──────────────┐
   │  GitHub Repo  │                    │  Local Disk   │
-  │  (Sync Store) │                    │  ~/.devcontext│
+  │  (Sync Store) │                    │  ~/.wikirecall│
   └──────────────┘                    └──────────────┘
 ```
 
@@ -52,7 +52,7 @@ The CLI uses **Commander.js** to expose these commands:
 
 | Command | Description | Key Operations |
 |---------|-------------|----------------|
-| `init` | Initialize workspace | Create `~/.devcontext/` with directories |
+| `init` | Initialize workspace | Create `~/.wikirecall/` with directories |
 | `create` | Start a new scenario | Template selection, schema validation, disk write |
 | `recall` | Resume a scenario | YAML read, repo clone/pull, context display, skill loading |
 | `save` | Checkpoint current state | Context update, YAML write |
@@ -69,7 +69,7 @@ The CLI uses **Commander.js** to expose these commands:
 
 ### Scenario Engine (`src/scenario/`)
 
-- **`manager.ts`** — CRUD operations: create, read, update, delete, list. Scenarios are stored as YAML files in `~/.devcontext/scenarios/`. All mutations are validated against `schemas/scenario.schema.json` using **ajv**.
+- **`manager.ts`** — CRUD operations: create, read, update, delete, list. Scenarios are stored as YAML files in `~/.wikirecall/scenarios/`. All mutations are validated against `schemas/scenario.schema.json` using **ajv**.
 
 - **`lifecycle.ts`** — State machine enforcing valid transitions:
   ```
@@ -83,7 +83,7 @@ The CLI uses **Commander.js** to expose these commands:
 
 ### Knowledge Wiki (`src/knowledge/`)
 
-- **`entities.ts`** — CRUD for Karpathy-style knowledge entities. Entities are Markdown files with YAML frontmatter parsed by **gray-matter**. Stored in `~/.devcontext/knowledge/`.
+- **`entities.ts`** — CRUD for Karpathy-style knowledge entities. Entities are Markdown files with YAML frontmatter parsed by **gray-matter**. Stored in `~/.wikirecall/knowledge/`.
 
 - **`search.ts`** — FTS5 full-text search powered by **bun:sqlite**. Indexes entity titles, tags, types, and content. Returns results ranked by relevance with snippet highlighting.
 
@@ -114,7 +114,7 @@ User Input → CLI (create command)
   → Template selection (if --template)
   → Schema validation (ajv)
   → YAML serialization (js-yaml)
-  → Disk write (~/.devcontext/scenarios/<name>.yaml)
+  → Disk write (~/.wikirecall/scenarios/<name>.yaml)
 ```
 
 ### Searching Knowledge
@@ -140,7 +140,7 @@ Scenario Recall → Read skill references
 ## Storage Layout
 
 ```
-~/.devcontext/
+~/.wikirecall/
 ├── scenarios/
 │   ├── my-api-project.yaml
 │   └── dashboard-redesign.yaml

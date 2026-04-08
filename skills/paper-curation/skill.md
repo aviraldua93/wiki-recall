@@ -25,30 +25,30 @@ Karpathy's LLM Knowledge Base pattern.
 
 ```bash
 # Search across arXiv and Semantic Scholar
-devcontext papers search "transformer attention mechanisms"
+wikirecall papers search "transformer attention mechanisms"
 
 # Search with result limit
-devcontext papers search "retrieval augmented generation" --limit 20
+wikirecall papers search "retrieval augmented generation" --limit 20
 ```
 
 ### Run automated curation
 
 ```bash
 # Curate papers based on your config (topics, keywords, thresholds)
-devcontext papers curate
+wikirecall papers curate
 
 # Curate with custom topic filter
-devcontext papers curate --topics "LLM,agents,RAG"
+wikirecall papers curate --topics "LLM,agents,RAG"
 ```
 
 ### Ingest papers into knowledge wiki
 
 ```bash
 # Ingest a specific paper by ID
-devcontext papers ingest arxiv-2301-07041
+wikirecall papers ingest arxiv-2301-07041
 
 # Batch ingest from last curation run
-devcontext papers ingest --all
+wikirecall papers ingest --all
 ```
 
 ## The Curation → Ingest → Compound Loop

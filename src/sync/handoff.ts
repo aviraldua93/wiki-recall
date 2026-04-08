@@ -100,7 +100,7 @@ export async function createHandoffPR(
   ensureDir(dir);
 
   const branchName = validateBranchName(`handoff/${scenarioName}`);
-  const title = `[DevContext] Handoff: ${scenarioName}`;
+  const title = `[WikiRecall] Handoff: ${scenarioName}`;
   const body = buildPRBody(scenario, recipientUsername);
 
   // Write scenario manifest into the sync directory
@@ -136,7 +136,7 @@ export async function createHandoffPR(
   // Stage and commit
   await execGitSafe(["add", "-A"], dir);
   await execGitSafe(
-    ["commit", "-m", `devcontext: handoff scenario '${scenarioName}'`, "--allow-empty"],
+    ["commit", "-m", `wikirecall: handoff scenario '${scenarioName}'`, "--allow-empty"],
     dir
   );
 
@@ -162,7 +162,7 @@ export async function createHandoffPR(
 
 function buildPRBody(scenario: { name: string; description: string; context?: { summary?: string; next_steps?: string[]; blockers?: string[]; notes?: string } }, recipient?: string): string {
   const lines: string[] = [
-    `# 🔄 DevContext Handoff: ${scenario.name}`,
+    `# 🔄 WikiRecall Handoff: ${scenario.name}`,
     "",
     `> ${scenario.description}`,
     "",
@@ -194,7 +194,7 @@ function buildPRBody(scenario: { name: string; description: string; context?: { 
 
   lines.push(
     "---",
-    "*Created by [DevContext](https://github.com/aviraldua93/devcontext) — portable AI-driven working scenarios.*",
+    "*Created by [WikiRecall](https://github.com/aviraldua93/wikirecall) — portable AI-driven working scenarios.*",
   );
 
   return lines.join("\n");

@@ -19,9 +19,9 @@ import { closeSearchDb } from "../../src/knowledge/search.js";
 let testDir: string;
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `devcontext-cli-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(tmpdir(), `wikirecall-cli-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testDir, { recursive: true });
-  process.env.DEVCONTEXT_HOME = testDir;
+  process.env.WIKIRECALL_HOME = testDir;
   resetConfig();
 });
 
@@ -55,7 +55,7 @@ describe("CLI error formatting", () => {
   // We test the formatCliError behavior indirectly by checking that CLI
   // commands produce expected error messages for various error conditions
 
-  test("'not found' errors include a hint about 'devcontext list'", async () => {
+  test("'not found' errors include a hint about 'wikirecall list'", async () => {
     const program = await getProgram();
     // Trying to recall a nonexistent scenario should throw a "not found" error
     let errorMsg = "";
@@ -69,7 +69,7 @@ describe("CLI error formatting", () => {
     process.exit = (() => { throw new Error("EXIT"); }) as any;
 
     try {
-      await program.parseAsync(["node", "devcontext", "recall", "nonexistent-scenario-xyz"]);
+      await program.parseAsync(["node", "wikirecall", "recall", "nonexistent-scenario-xyz"]);
     } catch {
       // Expected — process.exit throws
     }
@@ -86,9 +86,9 @@ describe("CLI error formatting", () => {
 // ---------------------------------------------------------------------------
 
 describe("CLI program structure", () => {
-  test("program name is 'devcontext'", async () => {
+  test("program name is 'wikirecall'", async () => {
     const program = await getProgram();
-    expect(program.name()).toBe("devcontext");
+    expect(program.name()).toBe("wikirecall");
   });
 
   test("program version is 0.1.0", async () => {
@@ -289,7 +289,7 @@ describe("CLI init command", () => {
 
     program.exitOverride();
     try {
-      await program.parseAsync(["node", "devcontext", "init"]);
+      await program.parseAsync(["node", "wikirecall", "init"]);
     } catch {
       // exitOverride may throw
     }
@@ -307,7 +307,7 @@ describe("CLI init command", () => {
 
     program.exitOverride();
     try {
-      await program.parseAsync(["node", "devcontext", "init"]);
+      await program.parseAsync(["node", "wikirecall", "init"]);
     } catch {
       // exitOverride may throw
     }
@@ -316,7 +316,7 @@ describe("CLI init command", () => {
     const readmePath = join(testDir, "README.md");
     expect(existsSync(readmePath)).toBe(true);
     const content = readFileSync(readmePath, "utf8");
-    expect(content).toContain("DevContext Workspace");
+    expect(content).toContain("WikiRecall Workspace");
   });
 
   test("init is idempotent — running twice does not error", async () => {
@@ -326,8 +326,8 @@ describe("CLI init command", () => {
     program.exitOverride();
 
     // Run twice
-    try { await program.parseAsync(["node", "devcontext", "init"]); } catch {}
-    try { await program.parseAsync(["node", "devcontext", "init"]); } catch {}
+    try { await program.parseAsync(["node", "wikirecall", "init"]); } catch {}
+    try { await program.parseAsync(["node", "wikirecall", "init"]); } catch {}
     console.log = origLog;
 
     expect(existsSync(join(testDir, "scenarios"))).toBe(true);
@@ -346,7 +346,7 @@ describe("CLI create command", () => {
     program.exitOverride();
 
     try {
-      await program.parseAsync(["node", "devcontext", "create", "test-api", "-d", "Test API project"]);
+      await program.parseAsync(["node", "wikirecall", "create", "test-api", "-d", "Test API project"]);
     } catch {
       // May throw from exitOverride
     }
@@ -363,7 +363,7 @@ describe("CLI create command", () => {
     program.exitOverride();
 
     try {
-      await program.parseAsync(["node", "devcontext", "create", "my-web-api", "-d", "From template", "--template", "web-api"]);
+      await program.parseAsync(["node", "wikirecall", "create", "my-web-api", "-d", "From template", "--template", "web-api"]);
     } catch {}
     console.log = origLog;
 
@@ -379,7 +379,7 @@ describe("CLI create command", () => {
 
     try {
       await program.parseAsync([
-        "node", "devcontext", "create", "skill-test",
+        "node", "wikirecall", "create", "skill-test",
         "-d", "Skill test",
         "--skill", "code-review",
       ]);
@@ -405,7 +405,7 @@ describe("CLI list command", () => {
     program.exitOverride();
 
     try {
-      await program.parseAsync(["node", "devcontext", "list"]);
+      await program.parseAsync(["node", "wikirecall", "list"]);
     } catch {}
     console.log = origLog;
 
@@ -428,7 +428,7 @@ describe("CLI list command", () => {
     program.exitOverride();
 
     try {
-      await program.parseAsync(["node", "devcontext", "list"]);
+      await program.parseAsync(["node", "wikirecall", "list"]);
     } catch {}
     console.log = origLog;
 
@@ -451,7 +451,7 @@ describe("CLI list command", () => {
     program.exitOverride();
 
     try {
-      await program.parseAsync(["node", "devcontext", "list", "--status", "paused"]);
+      await program.parseAsync(["node", "wikirecall", "list", "--status", "paused"]);
     } catch {}
     console.log = origLog;
 
@@ -479,7 +479,7 @@ describe("CLI save command", () => {
     program.exitOverride();
 
     try {
-      await program.parseAsync(["node", "devcontext", "save", "save-test", "--summary", "Updated summary"]);
+      await program.parseAsync(["node", "wikirecall", "save", "save-test", "--summary", "Updated summary"]);
     } catch {}
     console.log = origLog;
 
@@ -501,7 +501,7 @@ describe("CLI knowledge commands", () => {
     program.exitOverride();
 
     try {
-      await program.parseAsync(["node", "devcontext", "knowledge", "list"]);
+      await program.parseAsync(["node", "wikirecall", "knowledge", "list"]);
     } catch {}
     console.log = origLog;
 
@@ -516,7 +516,7 @@ describe("CLI knowledge commands", () => {
 
     try {
       await program.parseAsync([
-        "node", "devcontext", "knowledge", "create",
+        "node", "wikirecall", "knowledge", "create",
         "--title", "Test Concept",
         "--type", "concept",
         "--content", "Some test content",
@@ -546,7 +546,7 @@ describe("CLI knowledge commands", () => {
     program.exitOverride();
 
     try {
-      await program.parseAsync(["node", "devcontext", "knowledge", "get", "cli-get-test"]);
+      await program.parseAsync(["node", "wikirecall", "knowledge", "get", "cli-get-test"]);
     } catch {}
     console.log = origLog;
 
@@ -570,7 +570,7 @@ describe("CLI knowledge commands", () => {
     program.exitOverride();
 
     try {
-      await program.parseAsync(["node", "devcontext", "knowledge", "delete", "cli-delete-test"]);
+      await program.parseAsync(["node", "wikirecall", "knowledge", "delete", "cli-delete-test"]);
     } catch {}
     console.log = origLog;
 

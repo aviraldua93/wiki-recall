@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://devcontext.dev/schemas/knowledge-entity.schema.json",
-  "title": "DevContext Knowledge Entity",
+  "$id": "https://wikirecall.dev/schemas/knowledge-entity.schema.json",
+  "title": "WikiRecall Knowledge Entity",
   "description": "Schema for a Karpathy-style knowledge entity — a mental model stored as Markdown with YAML frontmatter.",
   "type": "object",
   "required": ["title", "type", "updated"],

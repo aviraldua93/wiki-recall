@@ -46,7 +46,7 @@ function setupTestEnvironment(config: SimulationConfig): {
 } {
   const dir = join(
     tmpdir(),
-    `devcontext-bench-routing-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    `wikirecall-bench-routing-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
   mkdirSync(dir, { recursive: true });
 
@@ -130,9 +130,9 @@ export async function runRoutingAccuracyBenchmark(
   const startedAt = new Date().toISOString();
   const results: BenchmarkResult[] = [];
 
-  const originalHome = process.env.DEVCONTEXT_HOME;
+  const originalHome = process.env.WIKIRECALL_HOME;
   const { dir, memConfig } = setupTestEnvironment(config);
-  process.env.DEVCONTEXT_HOME = dir;
+  process.env.WIKIRECALL_HOME = dir;
 
   try {
     // Fixed test cases for deterministic routing evaluation
@@ -239,7 +239,7 @@ export async function runRoutingAccuracyBenchmark(
       summary: `Overall routing accuracy: ${Math.round(overallAccuracy * 100)}% across ${testCases.length} fixed test cases. Generated query accuracy: ${Math.round(genAccuracy * 100)}% across ${genQueries.length} queries.`,
     };
   } finally {
-    process.env.DEVCONTEXT_HOME = originalHome;
+    process.env.WIKIRECALL_HOME = originalHome;
     try {
       if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
     } catch { /* ignore */ }

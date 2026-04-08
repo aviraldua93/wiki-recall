@@ -21,9 +21,9 @@ import type { GitProvider, GitResult } from "../../src/sync/git.js";
 let testDir: string;
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `devcontext-git-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(tmpdir(), `wikirecall-git-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testDir, { recursive: true });
-  process.env.DEVCONTEXT_HOME = testDir;
+  process.env.WIKIRECALL_HOME = testDir;
   process.env.GITHUB_TOKEN = "ghp_test_token_for_sync";
   resetConfig();
 });

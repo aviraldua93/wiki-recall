@@ -67,7 +67,7 @@ export function createMemorySystem(config: MemoryConfig) {
 }
 
 /**
- * Create a memory system using default DevContext configuration.
+ * Create a memory system using default WikiRecall configuration.
  */
 export function createDefaultMemorySystem() {
   const home = getConfig().home;

@@ -22,9 +22,9 @@ import type { MemoryConfig, MemoryQuery, MemoryLayer } from "../../src/memory/ty
 let testDir: string;
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `devcontext-router-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(tmpdir(), `wikirecall-router-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testDir, { recursive: true });
-  process.env.DEVCONTEXT_HOME = testDir;
+  process.env.WIKIRECALL_HOME = testDir;
   resetConfig();
 });
 
@@ -419,7 +419,7 @@ describe("createDefaultMemorySystem", () => {
   });
 
   test("default system query works", async () => {
-    // Set DEVCONTEXT_HOME so the default system can find (empty) data
+    // Set WIKIRECALL_HOME so the default system can find (empty) data
     const wikiDir = join(testDir, "knowledge");
     mkdirSync(wikiDir, { recursive: true });
 

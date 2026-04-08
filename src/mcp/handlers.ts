@@ -1,6 +1,6 @@
 /**
  * MCP Tool Handlers — implementations that bridge MCP tool calls to
- * existing DevContext modules (knowledge, scenario, papers, visualization).
+ * existing WikiRecall modules (knowledge, scenario, papers, visualization).
  *
  * Each handler receives the tool arguments and returns an McpToolResult.
  * Memory tools return placeholder responses when the memory module is

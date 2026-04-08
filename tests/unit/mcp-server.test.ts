@@ -20,7 +20,7 @@ import type { JsonRpcRequest, JsonRpcResponse, McpServerConfig } from "../../src
 
 let testDir: string;
 const testConfig: McpServerConfig = {
-  name: "devcontext-test",
+  name: "wikirecall-test",
   version: "0.1.0-test",
   workspaceDir: "",
 };
@@ -28,9 +28,9 @@ const testConfig: McpServerConfig = {
 const silentLog = pino({ level: "silent" });
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `devcontext-mcp-server-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(tmpdir(), `wikirecall-mcp-server-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testDir, { recursive: true });
-  process.env.DEVCONTEXT_HOME = testDir;
+  process.env.WIKIRECALL_HOME = testDir;
   testConfig.workspaceDir = testDir;
   resetConfig();
 });
@@ -140,7 +140,7 @@ describe("handleMessage — initialize", () => {
 
     expect(result.protocolVersion).toBe(MCP_PROTOCOL_VERSION);
     expect(result.capabilities.tools).toBeDefined();
-    expect(result.serverInfo.name).toBe("devcontext-test");
+    expect(result.serverInfo.name).toBe("wikirecall-test");
     expect(result.serverInfo.version).toBe("0.1.0-test");
   });
 

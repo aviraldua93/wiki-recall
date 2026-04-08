@@ -45,7 +45,7 @@ function writeEntityFile(dir: string, slug: string, entity: KnowledgeEntity): vo
 }
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `devcontext-viz-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(tmpdir(), `wikirecall-viz-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   knowledgeDir = join(testDir, "knowledge");
   outputPath = join(testDir, "output", "graph.html");
   mkdirSync(knowledgeDir, { recursive: true });

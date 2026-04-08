@@ -40,12 +40,12 @@ function builtinSkillsDir(): string {
   return resolve(join(__dirname, "..", "..", "skills"));
 }
 
-/** Team skills live in DEVCONTEXT_HOME/skills/team/. */
+/** Team skills live in WIKIRECALL_HOME/skills/team/. */
 function teamSkillsDir(): string {
   return join(getConfig().home, "skills", "team");
 }
 
-/** Personal skills live in DEVCONTEXT_HOME/skills/personal/. */
+/** Personal skills live in WIKIRECALL_HOME/skills/personal/. */
 function personalSkillsDir(): string {
   return join(getConfig().home, "skills", "personal");
 }

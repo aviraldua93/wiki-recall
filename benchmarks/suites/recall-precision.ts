@@ -30,7 +30,7 @@ function setupTestEnvironment(config: SimulationConfig): {
 } {
   const dir = join(
     tmpdir(),
-    `devcontext-bench-recall-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    `wikirecall-bench-recall-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
   mkdirSync(dir, { recursive: true });
 
@@ -113,9 +113,9 @@ export async function runRecallPrecisionBenchmark(
   const startedAt = new Date().toISOString();
   const results: BenchmarkResult[] = [];
 
-  const originalHome = process.env.DEVCONTEXT_HOME;
+  const originalHome = process.env.WIKIRECALL_HOME;
   const { dir, memConfig, queries } = setupTestEnvironment(config);
-  process.env.DEVCONTEXT_HOME = dir;
+  process.env.WIKIRECALL_HOME = dir;
 
   try {
     // Group queries by expected layer
@@ -197,7 +197,7 @@ export async function runRecallPrecisionBenchmark(
       summary: `Overall: ${Math.round(overallRecall * 100)}% recall, ${Math.round(overallPrecision * 100)}% precision across ${queries.length} queries. ${config.entityCount} entities, ${config.sessionCount} sessions.`,
     };
   } finally {
-    process.env.DEVCONTEXT_HOME = originalHome;
+    process.env.WIKIRECALL_HOME = originalHome;
     try {
       if (existsSync(dir)) rmSync(dir, { recursive: true, force: true });
     } catch { /* ignore */ }

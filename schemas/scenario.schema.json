@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://devcontext.dev/schemas/scenario.schema.json",
-  "title": "DevContext Scenario Manifest",
-  "description": "Schema for a DevContext working scenario — a portable bundle of repos, skills, knowledge, and session state.",
+  "$id": "https://wikirecall.dev/schemas/scenario.schema.json",
+  "title": "WikiRecall Scenario Manifest",
+  "description": "Schema for a WikiRecall working scenario — a portable bundle of repos, skills, knowledge, and session state.",
   "type": "object",
   "required": ["name", "version", "status", "description"],
   "properties": {

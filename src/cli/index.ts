@@ -1,5 +1,5 @@
 /**
- * DevContext CLI — entry point for the command-line interface.
+ * WikiRecall CLI — entry point for the command-line interface.
  *
  * Uses Commander.js to define commands for scenario and knowledge management.
  * Enhanced with chalk (coloured output), ora (spinners), and inquirer (prompts).
@@ -30,7 +30,7 @@ function formatCliError(err: unknown): string {
   const msg = (err as Error).message ?? String(err);
 
   if (msg.includes("not found")) {
-    return `${msg}\n  ${chalk.dim("Hint: Run")} ${chalk.cyan("devcontext list")} ${chalk.dim("to see available scenarios.")}`;
+    return `${msg}\n  ${chalk.dim("Hint: Run")} ${chalk.cyan("wiki-recall list")} ${chalk.dim("to see available scenarios.")}`;
   }
   if (msg.includes("already exists")) {
     return `${msg}\n  ${chalk.dim("Hint: Choose a different name, or delete the existing one first.")}`;
@@ -60,18 +60,18 @@ function formatCliError(err: unknown): string {
 const program = new Command();
 
 program
-  .name("devcontext")
+  .name("wikirecall")
   .description("Portable AI-driven working scenarios — Docker for your engineering brain")
   .version("0.1.0")
   .addHelpText("after", `
 Examples:
-  $ devcontext init                            Initialize workspace
-  $ devcontext create my-api --template web-api  Create from template
-  $ devcontext recall my-api                   Resume a scenario
-  $ devcontext list --status active            List active scenarios
-  $ devcontext knowledge search "retry"        Search knowledge wiki
-  $ devcontext push my-api                     Push scenario to GitHub
-  $ devcontext pull my-api                     Pull scenario from GitHub
+  $ wikirecall init                            Initialize workspace
+  $ wikirecall create my-api --template web-api  Create from template
+  $ wikirecall recall my-api                   Resume a scenario
+  $ wikirecall list --status active            List active scenarios
+  $ wikirecall knowledge search "retry"        Search knowledge wiki
+  $ wikirecall push my-api                     Push scenario to GitHub
+  $ wikirecall pull my-api                     Pull scenario from GitHub
 `);
 
 // ---------------------------------------------------------------------------
@@ -80,10 +80,10 @@ Examples:
 
 program
   .command("init")
-  .description("Initialize the DevContext workspace directory structure")
+  .description("Initialize the WikiRecall workspace directory structure")
   .addHelpText("after", `
 Example:
-  $ devcontext init
+  $ wikirecall init
 `)
   .action(async () => {
     const { existsSync, mkdirSync, writeFileSync } = await import("node:fs");
@@ -104,9 +104,9 @@ Example:
     const readmePath = join(home, "README.md");
     if (!existsSync(readmePath)) {
       writeFileSync(readmePath, [
-        "# DevContext Workspace",
+        "# WikiRecall Workspace",
         "",
-        "This directory contains your DevContext data.",
+        "This directory contains your WikiRecall data.",
         "",
         "## Structure",
         "",
@@ -114,7 +114,7 @@ Example:
         "- `knowledge/` — Knowledge entities (Markdown + YAML frontmatter)",
         "- `skills/`    — Custom skill definitions (Markdown)",
         "",
-        "Learn more: https://github.com/aviraldua93/devcontext",
+        "Learn more: https://github.com/aviraldua93/wikirecall",
         "",
       ].join("\n"), "utf8");
       created.push("README.md");
@@ -143,10 +143,10 @@ program
   .option("-i, --interactive", "Use interactive prompts")
   .addHelpText("after", `
 Examples:
-  $ devcontext create my-api -d "REST API project"
-  $ devcontext create my-api --template web-api
-  $ devcontext create my-api --repo https://github.com/org/repo:main --skill code-review
-  $ devcontext create -i                         # interactive mode
+  $ wikirecall create my-api -d "REST API project"
+  $ wikirecall create my-api --template web-api
+  $ wikirecall create my-api --repo https://github.com/org/repo:main --skill code-review
+  $ wikirecall create -i                         # interactive mode
 `)
   .action(async (name: string | undefined, opts: {
     description?: string;
@@ -242,8 +242,8 @@ program
   .option("--skip-repos", "Skip cloning/pulling repositories")
   .addHelpText("after", `
 Examples:
-  $ devcontext recall my-api              # full recall with repo clone/pull
-  $ devcontext recall my-api --skip-repos # recall without touching repos
+  $ wikirecall recall my-api              # full recall with repo clone/pull
+  $ wikirecall recall my-api --skip-repos # recall without touching repos
 `)
   .action(async (name: string, opts: { skipRepos?: boolean }) => {
     const spinner = ora();
@@ -331,9 +331,9 @@ program
   .option("--note <text>", "Add notes")
   .addHelpText("after", `
 Examples:
-  $ devcontext save my-api --summary "Retry handler done"
-  $ devcontext save my-api --next-step "Write tests" --next-step "Update docs"
-  $ devcontext save my-api --blocker "Waiting on dependency release"
+  $ wikirecall save my-api --summary "Retry handler done"
+  $ wikirecall save my-api --next-step "Write tests" --next-step "Update docs"
+  $ wikirecall save my-api --blocker "Waiting on dependency release"
 `)
   .action(async (name: string, opts: { summary?: string; nextStep?: string[]; blocker?: string[]; note?: string }) => {
     const spinner = ora();
@@ -378,9 +378,9 @@ program
   .option("--status <status>", "Filter by status")
   .addHelpText("after", `
 Examples:
-  $ devcontext list
-  $ devcontext list --status active
-  $ devcontext list --status paused
+  $ wikirecall list
+  $ wikirecall list --status active
+  $ wikirecall list --status paused
 `)
   .action(async (opts: { status?: string }) => {
     const spinner = ora();
@@ -437,8 +437,8 @@ program
   .option("--pr", "Create a GitHub PR for the handoff")
   .addHelpText("after", `
 Examples:
-  $ devcontext handoff my-api --to teammate
-  $ devcontext handoff my-api --to teammate --pr
+  $ wikirecall handoff my-api --to teammate
+  $ wikirecall handoff my-api --to teammate --pr
 `)
   .action(async (name: string, opts: { to?: string; pr?: boolean }) => {
     const spinner = ora();
@@ -483,8 +483,8 @@ program
   .option("-y, --yes", "Skip confirmation prompt")
   .addHelpText("after", `
 Examples:
-  $ devcontext teardown my-api
-  $ devcontext teardown my-api -y     # skip confirmation
+  $ wikirecall teardown my-api
+  $ wikirecall teardown my-api -y     # skip confirmation
 `)
   .action(async (name: string, opts: { yes?: boolean }) => {
     const spinner = ora();
@@ -525,8 +525,8 @@ program
   .option("-b, --branch <branch>", "Branch name", "main")
   .addHelpText("after", `
 Examples:
-  $ devcontext push my-api
-  $ devcontext push my-api --repo https://github.com/org/repo --branch dev
+  $ wikirecall push my-api
+  $ wikirecall push my-api --repo https://github.com/org/repo --branch dev
 `)
   .action(async (name: string, opts: { repo?: string; branch: string }) => {
     const spinner = ora();
@@ -563,8 +563,8 @@ program
   .option("-b, --branch <branch>", "Branch name", "main")
   .addHelpText("after", `
 Examples:
-  $ devcontext pull my-api
-  $ devcontext pull my-api --repo https://github.com/org/repo --branch dev
+  $ wikirecall pull my-api
+  $ wikirecall pull my-api --repo https://github.com/org/repo --branch dev
 `)
   .action(async (name: string, opts: { repo?: string; branch: string }) => {
     const spinner = ora();
@@ -597,11 +597,11 @@ const knowledgeCmd = new Command("knowledge")
   .description("Manage and search knowledge entities")
   .addHelpText("after", `
 Examples:
-  $ devcontext knowledge search "retry patterns"
-  $ devcontext knowledge list
-  $ devcontext knowledge get retry-patterns
-  $ devcontext knowledge create --title "Retry Patterns" --type concept
-  $ devcontext knowledge delete retry-patterns
+  $ wikirecall knowledge search "retry patterns"
+  $ wikirecall knowledge list
+  $ wikirecall knowledge get retry-patterns
+  $ wikirecall knowledge create --title "Retry Patterns" --type concept
+  $ wikirecall knowledge delete retry-patterns
 `);
 
 knowledgeCmd
@@ -707,7 +707,7 @@ knowledgeCmd
     const spinner = ora();
     try {
       if (!opts.title) {
-        throw new Error("--title is required. Example: devcontext knowledge create --title \"Retry Patterns\" --type concept");
+        throw new Error("--title is required. Example: wikirecall knowledge create --title \"Retry Patterns\" --type concept");
       }
 
       spinner.start(chalk.cyan(`Creating entity "${opts.title}"…`));
@@ -752,9 +752,9 @@ const papersCmd = new Command("papers")
   .description("Research paper discovery, curation, and knowledge ingestion")
   .addHelpText("after", `
 Examples:
-  $ devcontext papers search "transformer attention"
-  $ devcontext papers curate --topics "LLM,RAG"
-  $ devcontext papers ingest arxiv-2301-07041
+  $ wikirecall papers search "transformer attention"
+  $ wikirecall papers curate --topics "LLM,RAG"
+  $ wikirecall papers ingest arxiv-2301-07041
 `);
 
 papersCmd
@@ -838,7 +838,7 @@ papersCmd
 
       if (topics.length === 0 && keywords.length === 0) {
         console.error(chalk.red("Error: provide --topics or --keywords for curation."));
-        console.log(chalk.dim('  Example: devcontext papers curate --topics "LLM,RAG" --keywords "transformer,attention"'));
+        console.log(chalk.dim('  Example: wikirecall papers curate --topics "LLM,RAG" --keywords "transformer,attention"'));
         process.exit(1);
       }
 
@@ -948,12 +948,12 @@ program
   .option("--open", "Open in browser after generation")
   .addHelpText("after", `
 Examples:
-  $ devcontext visualize                                    Interactive knowledge graph
-  $ devcontext visualize --type topic-clusters              Cluster view
-  $ devcontext visualize --type timeline                    Timeline view
-  $ devcontext visualize --type research-landscape          Full dashboard
-  $ devcontext visualize --output ./my-graph.html           Custom output path
-  $ devcontext visualize --open                             Open in browser after generation
+  $ wikirecall visualize                                    Interactive knowledge graph
+  $ wikirecall visualize --type topic-clusters              Cluster view
+  $ wikirecall visualize --type timeline                    Timeline view
+  $ wikirecall visualize --type research-landscape          Full dashboard
+  $ wikirecall visualize --output ./my-graph.html           Custom output path
+  $ wikirecall visualize --open                             Open in browser after generation
 `)
   .action(async (opts: { type: string; output: string; title?: string; open?: boolean }) => {
     const spinner = ora();
@@ -966,7 +966,7 @@ Examples:
 
       const config: VisualizationConfig = {
         type: vizType,
-        title: opts.title ?? `DevContext — ${vizType}`,
+        title: opts.title ?? `WikiRecall — ${vizType}`,
         outputPath: opts.output,
         interactive: true,
       };
@@ -1001,13 +1001,13 @@ program
   .option("--list-tools", "List available MCP tools and exit")
   .addHelpText("after", `
 Examples:
-  $ devcontext mcp                  # Start MCP server on stdio
-  $ devcontext mcp --list-tools     # List available tools
+  $ wikirecall mcp                  # Start MCP server on stdio
+  $ wikirecall mcp --list-tools     # List available tools
 `)
   .action(async (opts: { listTools?: boolean }) => {
     if (opts.listTools) {
       const { ALL_TOOLS } = await import("../mcp/tools.js");
-      console.log(chalk.bold(`\nDevContext MCP Tools (${ALL_TOOLS.length}):\n`));
+      console.log(chalk.bold(`\nWikiRecall MCP Tools (${ALL_TOOLS.length}):\n`));
       for (const tool of ALL_TOOLS) {
         console.log(`  ${chalk.cyan(tool.name)}`);
         console.log(`    ${chalk.dim(tool.description)}`);
@@ -1018,7 +1018,7 @@ Examples:
 
     const { startServer } = await import("../mcp/server.js");
     await startServer({
-      name: "devcontext",
+      name: "wikirecall",
       version: "0.1.0",
       workspaceDir: getConfig().home,
     });
@@ -1032,10 +1032,10 @@ const memoryCmd = new Command("memory")
   .description("5-layer memory system — identity, story, wiki, semantic search, sessions")
   .addHelpText("after", `
 Examples:
-  $ devcontext memory query "what did we discuss about retry logic?"
-  $ devcontext memory index
-  $ devcontext memory stats
-  $ devcontext memory identity
+  $ wikirecall memory query "what did we discuss about retry logic?"
+  $ wikirecall memory index
+  $ wikirecall memory stats
+  $ wikirecall memory identity
 `);
 
 memoryCmd
@@ -1171,7 +1171,7 @@ memoryCmd
           console.log(`    ${chalk.dim(`Last indexed: ${stats.lastIndexed}`)}`);
         }
       } else {
-        console.log(`  ${chalk.cyan("L3 Session Index")}: ${chalk.yellow("not built")} ${chalk.dim("(run: devcontext memory index)")}`);
+        console.log(`  ${chalk.cyan("L3 Session Index")}: ${chalk.yellow("not built")} ${chalk.dim("(run: wikirecall memory index)")}`);
       }
 
       // L4
@@ -1219,7 +1219,7 @@ memoryCmd
 
       if (!existsSync(identityPath)) {
         console.log(chalk.yellow("\nNo identity configured."));
-        console.log(chalk.dim(`  Run: devcontext memory identity --init "Your Name"\n`));
+        console.log(chalk.dim(`  Run: wikirecall memory identity --init "Your Name"\n`));
         return;
       }
 
@@ -1259,10 +1259,10 @@ const benchmarkCmd = new Command("benchmark")
   .option("--seed <n>", "Random seed for reproducibility", "42")
   .addHelpText("after", `
 Examples:
-  $ devcontext benchmark                                    Run all suites
-  $ devcontext benchmark --suite token-efficiency            Run specific suite
-  $ devcontext benchmark --report                           Generate HTML report
-  $ devcontext benchmark --entities 100 --sessions 50       Custom config
+  $ wikirecall benchmark                                    Run all suites
+  $ wikirecall benchmark --suite token-efficiency            Run specific suite
+  $ wikirecall benchmark --report                           Generate HTML report
+  $ wikirecall benchmark --entities 100 --sessions 50       Custom config
 `)
   .action(async (opts: { suite?: string; report?: boolean; entities: string; sessions: string; queries: string; seed: string }) => {
     const spinner = ora();

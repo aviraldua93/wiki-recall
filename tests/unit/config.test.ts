@@ -18,24 +18,24 @@ describe("config", () => {
   });
 
   test("returns default values when env vars are not set", () => {
-    delete process.env.DEVCONTEXT_HOME;
-    delete process.env.DEVCONTEXT_LOG_LEVEL;
+    delete process.env.WIKIRECALL_HOME;
+    delete process.env.WIKIRECALL_LOG_LEVEL;
     delete process.env.GITHUB_TOKEN;
 
     const config = getConfig();
-    expect(config.home).toContain(".devcontext");
+    expect(config.home).toContain(".wikirecall");
     expect(config.logLevel).toBe("info");
     expect(config.githubToken).toBeUndefined();
   });
 
-  test("reads DEVCONTEXT_HOME from env", () => {
-    process.env.DEVCONTEXT_HOME = "/tmp/test-devcontext";
+  test("reads WIKIRECALL_HOME from env", () => {
+    process.env.WIKIRECALL_HOME = "/tmp/test-wikirecall";
     const config = getConfig();
-    expect(config.home).toBe("/tmp/test-devcontext");
+    expect(config.home).toBe("/tmp/test-wikirecall");
   });
 
-  test("reads DEVCONTEXT_LOG_LEVEL from env", () => {
-    process.env.DEVCONTEXT_LOG_LEVEL = "debug";
+  test("reads WIKIRECALL_LOG_LEVEL from env", () => {
+    process.env.WIKIRECALL_LOG_LEVEL = "debug";
     const config = getConfig();
     expect(config.logLevel).toBe("debug");
   });
@@ -47,10 +47,10 @@ describe("config", () => {
   });
 
   test("caches config after first call", () => {
-    process.env.DEVCONTEXT_LOG_LEVEL = "debug";
+    process.env.WIKIRECALL_LOG_LEVEL = "debug";
     const config1 = getConfig();
 
-    process.env.DEVCONTEXT_LOG_LEVEL = "error";
+    process.env.WIKIRECALL_LOG_LEVEL = "error";
     const config2 = getConfig();
 
     // Should still be "debug" because config was cached
@@ -59,12 +59,12 @@ describe("config", () => {
   });
 
   test("resetConfig clears the cache", () => {
-    process.env.DEVCONTEXT_LOG_LEVEL = "debug";
+    process.env.WIKIRECALL_LOG_LEVEL = "debug";
     getConfig();
 
     resetConfig();
 
-    process.env.DEVCONTEXT_LOG_LEVEL = "error";
+    process.env.WIKIRECALL_LOG_LEVEL = "error";
     const config = getConfig();
     expect(config.logLevel).toBe("error");
   });

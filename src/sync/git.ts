@@ -144,7 +144,7 @@ export async function pushScenario(
   await execGit(["add", "-A"], syncDir);
 
   const commitResult = await execGit(
-    ["commit", "-m", `devcontext: sync scenario '${scenarioName}'`, "--allow-empty"],
+    ["commit", "-m", `wikirecall: sync scenario '${scenarioName}'`, "--allow-empty"],
     syncDir
   );
   if (!commitResult.ok && !commitResult.stderr.includes("nothing to commit")) {

@@ -1,5 +1,5 @@
 /**
- * Scenario Lifecycle — state transition management for DevContext scenarios.
+ * Scenario Lifecycle — state transition management for WikiRecall scenarios.
  *
  * Enforces valid state transitions between active, paused, handed-off, and archived.
  * Provides save/recall for capturing and restoring scenario context.

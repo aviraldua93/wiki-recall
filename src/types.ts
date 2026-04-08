@@ -1,5 +1,5 @@
 /**
- * Core TypeScript types for DevContext.
+ * Core TypeScript types for WikiRecall.
  *
  * These interfaces mirror the JSON Schema definitions in schemas/ and serve as
  * the single source of truth for TypeScript consumers.

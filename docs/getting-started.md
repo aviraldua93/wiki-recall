@@ -1,4 +1,4 @@
-# Getting Started with DevContext
+# Getting Started with WikiRecall
 
 > Resume any project, on any machine, instantly.
 
@@ -12,8 +12,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/aviraldua93/devcontext.git
-cd devcontext
+git clone https://github.com/aviraldua93/wiki-recall.git
+cd wikirecall
 
 # Install dependencies
 bun install
@@ -23,7 +23,7 @@ bun run dev
 
 # Or build a standalone binary
 bun run build
-./devcontext --help
+./wikirecall --help
 ```
 
 ## Your First Scenario
@@ -32,26 +32,26 @@ bun run build
 
 ```bash
 # Create from scratch
-devcontext create my-api-project \
+wikirecall create my-api-project \
   --description "Building a REST API with retry logic" \
   --repo https://github.com/myorg/api-service:feature/retry-logic \
   --skill code-review \
   --skill ci-monitor
 
 # Or use a template
-devcontext create my-api-project \
+wikirecall create my-api-project \
   --template web-api \
   --description "Building a REST API with retry logic"
 ```
 
-This creates a YAML manifest at `~/.devcontext/scenarios/my-api-project.yaml` with your repos, skills, and an initial context.
+This creates a YAML manifest at `~/.wikirecall/scenarios/my-api-project.yaml` with your repos, skills, and an initial context.
 
 ### 2. Save Your Progress
 
 As you work, checkpoint your state:
 
 ```bash
-devcontext save my-api-project \
+wikirecall save my-api-project \
   --summary "Implemented retry handler with exponential backoff" \
   --next-step "Write integration tests" \
   --next-step "Add jitter to backoff"
@@ -60,7 +60,7 @@ devcontext save my-api-project \
 ### 3. Recall Later (or on Another Machine)
 
 ```bash
-devcontext recall my-api-project
+wikirecall recall my-api-project
 ```
 
 This clones/pulls all repos listed in the scenario, loads skills, and displays your saved context — summary, next steps, open PRs, and blockers — so you can resume instantly.
@@ -68,7 +68,7 @@ This clones/pulls all repos listed in the scenario, loads skills, and displays y
 Use `--skip-repos` to recall without touching repositories:
 
 ```bash
-devcontext recall my-api-project --skip-repos
+wikirecall recall my-api-project --skip-repos
 ```
 
 ### 4. Sync Across Machines
@@ -77,26 +77,26 @@ Push your scenario to GitHub and pull it on another machine:
 
 ```bash
 # Push scenario state to a remote repo
-devcontext push my-api-project
+wikirecall push my-api-project
 
 # On another machine: pull the latest state
-devcontext pull my-api-project
+wikirecall pull my-api-project
 ```
 
 ### 5. List All Scenarios
 
 ```bash
 # List all scenarios
-devcontext list
+wikirecall list
 
 # Filter by status
-devcontext list --status active
+wikirecall list --status active
 ```
 
 ### 6. Hand Off to a Colleague
 
 ```bash
-devcontext handoff my-api-project --to teammate-username
+wikirecall handoff my-api-project --to teammate-username
 ```
 
 This transitions the scenario to `handed-off` status, preserving all context for your teammate.
@@ -104,43 +104,43 @@ This transitions the scenario to `handed-off` status, preserving all context for
 ### 7. Archive When Done
 
 ```bash
-devcontext teardown my-api-project
+wikirecall teardown my-api-project
 ```
 
 This moves the scenario to `archived` status. The manifest is preserved for historical reference.
 
 ## Knowledge Wiki
 
-DevContext includes a Karpathy-style knowledge wiki for persistent memory about systems, patterns, and concepts.
+WikiRecall includes a Karpathy-style knowledge wiki for persistent memory about systems, patterns, and concepts.
 
 ### Create a Knowledge Entity
 
 ```bash
-devcontext knowledge create --title "Retry Patterns" --type concept --tags distributed-systems resilience
+wikirecall knowledge create --title "Retry Patterns" --type concept --tags distributed-systems resilience
 ```
 
 ### Search Knowledge
 
 ```bash
-devcontext knowledge search "retry patterns"
+wikirecall knowledge search "retry patterns"
 ```
 
 ### List All Entities
 
 ```bash
-devcontext knowledge list
+wikirecall knowledge list
 ```
 
 ### Get a Specific Entity
 
 ```bash
-devcontext knowledge get retry-patterns
+wikirecall knowledge get retry-patterns
 ```
 
 ### Delete an Entity
 
 ```bash
-devcontext knowledge delete retry-patterns
+wikirecall knowledge delete retry-patterns
 ```
 
 ### Knowledge Entity Format
@@ -187,23 +187,23 @@ Skills promote through layers: **personal** → **team** → **root** (community
 Start fast with pre-built templates:
 
 ```bash
-devcontext create my-project --template web-api
-devcontext create my-project --template frontend-app
-devcontext create my-project --template infra-pipeline
-devcontext create my-project --template research-paper
-devcontext create my-project --template multi-agent
+wikirecall create my-project --template web-api
+wikirecall create my-project --template frontend-app
+wikirecall create my-project --template infra-pipeline
+wikirecall create my-project --template research-paper
+wikirecall create my-project --template multi-agent
 ```
 
 Each template provides sensible defaults for skills, context structure, and next steps.
 
 ## Configuration
 
-DevContext reads these environment variables:
+WikiRecall reads these environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DEVCONTEXT_HOME` | `~/.devcontext` | Root directory for all DevContext data |
-| `DEVCONTEXT_LOG_LEVEL` | `info` | Pino log level (trace, debug, info, warn, error, fatal) |
+| `WIKIRECALL_HOME` | `~/.wikirecall` | Root directory for all WikiRecall data |
+| `WIKIRECALL_LOG_LEVEL` | `info` | Pino log level (trace, debug, info, warn, error, fatal) |
 | `GITHUB_TOKEN` | — | GitHub personal access token for sync operations |
 
 ## Scenario Lifecycle

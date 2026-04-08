@@ -1,4 +1,4 @@
-# Contributing to DevContext
+# Contributing to WikiRecall
 
 Thanks for your interest in contributing! This guide covers everything you need to get started.
 
@@ -7,8 +7,8 @@ Thanks for your interest in contributing! This guide covers everything you need 
 1. **Prerequisites:** [Bun](https://bun.sh/) v1.1+ and Git.
 2. **Clone and install:**
    ```bash
-   git clone https://github.com/aviraldua93/devcontext.git
-   cd devcontext
+   git clone https://github.com/aviraldua93/wiki-recall.git
+   cd wikirecall
    bun install
    ```
 3. **Run tests:** `bun test`
@@ -27,7 +27,7 @@ Use descriptive kebab-case branches prefixed by type:
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
-feat: add devcontext init command
+feat: add wikirecall init command
 fix: prevent command injection in handoff sync
 docs: add CONTRIBUTING.md
 test: add entity CRUD search integration tests

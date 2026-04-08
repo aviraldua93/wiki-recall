@@ -116,12 +116,12 @@ A well-formed entity follows a consistent structure:
 
 The most effective systems combine both: a curated wiki for core domain knowledge (architecture, patterns, conventions) plus RAG for long-tail facts (API references, changelogs, issue history). The wiki provides the reasoning framework; RAG fills in specific details.
 
-## Relevance to DevContext
+## Relevance to WikiRecall
 
-DevContext's knowledge entities are a direct implementation of the Karpathy approach. Each entity is a Markdown file with YAML frontmatter, sized for context window loading, and connected via `related` fields. Scenarios select which entities to load, giving the LLM a curated mental model for the specific work at hand — rather than searching the entire knowledge base for every query.
+WikiRecall's knowledge entities are a direct implementation of the Karpathy approach. Each entity is a Markdown file with YAML frontmatter, sized for context window loading, and connected via `related` fields. Scenarios select which entities to load, giving the LLM a curated mental model for the specific work at hand — rather than searching the entire knowledge base for every query.
 
 ## Related Work
 
-- DevContext knowledge entity format — the implementation of this approach in the DevContext project
-- RAG (Retrieval-Augmented Generation) — the complementary approach that DevContext's wiki-vs-rag benchmark evaluates
+- WikiRecall knowledge entity format — the implementation of this approach in the WikiRecall project
+- RAG (Retrieval-Augmented Generation) — the complementary approach that WikiRecall's wiki-vs-rag benchmark evaluates
 - Zettelkasten method — a pre-digital knowledge management system with similar principles of atomic, linked notes

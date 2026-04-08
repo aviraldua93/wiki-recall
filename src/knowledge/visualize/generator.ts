@@ -67,7 +67,7 @@ export async function generateVisualization(
   const entities = config.entities ?? loadEntitiesFromDir(knowledgeDir);
 
   if (entities.length === 0) {
-    throw new Error("No knowledge entities found. Create entities first with: devcontext knowledge create");
+    throw new Error("No knowledge entities found. Create entities first with: wikirecall knowledge create");
   }
 
   let html: string;

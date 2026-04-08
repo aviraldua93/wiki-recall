@@ -12,7 +12,7 @@ import { resetConfig } from "../../src/config.js";
 import type { Scenario } from "../../src/types.js";
 
 // ---------------------------------------------------------------------------
-// Setup — use a temp DEVCONTEXT_HOME so loadSkillsForScenario can resolve
+// Setup — use a temp WIKIRECALL_HOME so loadSkillsForScenario can resolve
 // personal/team skills, while built-in skills come from the real skills/ dir.
 // ---------------------------------------------------------------------------
 
@@ -27,18 +27,18 @@ function writeSkill(dir: string, name: string, frontmatter: Record<string, unkno
 }
 
 beforeEach(() => {
-  testHome = join(tmpdir(), `devcontext-home-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testHome = join(tmpdir(), `wikirecall-home-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testHome, { recursive: true });
-  origHome = process.env.DEVCONTEXT_HOME;
-  process.env.DEVCONTEXT_HOME = testHome;
+  origHome = process.env.WIKIRECALL_HOME;
+  process.env.WIKIRECALL_HOME = testHome;
   resetConfig();
 });
 
 afterEach(() => {
   if (origHome !== undefined) {
-    process.env.DEVCONTEXT_HOME = origHome;
+    process.env.WIKIRECALL_HOME = origHome;
   } else {
-    delete process.env.DEVCONTEXT_HOME;
+    delete process.env.WIKIRECALL_HOME;
   }
   resetConfig();
   if (existsSync(testHome)) {
@@ -90,7 +90,7 @@ describe("loadSkillsForScenario", () => {
     expect(loaded[0].source).toBe("root");
   });
 
-  test("loads personal skills from DEVCONTEXT_HOME", () => {
+  test("loads personal skills from WIKIRECALL_HOME", () => {
     const personalDir = join(testHome, "skills", "personal");
     writeSkill(personalDir, "my-custom", {
       name: "my-custom",
@@ -115,7 +115,7 @@ describe("loadSkillsForScenario", () => {
     expect(loaded[0].source).toBe("personal");
   });
 
-  test("loads team skills from DEVCONTEXT_HOME", () => {
+  test("loads team skills from WIKIRECALL_HOME", () => {
     const teamDir = join(testHome, "skills", "team");
     writeSkill(teamDir, "team-skill", {
       name: "team-skill",

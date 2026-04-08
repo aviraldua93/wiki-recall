@@ -1,5 +1,5 @@
 /**
- * Edge-case tests for DevContext modules.
+ * Edge-case tests for WikiRecall modules.
  *
  * Covers:
  * - Malformed YAML handling
@@ -68,9 +68,9 @@ function validScenario(overrides: Partial<Scenario> & { name: string }): Scenari
 }
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `devcontext-edge-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(tmpdir(), `wikirecall-edge-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testDir, { recursive: true });
-  process.env.DEVCONTEXT_HOME = testDir;
+  process.env.WIKIRECALL_HOME = testDir;
   resetConfig();
 });
 

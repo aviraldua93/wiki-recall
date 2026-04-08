@@ -53,19 +53,19 @@ Before ending or pausing a session, systematically capture everything you will n
 
 Save the captured state durably:
 
-1. **Update the scenario manifest**: Run `devcontext save` with your summary and next steps. This updates the YAML manifest with your current context.
+1. **Update the scenario manifest**: Run `wikirecall save` with your summary and next steps. This updates the YAML manifest with your current context.
 
 2. **Commit and push changes**: Ensure all work-in-progress code is committed (even as draft commits) and pushed to the remote branch. Uncommitted changes cannot travel across machines.
 
-3. **Sync the scenario**: Run `devcontext save` to push the updated scenario manifest to GitHub. This ensures the checkpoint is available from any machine.
+3. **Sync the scenario**: Run `wikirecall save` to push the updated scenario manifest to GitHub. This ensures the checkpoint is available from any machine.
 
-4. **Verify the checkpoint**: Run `devcontext list` and confirm your scenario shows the correct status, summary, and timestamp.
+4. **Verify the checkpoint**: Run `wikirecall list` and confirm your scenario shows the correct status, summary, and timestamp.
 
 ### Step 3 — Resume a Session
 
 When returning to work, restore context efficiently:
 
-1. **Recall the scenario**: Run `devcontext recall <scenario-name>` to restore the full working environment — repos, branches, skills, and context.
+1. **Recall the scenario**: Run `wikirecall recall <scenario-name>` to restore the full working environment — repos, branches, skills, and context.
 
 2. **Review the context**: Read the restored summary, next steps, and blockers. This should take less than 60 seconds to rebuild your mental state.
 
@@ -81,15 +81,15 @@ When moving work between machines:
 
 1. **Source machine**: Complete Steps 1-2 above. Ensure everything is pushed to GitHub.
 
-2. **Target machine**: Run `devcontext recall <scenario-name>`. DevContext will:
+2. **Target machine**: Run `wikirecall recall <scenario-name>`. WikiRecall will:
    - Clone or pull all repos listed in the scenario
    - Check out the correct branches
    - Load the associated skills
    - Display the saved context (summary, next steps, blockers)
 
-3. **Verify the transfer**: Run `devcontext list` on the target machine and confirm the scenario matches what you saved on the source machine.
+3. **Verify the transfer**: Run `wikirecall list` on the target machine and confirm the scenario matches what you saved on the source machine.
 
-4. **Install dependencies**: DevContext restores repo state but not local tooling. Run your project's dependency install command (e.g., `bun install`, `npm install`, `pip install -r requirements.txt`).
+4. **Install dependencies**: WikiRecall restores repo state but not local tooling. Run your project's dependency install command (e.g., `bun install`, `npm install`, `pip install -r requirements.txt`).
 
 ### Step 5 — Handoff to Another Engineer
 
@@ -100,7 +100,7 @@ When transferring work to a colleague:
    - Known gotchas and workarounds
    - Related documentation or reference links
 
-2. **Run handoff**: Execute `devcontext handoff <scenario-name> --to <colleague>`. This:
+2. **Run handoff**: Execute `wikirecall handoff <scenario-name> --to <colleague>`. This:
    - Creates a handoff PR in the scenario repo
    - Updates the scenario status to `handed-off`
    - Includes your context summary in the PR description

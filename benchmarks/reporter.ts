@@ -16,7 +16,7 @@ import type { BenchmarkSuite, BenchmarkResult } from "./types.js";
 export function generateMarkdownReport(suites: BenchmarkSuite[]): string {
   const lines: string[] = [];
 
-  lines.push("# DevContext Memory Architecture — Benchmark Results");
+  lines.push("# WikiRecall Memory Architecture — Benchmark Results");
   lines.push("");
   lines.push(`> Generated: ${new Date().toISOString()}`);
   lines.push("");
@@ -74,7 +74,7 @@ export function generateHtmlReport(suites: BenchmarkSuite[]): string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DevContext Benchmark Results</title>
+<title>WikiRecall Benchmark Results</title>
 <style>
   :root {
     --bg: #0d1117;
@@ -144,7 +144,7 @@ export function generateHtmlReport(suites: BenchmarkSuite[]): string {
 </style>
 </head>
 <body>
-<h1>DevContext Memory Architecture</h1>
+<h1>WikiRecall Memory Architecture</h1>
 <p class="subtitle">Benchmark Results &mdash; ${new Date().toISOString().split("T")[0]}</p>
 
 <div id="app"></div>
@@ -234,7 +234,7 @@ export function formatConsoleSummary(suites: BenchmarkSuite[]): string {
 
   lines.push("");
   lines.push("═══════════════════════════════════════════════════════════════");
-  lines.push("  DevContext Benchmark Results");
+  lines.push("  WikiRecall Benchmark Results");
   lines.push("═══════════════════════════════════════════════════════════════");
   lines.push("");
 

@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest an idea for DevContext
+about: Suggest an idea for WikiRecall
 title: '[Feature]: '
 labels: enhancement
 assignees: ''

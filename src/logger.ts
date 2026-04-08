@@ -1,5 +1,5 @@
 /**
- * Structured pino logger for DevContext.
+ * Structured pino logger for WikiRecall.
  *
  * Outputs JSON logs with configurable level sourced from getConfig().
  * Uses sonic-boom for reliable async writes.
@@ -14,7 +14,7 @@ import { getConfig } from "./config.js";
  * Call this when you need a logger — it reads the current config each time,
  * which allows tests to reset config and get a fresh logger.
  */
-export function createLogger(name = "devcontext"): pino.Logger {
+export function createLogger(name = "wikirecall"): pino.Logger {
   const config = getConfig();
 
   return pino({

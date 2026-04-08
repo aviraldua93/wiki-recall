@@ -26,9 +26,9 @@ import { getScenario } from "../../src/scenario/manager.js";
 let testDir: string;
 
 beforeEach(() => {
-  testDir = join(tmpdir(), `devcontext-tmpl-yaml-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  testDir = join(tmpdir(), `wikirecall-tmpl-yaml-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(testDir, { recursive: true });
-  process.env.DEVCONTEXT_HOME = testDir;
+  process.env.WIKIRECALL_HOME = testDir;
   resetConfig();
 });
 

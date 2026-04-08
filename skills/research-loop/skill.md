@@ -28,13 +28,13 @@ Run the research loop phases in order:
 
 ```bash
 # Discover new sources
-devcontext knowledge search "<topic>"
+wikirecall knowledge search "<topic>"
 
 # Ingest discovered sources
-devcontext knowledge create --title "<entity>" --type concept --tags "<tags>"
+wikirecall knowledge create --title "<entity>" --type concept --tags "<tags>"
 
 # Query for insights
-devcontext knowledge search "<query>"
+wikirecall knowledge search "<query>"
 ```
 
 ## The Loop: Discover → Ingest → Query → Compound
@@ -44,7 +44,7 @@ devcontext knowledge search "<query>"
 Identify new sources of knowledge relevant to your active scenarios.
 
 1. **Sweep existing entities** — look at `related` fields and `[[wikilinks]]` for references you haven't ingested yet
-2. **Search by tags** — use `devcontext knowledge search` to find clusters with few entities (potential gaps)
+2. **Search by tags** — use `wikirecall knowledge search` to find clusters with few entities (potential gaps)
 3. **External sources** — check arXiv, GitHub trending, blog aggregators, and conference proceedings for topics matching your tags
 4. **Stakeholder signals** — review recent PRs, issues, and discussions for emerging concepts not yet captured
 
@@ -56,7 +56,7 @@ Transform raw sources into structured knowledge entities.
 
 1. **Create entities** for each high-relevance source:
    ```bash
-   devcontext knowledge create --title "Concept Name" --type concept --tags "tag1,tag2"
+   wikirecall knowledge create --title "Concept Name" --type concept --tags "tag1,tag2"
    ```
 2. **Write content** using Karpathy-style mental models:
    - What it is (1–2 sentences)
@@ -70,13 +70,13 @@ Transform raw sources into structured knowledge entities.
 
 Use search and visualization to surface patterns.
 
-1. **Full-text search** — `devcontext knowledge search "query"` to find entities by content
-2. **Visualize the graph** — `devcontext visualize` to see the network topology
+1. **Full-text search** — `wikirecall knowledge search "query"` to find entities by content
+2. **Visualize the graph** — `wikirecall visualize` to see the network topology
    - Isolated nodes = poorly connected knowledge (needs more links)
    - Dense clusters = well-understood areas
    - Bridge nodes = key concepts connecting different domains
-3. **Topic clusters** — `devcontext visualize --type topic-clusters` to find tag imbalances
-4. **Timeline view** — `devcontext visualize --type timeline` to track knowledge growth rate
+3. **Topic clusters** — `wikirecall visualize --type topic-clusters` to find tag imbalances
+4. **Timeline view** — `wikirecall visualize --type timeline` to track knowledge growth rate
 
 ### Phase 4 — Compound
 
@@ -87,7 +87,7 @@ Let accumulated knowledge generate new insights.
    - "Retry Patterns + Circuit Breakers" → new entity: "Resilience Architecture"
    - "OAuth2 + RBAC" → new entity: "Authorization Patterns"
 3. **Update existing entities** with new context from recent additions
-4. **Generate the research landscape** — `devcontext visualize --type research-landscape` for a full dashboard
+4. **Generate the research landscape** — `wikirecall visualize --type research-landscape` for a full dashboard
 5. **Archive stale entities** — mark entities with `status: needs_update` if they haven't been revised in 90+ days
 
 ## Setting Up Automated Curation
@@ -96,15 +96,15 @@ Let accumulated knowledge generate new insights.
 
 ```bash
 # Check for entities updated today
-devcontext knowledge list | grep "$(date +%Y-%m-%d)"
+wikirecall knowledge list | grep "$(date +%Y-%m-%d)"
 
 # Generate fresh graph
-devcontext visualize --output ./daily-graph.html
+wikirecall visualize --output ./daily-graph.html
 ```
 
 ### Weekly review (30 minutes)
 
-1. Run the full research landscape: `devcontext visualize --type research-landscape --output ./weekly-review.html`
+1. Run the full research landscape: `wikirecall visualize --type research-landscape --output ./weekly-review.html`
 2. Open the dashboard and identify:
    - New clusters forming
    - Isolated nodes needing connections

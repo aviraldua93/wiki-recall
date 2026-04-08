@@ -30,7 +30,7 @@ import { dispatchToolCall } from "./handlers.js";
 function createMcpLogger(level = "info"): pino.Logger {
   return pino(
     {
-      name: "devcontext-mcp",
+      name: "wikirecall-mcp",
       level,
       timestamp: pino.stdTimeFunctions.isoTime,
       formatters: { level: (label: string) => ({ level: label }) },
@@ -149,7 +149,7 @@ export function parseMessage(line: string): JsonRpcRequest | { error: string } {
 // ---------------------------------------------------------------------------
 
 export async function startServer(config: McpServerConfig): Promise<void> {
-  const log = createMcpLogger(process.env.DEVCONTEXT_LOG_LEVEL ?? "info");
+  const log = createMcpLogger(process.env.WIKIRECALL_LOG_LEVEL ?? "info");
   log.info({ name: config.name, version: config.version }, "MCP server starting");
 
   const decoder = new TextDecoder();

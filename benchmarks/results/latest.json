@@ -1,0 +1,655 @@
+[
+  {
+    "name": "token-efficiency",
+    "description": "Token usage across layer combinations vs dump-everything baseline",
+    "results": [
+      {
+        "name": "L0 only",
+        "metric": "avg_tokens",
+        "value": 36,
+        "unit": "tokens",
+        "details": {
+          "maxTokens": 36,
+          "queryCount": 5
+        }
+      },
+      {
+        "name": "L0 only",
+        "metric": "token_savings_vs_baseline",
+        "value": 99.72,
+        "unit": "%",
+        "details": {
+          "baselineTokens": 13022,
+          "layerTokens": 36
+        }
+      },
+      {
+        "name": "L0 + L1",
+        "metric": "avg_tokens",
+        "value": 203,
+        "unit": "tokens",
+        "details": {
+          "maxTokens": 203,
+          "queryCount": 5
+        }
+      },
+      {
+        "name": "L0 + L1",
+        "metric": "token_savings_vs_baseline",
+        "value": 98.44,
+        "unit": "%",
+        "details": {
+          "baselineTokens": 13022,
+          "layerTokens": 203
+        }
+      },
+      {
+        "name": "L0 + L1 + L2",
+        "metric": "avg_tokens",
+        "value": 203,
+        "unit": "tokens",
+        "details": {
+          "maxTokens": 203,
+          "queryCount": 5
+        }
+      },
+      {
+        "name": "L0 + L1 + L2",
+        "metric": "token_savings_vs_baseline",
+        "value": 98.44,
+        "unit": "%",
+        "details": {
+          "baselineTokens": 13022,
+          "layerTokens": 203
+        }
+      },
+      {
+        "name": "L0 + L1 + L2 + L3",
+        "metric": "avg_tokens",
+        "value": 203,
+        "unit": "tokens",
+        "details": {
+          "maxTokens": 203,
+          "queryCount": 5
+        }
+      },
+      {
+        "name": "L0 + L1 + L2 + L3",
+        "metric": "token_savings_vs_baseline",
+        "value": 98.44,
+        "unit": "%",
+        "details": {
+          "baselineTokens": 13022,
+          "layerTokens": 203
+        }
+      },
+      {
+        "name": "Full stack (L0–L4)",
+        "metric": "avg_tokens",
+        "value": 203,
+        "unit": "tokens",
+        "details": {
+          "maxTokens": 203,
+          "queryCount": 5
+        }
+      },
+      {
+        "name": "Full stack (L0–L4)",
+        "metric": "token_savings_vs_baseline",
+        "value": 98.44,
+        "unit": "%",
+        "details": {
+          "baselineTokens": 13022,
+          "layerTokens": 203
+        }
+      },
+      {
+        "name": "Baseline (dump everything)",
+        "metric": "total_tokens",
+        "value": 13022,
+        "unit": "tokens",
+        "details": {
+          "entityCount": 50,
+          "sessionCount": 100
+        }
+      }
+    ],
+    "startedAt": "2026-04-08T16:56:01.930Z",
+    "completedAt": "2026-04-08T16:56:05.055Z",
+    "summary": "Full stack uses ~203 tokens vs 13022 baseline (98.44% savings). 50 entities, 100 sessions."
+  },
+  {
+    "name": "recall-precision",
+    "description": "Recall and precision across query types and memory layers",
+    "results": [
+      {
+        "name": "Overall",
+        "metric": "recall",
+        "value": 49.5,
+        "unit": "%",
+        "details": {
+          "queryCount": 200
+        }
+      },
+      {
+        "name": "Overall",
+        "metric": "precision",
+        "value": 100,
+        "unit": "%",
+        "details": {
+          "queryCount": 200
+        }
+      },
+      {
+        "name": "Layer L0",
+        "metric": "recall",
+        "value": 0,
+        "unit": "%",
+        "details": {
+          "queryCount": 33,
+          "layer": "L0"
+        }
+      },
+      {
+        "name": "Layer L0",
+        "metric": "precision",
+        "value": 0,
+        "unit": "%",
+        "details": {
+          "queryCount": 33,
+          "layer": "L0"
+        }
+      },
+      {
+        "name": "Layer L1",
+        "metric": "recall",
+        "value": 0,
+        "unit": "%",
+        "details": {
+          "queryCount": 33,
+          "layer": "L1"
+        }
+      },
+      {
+        "name": "Layer L1",
+        "metric": "precision",
+        "value": 0,
+        "unit": "%",
+        "details": {
+          "queryCount": 33,
+          "layer": "L1"
+        }
+      },
+      {
+        "name": "Layer L2",
+        "metric": "recall",
+        "value": 48.53,
+        "unit": "%",
+        "details": {
+          "queryCount": 68,
+          "layer": "L2"
+        }
+      },
+      {
+        "name": "Layer L2",
+        "metric": "precision",
+        "value": 59.76,
+        "unit": "%",
+        "details": {
+          "queryCount": 68,
+          "layer": "L2"
+        }
+      },
+      {
+        "name": "Layer L3",
+        "metric": "recall",
+        "value": 0,
+        "unit": "%",
+        "details": {
+          "queryCount": 33,
+          "layer": "L3"
+        }
+      },
+      {
+        "name": "Layer L3",
+        "metric": "precision",
+        "value": 0,
+        "unit": "%",
+        "details": {
+          "queryCount": 33,
+          "layer": "L3"
+        }
+      },
+      {
+        "name": "Layer L4",
+        "metric": "recall",
+        "value": 100,
+        "unit": "%",
+        "details": {
+          "queryCount": 33,
+          "layer": "L4"
+        }
+      },
+      {
+        "name": "Layer L4",
+        "metric": "precision",
+        "value": 100,
+        "unit": "%",
+        "details": {
+          "queryCount": 33,
+          "layer": "L4"
+        }
+      }
+    ],
+    "startedAt": "2026-04-08T16:56:05.067Z",
+    "completedAt": "2026-04-08T16:56:24.898Z",
+    "summary": "Overall: 50% recall, 100% precision across 200 queries. 50 entities, 100 sessions."
+  },
+  {
+    "name": "routing-accuracy",
+    "description": "Query routing accuracy to correct memory layer(s)",
+    "results": [
+      {
+        "name": "Overall Routing",
+        "metric": "accuracy",
+        "value": 42.86,
+        "unit": "%",
+        "details": {
+          "testCaseCount": 21
+        }
+      },
+      {
+        "name": "Layer L0",
+        "metric": "routing_accuracy",
+        "value": 100,
+        "unit": "%",
+        "details": {
+          "correct": 5,
+          "total": 5
+        }
+      },
+      {
+        "name": "Layer L1",
+        "metric": "routing_accuracy",
+        "value": 100,
+        "unit": "%",
+        "details": {
+          "correct": 4,
+          "total": 4
+        }
+      },
+      {
+        "name": "Layer L2",
+        "metric": "routing_accuracy",
+        "value": 0,
+        "unit": "%",
+        "details": {
+          "correct": 0,
+          "total": 3
+        }
+      },
+      {
+        "name": "Layer L3",
+        "metric": "routing_accuracy",
+        "value": 0,
+        "unit": "%",
+        "details": {
+          "correct": 0,
+          "total": 7
+        }
+      },
+      {
+        "name": "Layer L4",
+        "metric": "routing_accuracy",
+        "value": 0,
+        "unit": "%",
+        "details": {
+          "correct": 0,
+          "total": 2
+        }
+      },
+      {
+        "name": "Generated Queries",
+        "metric": "routing_accuracy",
+        "value": 64,
+        "unit": "%",
+        "details": {
+          "queryCount": 50
+        }
+      }
+    ],
+    "startedAt": "2026-04-08T16:56:24.910Z",
+    "completedAt": "2026-04-08T16:56:30.267Z",
+    "summary": "Overall routing accuracy: 43% across 21 fixed test cases. Generated query accuracy: 64% across 50 queries."
+  },
+  {
+    "name": "scale-stress",
+    "description": "Performance under increasing entity counts (10 to 1000)",
+    "results": [
+      {
+        "name": "10 entities",
+        "metric": "search_latency_avg",
+        "value": 60.92,
+        "unit": "ms",
+        "details": {
+          "entityCount": 10,
+          "sessionCount": 20,
+          "p50": 46.15,
+          "p95": 88.7
+        }
+      },
+      {
+        "name": "10 entities",
+        "metric": "index_rebuild_time",
+        "value": 13.99,
+        "unit": "ms",
+        "details": {
+          "entityCount": 10,
+          "sessionCount": 20
+        }
+      },
+      {
+        "name": "10 entities",
+        "metric": "heap_used_mb",
+        "value": 24.72,
+        "unit": "MB",
+        "details": {
+          "rss": 294
+        }
+      },
+      {
+        "name": "50 entities",
+        "metric": "search_latency_avg",
+        "value": 141.94,
+        "unit": "ms",
+        "details": {
+          "entityCount": 50,
+          "sessionCount": 100,
+          "p50": 129.05,
+          "p95": 166.13
+        }
+      },
+      {
+        "name": "50 entities",
+        "metric": "index_rebuild_time",
+        "value": 19.47,
+        "unit": "ms",
+        "details": {
+          "entityCount": 50,
+          "sessionCount": 100
+        }
+      },
+      {
+        "name": "50 entities",
+        "metric": "heap_used_mb",
+        "value": 24.72,
+        "unit": "MB",
+        "details": {
+          "rss": 277
+        }
+      },
+      {
+        "name": "100 entities",
+        "metric": "search_latency_avg",
+        "value": 233.69,
+        "unit": "ms",
+        "details": {
+          "entityCount": 100,
+          "sessionCount": 100,
+          "p50": 228.1,
+          "p95": 257.91
+        }
+      },
+      {
+        "name": "100 entities",
+        "metric": "index_rebuild_time",
+        "value": 17.34,
+        "unit": "ms",
+        "details": {
+          "entityCount": 100,
+          "sessionCount": 100
+        }
+      },
+      {
+        "name": "100 entities",
+        "metric": "heap_used_mb",
+        "value": 31.07,
+        "unit": "MB",
+        "details": {
+          "rss": 317
+        }
+      },
+      {
+        "name": "500 entities",
+        "metric": "search_latency_avg",
+        "value": 588.67,
+        "unit": "ms",
+        "details": {
+          "entityCount": 500,
+          "sessionCount": 100,
+          "p50": 586.62,
+          "p95": 614.17
+        }
+      },
+      {
+        "name": "500 entities",
+        "metric": "index_rebuild_time",
+        "value": 19.42,
+        "unit": "ms",
+        "details": {
+          "entityCount": 500,
+          "sessionCount": 100
+        }
+      },
+      {
+        "name": "500 entities",
+        "metric": "heap_used_mb",
+        "value": 31.07,
+        "unit": "MB",
+        "details": {
+          "rss": 304
+        }
+      },
+      {
+        "name": "1000 entities",
+        "metric": "search_latency_avg",
+        "value": 959.95,
+        "unit": "ms",
+        "details": {
+          "entityCount": 1000,
+          "sessionCount": 100,
+          "p50": 944.67,
+          "p95": 996.25
+        }
+      },
+      {
+        "name": "1000 entities",
+        "metric": "index_rebuild_time",
+        "value": 18.83,
+        "unit": "ms",
+        "details": {
+          "entityCount": 1000,
+          "sessionCount": 100
+        }
+      },
+      {
+        "name": "1000 entities",
+        "metric": "heap_used_mb",
+        "value": 38.19,
+        "unit": "MB",
+        "details": {
+          "rss": 313
+        }
+      },
+      {
+        "name": "Degradation",
+        "metric": "performance_ceiling",
+        "value": 959.95,
+        "unit": "ms",
+        "details": {
+          "degradationPoint": "none detected",
+          "scaleLevels": [
+            10,
+            50,
+            100,
+            500,
+            1000
+          ]
+        }
+      }
+    ],
+    "startedAt": "2026-04-08T16:56:30.279Z",
+    "completedAt": "2026-04-08T16:56:47.231Z",
+    "summary": "Tested 10, 50, 100, 500, 1000 entities. Degradation: none detected. Max latency: 960.0ms at 1000 entities."
+  },
+  {
+    "name": "layer-comparison",
+    "description": "Ablation study comparing Wiki-only, Search-only, and Hybrid approaches",
+    "results": [
+      {
+        "name": "Wiki Only (Karpathy)",
+        "metric": "recall",
+        "value": 16.5,
+        "unit": "%",
+        "details": {
+          "description": "Compiled wiki knowledge only — L0 identity + L1 story + L2 wiki",
+          "layers": [
+            "L0",
+            "L1",
+            "L2"
+          ]
+        }
+      },
+      {
+        "name": "Wiki Only (Karpathy)",
+        "metric": "precision",
+        "value": 100,
+        "unit": "%",
+        "details": {
+          "description": "Compiled wiki knowledge only — L0 identity + L1 story + L2 wiki"
+        }
+      },
+      {
+        "name": "Wiki Only (Karpathy)",
+        "metric": "avg_tokens",
+        "value": 199,
+        "unit": "tokens",
+        "details": {
+          "p50": 188,
+          "p95": 257.04999999999995,
+          "p99": 266.06999999999994
+        }
+      },
+      {
+        "name": "Wiki Only (Karpathy)",
+        "metric": "token_p95",
+        "value": 257.04999999999995,
+        "unit": "tokens"
+      },
+      {
+        "name": "Search Only (RAG/MemPalace)",
+        "metric": "recall",
+        "value": 0,
+        "unit": "%",
+        "details": {
+          "description": "Semantic search only — L0 identity + L3 session search",
+          "layers": [
+            "L0",
+            "L3"
+          ]
+        }
+      },
+      {
+        "name": "Search Only (RAG/MemPalace)",
+        "metric": "precision",
+        "value": 100,
+        "unit": "%",
+        "details": {
+          "description": "Semantic search only — L0 identity + L3 session search"
+        }
+      },
+      {
+        "name": "Search Only (RAG/MemPalace)",
+        "metric": "avg_tokens",
+        "value": 21,
+        "unit": "tokens",
+        "details": {
+          "p50": 21,
+          "p95": 21,
+          "p99": 21
+        }
+      },
+      {
+        "name": "Search Only (RAG/MemPalace)",
+        "metric": "token_p95",
+        "value": 21,
+        "unit": "tokens"
+      },
+      {
+        "name": "Hybrid (DevContext)",
+        "metric": "recall",
+        "value": 49.5,
+        "unit": "%",
+        "details": {
+          "description": "Our approach — all layers working together",
+          "layers": [
+            "L0",
+            "L1",
+            "L2",
+            "L3",
+            "L4"
+          ]
+        }
+      },
+      {
+        "name": "Hybrid (DevContext)",
+        "metric": "precision",
+        "value": 100,
+        "unit": "%",
+        "details": {
+          "description": "Our approach — all layers working together"
+        }
+      },
+      {
+        "name": "Hybrid (DevContext)",
+        "metric": "avg_tokens",
+        "value": 216,
+        "unit": "tokens",
+        "details": {
+          "p50": 188,
+          "p95": 307.04999999999995,
+          "p99": 312.04999999999995
+        }
+      },
+      {
+        "name": "Hybrid (DevContext)",
+        "metric": "token_p95",
+        "value": 307.04999999999995,
+        "unit": "tokens"
+      },
+      {
+        "name": "Hybrid vs Wiki Only",
+        "metric": "recall_delta",
+        "value": 33,
+        "unit": "pp",
+        "details": {
+          "hybridRecall": 0.495,
+          "wikiRecall": 0.165
+        }
+      },
+      {
+        "name": "Hybrid vs Search Only",
+        "metric": "recall_delta",
+        "value": 49.5,
+        "unit": "pp",
+        "details": {
+          "hybridRecall": 0.495,
+          "searchRecall": 0
+        }
+      }
+    ],
+    "startedAt": "2026-04-08T16:56:47.425Z",
+    "completedAt": "2026-04-08T16:57:07.320Z",
+    "summary": "Hybrid: 50% recall, 100% precision, 216 avg tokens. Wiki Only: 17% recall, 199 tokens. Search Only: 0% recall, 21 tokens. Hybrid recall advantage: +33pp vs wiki, +49.5pp vs search."
+  }
+]

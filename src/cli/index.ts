@@ -1246,6 +1246,87 @@ memoryCmd
 program.addCommand(memoryCmd);
 
 // ---------------------------------------------------------------------------
+// benchmark — run benchmark suites for the memory architecture
+// ---------------------------------------------------------------------------
+
+const benchmarkCmd = new Command("benchmark")
+  .description("Run benchmark suites for the 5-layer memory architecture")
+  .option("--suite <name>", "Run a specific suite: token-efficiency, recall-precision, routing-accuracy, scale-stress, layer-comparison")
+  .option("--report", "Generate HTML report from last run")
+  .option("--entities <n>", "Number of mock entities to generate", "50")
+  .option("--sessions <n>", "Number of mock sessions to generate", "100")
+  .option("--queries <n>", "Number of test queries to run", "200")
+  .option("--seed <n>", "Random seed for reproducibility", "42")
+  .addHelpText("after", `
+Examples:
+  $ devcontext benchmark                                    Run all suites
+  $ devcontext benchmark --suite token-efficiency            Run specific suite
+  $ devcontext benchmark --report                           Generate HTML report
+  $ devcontext benchmark --entities 100 --sessions 50       Custom config
+`)
+  .action(async (opts: { suite?: string; report?: boolean; entities: string; sessions: string; queries: string; seed: string }) => {
+    const spinner = ora();
+    try {
+      const { runAllBenchmarks, runBenchmark, ALL_SUITE_NAMES } = await import("../../benchmarks/runner.js");
+      const { generateMarkdownReport, generateHtmlReport, formatConsoleSummary } = await import("../../benchmarks/reporter.js");
+      const { writeFileSync, readFileSync, existsSync, mkdirSync } = await import("node:fs");
+      const { join } = await import("node:path");
+
+      const config = {
+        entityCount: parseInt(opts.entities, 10) || 50,
+        sessionCount: parseInt(opts.sessions, 10) || 100,
+        queryCount: parseInt(opts.queries, 10) || 200,
+        seed: parseInt(opts.seed, 10) || 42,
+      };
+
+      // Generate report from saved results
+      if (opts.report) {
+        const resultsDir = join(process.cwd(), "benchmarks", "results");
+        const latestPath = join(resultsDir, "latest.json");
+        if (!existsSync(latestPath)) {
+          console.error(chalk.red("No benchmark results found. Run benchmarks first."));
+          process.exit(1);
+        }
+        const suites = JSON.parse(readFileSync(latestPath, "utf8"));
+        const htmlPath = join(resultsDir, "report.html");
+        writeFileSync(htmlPath, generateHtmlReport(suites), "utf8");
+        console.log(chalk.green(`HTML report generated: ${chalk.bold(htmlPath)}`));
+        return;
+      }
+
+      // Run benchmarks
+      const suiteName = opts.suite;
+      if (suiteName) {
+        if (!ALL_SUITE_NAMES.includes(suiteName as never)) {
+          console.error(chalk.red(`Unknown suite: "${suiteName}". Available: ${ALL_SUITE_NAMES.join(", ")}`));
+          process.exit(1);
+        }
+        spinner.start(chalk.cyan(`Running benchmark: ${chalk.bold(suiteName)}…`));
+        const suite = await runBenchmark(suiteName as never, config);
+        spinner.succeed(chalk.green(`Completed: ${chalk.bold(suiteName)}`));
+        console.log(formatConsoleSummary([suite]));
+      } else {
+        spinner.start(chalk.cyan("Running all benchmark suites…"));
+        const suites = await runAllBenchmarks(config);
+        spinner.succeed(chalk.green(`All ${suites.length} benchmark suites completed.`));
+        console.log(formatConsoleSummary(suites));
+
+        // Save results
+        const resultsDir = join(process.cwd(), "benchmarks", "results");
+        if (!existsSync(resultsDir)) mkdirSync(resultsDir, { recursive: true });
+        writeFileSync(join(resultsDir, "latest.json"), JSON.stringify(suites, null, 2), "utf8");
+        writeFileSync(join(resultsDir, "latest.md"), generateMarkdownReport(suites), "utf8");
+        console.log(chalk.dim(`\nResults saved to benchmarks/results/latest.md`));
+      }
+    } catch (err: unknown) {
+      spinner.fail(chalk.red(formatCliError(err)));
+      process.exit(1);
+    }
+  });
+
+program.addCommand(benchmarkCmd);
+
+// ---------------------------------------------------------------------------
 // Export for testing
 // ---------------------------------------------------------------------------
 

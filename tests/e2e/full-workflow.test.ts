@@ -99,18 +99,18 @@ describe("full workflow — identity to benchmark", () => {
   test("create identity → create scenario → add knowledge → index → query → visualize → benchmark", () => {
     // ── Step 1: Create Identity ──
     saveIdentity({
-      name: "Aviral",
+      name: "Alice",
       roles: ["Staff SWE", "Tech Lead"],
-      accounts: [{ platform: "github", username: "aviral" }],
+      accounts: [{ platform: "github", username: "alice" }],
       coreContext: "Full-stack TypeScript engineer focused on distributed systems.",
     }, join(testDir, "identity.yaml"));
 
     const identity = loadIdentity(join(testDir, "identity.yaml"));
-    expect(identity.name).toBe("Aviral");
+    expect(identity.name).toBe("Alice");
     expect(identity.roles).toContain("Staff SWE");
 
     const prompt = generateIdentityPrompt(identity);
-    expect(prompt).toContain("Aviral");
+    expect(prompt).toContain("Alice");
     expect(prompt).toContain("distributed systems");
 
     // ── Step 2: Create Scenario ──

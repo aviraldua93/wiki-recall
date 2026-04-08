@@ -14,3 +14,12 @@ artifacts/
 review-round-*.md
 final-audit*.md
 audit-*.md
+pii-audit.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+engine/chromadb/
+engine/.last_indexed
+*.egg-info/

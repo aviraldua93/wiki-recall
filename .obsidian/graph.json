@@ -1,0 +1,38 @@
+{
+  "collapse-filter": false,
+  "search": "",
+  "showTags": true,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "collapse-color-groups": false,
+  "colorGroups": [
+    {
+      "query": "path:wiki/projects",
+      "color": { "a": 1, "rgb": 5614335 }
+    },
+    {
+      "query": "path:wiki/concepts",
+      "color": { "a": 1, "rgb": 8312063 }
+    },
+    {
+      "query": "path:wiki/patterns",
+      "color": { "a": 1, "rgb": 15761463 }
+    },
+    {
+      "query": "path:domains",
+      "color": { "a": 1, "rgb": 2271478 }
+    }
+  ],
+  "collapse-display": false,
+  "showArrow": true,
+  "textFadeMultiplier": 0,
+  "nodeSizeMultiplier": 1,
+  "lineSizeMultiplier": 1,
+  "collapse-forces": true,
+  "centerStrength": 0.5,
+  "repelStrength": 10,
+  "linkStrength": 1,
+  "linkDistance": 250,
+  "close": false
+}

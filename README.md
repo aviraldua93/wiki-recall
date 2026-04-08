@@ -1,168 +1,212 @@
-# 🧠 wiki-recall
+# wiki-recall
 
-**The hybrid no one else built. Compiled knowledge + layered recall.**
+**Compiled knowledge + layered recall for Copilot CLI.**
 
-[![CI](https://github.com/aviraldua93/wiki-recall/actions/workflows/ci.yml/badge.svg)](https://github.com/aviraldua93/wiki-recall/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-1,060_passing-brightgreen)](https://github.com/aviraldua93/wiki-recall/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white)](https://python.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Bun](https://img.shields.io/badge/Bun-runtime-f9f1e1?logo=bun&logoColor=black)](https://bun.sh)
-[![MCP](https://img.shields.io/badge/MCP-15_tools-purple)](https://modelcontextprotocol.io)
+[![MCP](https://img.shields.io/badge/MCP-10_tools-purple)](https://modelcontextprotocol.io)
 
-| **98.4%** | **1,060** | **~550** |
+| **~550** | **5 layers** | **10 MCP tools** |
 |:---:|:---:|:---:|
-| token savings vs dump-everything | tests passing | tokens to wake up |
+| tokens to wake up | L0-L4 memory stack | search, recall, status |
 
-[Quick Start](#quick-start) · [Memory Stack](#the-approach) · [Benchmarks](#benchmarks) · [MCP Server](#mcp-server)
+[Quick Start](#quick-start) - [Architecture](#architecture) - [Engine](#python-engine) - [MCP Server](#mcp-server)
 
 ---
 
 ## The Problem
 
-Every knowledge system makes the same bet. Either you compile what you know into structured documents and accept that anything not compiled is gone forever, or you index every raw conversation and pray that search finds the right needle in a haystack of noise.
+Every Copilot CLI session starts from scratch. You repeat context, re-explain decisions, and lose track of what you already figured out.
 
-**The first approach understands but can't remember. The second remembers but doesn't understand.** Every existing tool picks a side. wiki-recall doesn't.
-
-The insight is simple: these aren't competing strategies. They're complementary layers. A compiled wiki gives you fast, structured understanding at low token cost. A semantic search layer catches everything the wiki missed. Stack them, route queries to the right layer automatically, and you get a memory system that both understands and recalls.
+wiki-recall fixes this by compiling your session history into a persistent, structured knowledge base that loads automatically on every session start. It ships as a **template + engine**: the template creates your personal `~/.grain/` knowledge base, and the engine keeps it indexed and searchable.
 
 ---
 
-## The Approach
+## Architecture
 
-It starts with your identity — about 50 tokens. Who you are, how you think, your core principles. That's L0. It loads every single time, no exceptions.
+```
+~/.grain/                              (YOUR DATA - local only, never pushed)
+|- brain.md                            L0+L1 hot cache (~550 tokens, every session)
+|- actions.md                          Follow-ups, commitments, todos
+|- decisions.md                        Things already decided (never re-debate)
+|- wiki/
+|  |- index.md                         Master catalog
+|  |- projects/                        One page per project
+|  |- patterns/                        Bugs, gotchas, workarounds
+|  +- concepts/                        Tech concepts
+|- domains/                            Domain context files (one per work area)
+|- reference/                          Hard gates, multi-agent rules
+|- engine/
+|  |- chromadb/                        Semantic search index
+|  +- .last_indexed                    Timestamp tracking
++- .obsidian/                          Vault config for graph view
+```
 
-On top of that sits your essential story — another 500 tokens. What you're working on right now, your top moments, active projects. That's L1. Also always loaded. **L0 + L1 together cost ~550 tokens.** That's your wake-up cost. Compare that to the 1,500+ token context dumps most tools shove into every request.
-
-The interesting part starts at L2. This is the compiled wiki — Karpathy-style structured entities. Mental models, architectural decisions, recurring patterns. Each entry is a Markdown file with YAML frontmatter, source citations, contradiction tracking, and lifecycle status. It doesn't load unless the query's domain calls for it.
-
-L3 is the safety net. BM25 and FTS5 search over your full session history. **It finds what the wiki doesn't know yet.** If you talked about something three months ago but never compiled it, L3 catches it.
-
-L4 is raw session replay. Full conversations, pulled by session ID. You almost never need it, but when you do, it's there.
+### Memory Stack
 
 | Layer | What | Size | When |
 |:------|:-----|:-----|:-----|
-| L0 — Identity | Core principles, persona | ~50 tokens | Always |
-| L1 — Essential Story | Status, top moments, active work | ~500 tokens | Always |
-| L2 — Compiled Wiki | Entities, decisions, patterns | On demand | Domain-routed |
-| L3 — Semantic Search | BM25/FTS5 over session history | On demand | When wiki gaps exist |
-| L4 — Raw Sessions | Full conversation replay | On demand | Reference only |
+| L0 - Identity | Core principles, persona | ~50 tokens | Always |
+| L1 - Active Work | Status, top projects, recent decisions | ~500 tokens | Always |
+| L2 - Compiled Wiki | Karpathy-style entities with citations | On demand | Domain-routed |
+| L3 - Semantic Search | ChromaDB embeddings over session history | On demand | When wiki gaps exist |
+| L4 - Raw Sessions | Full conversation replay | On demand | Reference only |
 
-The router picks the layers. You don't.
-
----
-
-## Why the Hybrid Matters
-
-Karpathy's wiki understands your codebase but can't recall a conversation you had three months ago. MemPalace recalls every word but doesn't understand what any of it means. **wiki-recall does both.** Compiled knowledge for structure, semantic search for coverage, layered routing so you never pay for what you don't need.
+**L0 + L1 = ~550 tokens.** That is your wake-up cost. Everything else loads on demand.
 
 ---
 
 ## Quick Start
 
+### Prerequisites
+- Python 3.11+ with `pip`
+- [Bun](https://bun.sh) (for TypeScript modules)
+- Copilot CLI (for session history)
+
+### Setup
+
 ```bash
 git clone https://github.com/aviraldua93/wiki-recall.git
-cd wiki-recall && bun install && bun link
-wiki-recall init
-wiki-recall create my-api --template web-api
-# ✓ Scenario created: my-api (web-api template, 3 skills loaded)
+cd wiki-recall
+
+# Install Python engine dependencies
+pip install chromadb pyyaml
+
+# Install TypeScript dependencies
+bun install
+
+# Run the setup wizard - creates your personal ~/.grain/
+powershell -ExecutionPolicy Bypass -File scripts/setup.ps1
+```
+
+The setup wizard will:
+1. Ask your name, GitHub identities, and work domains
+2. Create the `~/.grain/` directory structure
+3. Generate `brain.md` with your L0 identity
+4. Generate `copilot-instructions.md` for Copilot CLI
+5. Index your existing session history (if available)
+6. Open the Obsidian vault (if installed)
+
+---
+
+## Python Engine
+
+The engine mines your Copilot CLI sessions and makes them searchable.
+
+### Indexer (`engine/indexer.py`)
+
+Reads the Copilot CLI session store, chunks conversations, and indexes them into ChromaDB alongside wiki pages and decisions.
+
+```bash
+python engine/indexer.py                # Full reindex
+python engine/indexer.py --incremental  # Only new sessions
+python engine/indexer.py --stats        # Show collection stats
+```
+
+### Search (`engine/search.py`)
+
+Four search modes with automatic deduplication:
+
+```python
+from engine.search import GrainSearcher
+
+s = GrainSearcher()
+results = s.hybrid_search("why did we switch auth approach?")
+# Combines: wiki keyword search + ChromaDB semantic + decisions search
+```
+
+### MCP Server (`engine/mcp_server.py`)
+
+10-tool MCP server for Copilot CLI integration:
+
+| Tool | What it does |
+|:-----|:-------------|
+| `grain_wake_up` | Load L0+L1 identity context (~550 tokens) |
+| `grain_search` | Hybrid search (wiki + semantic + decisions) |
+| `grain_recall` | Read a specific wiki page by topic |
+| `grain_domains` | List all domain files |
+| `grain_domain` | Read a specific domain file |
+| `grain_decisions` | Search or list decisions |
+| `grain_projects` | List all project wiki pages |
+| `grain_patterns` | List all pattern pages |
+| `grain_session` | Get session details by ID |
+| `grain_status` | System health check |
+
+```bash
+# Start the MCP server
+python -m engine
+
+# Or add to your MCP config
+# { "command": "python", "args": ["-m", "engine"], "transport": "stdio" }
 ```
 
 ---
 
-## Benchmarks
+## Scripts
 
-The ablation tells the story. Wiki-only misses anything not yet compiled. Search-only drowns in noise. **The hybrid closes the gap on both sides.**
-
-| Approach | Recall | Tokens | Understands? | Searches? |
-|:---------|:------:|:------:|:------------:|:---------:|
-| Wiki only (Karpathy) | ~60% | Low | Yes | No |
-| Search only (RAG) | ~45% | High | No | Yes |
-| **Hybrid (wiki-recall)** | **~93%** | **Low** | **Yes** | **Yes** |
-
-All benchmarks use reproducible seeded mock data. Zero API costs. Scales to 1,000 entities with zero degradation.
+| Script | What it does |
+|:-------|:-------------|
+| `scripts/setup.ps1` | Interactive onboarding wizard |
+| `scripts/refresh.ps1` | Mine session_store - update brain.md Active Work |
+| `scripts/compact.ps1` | Archive old brain.md entries, reset timestamps |
+| `scripts/lint.ps1` | Wiki health check (orphans, stale pages, coverage) |
 
 ---
 
-## What's Inside
+## TypeScript Modules
+
+The repo also includes TypeScript modules for benchmarks, visual artifacts, and paper curation:
 
 | Feature | Description |
 |:--------|:------------|
-| 5-Layer Memory | L0–L4 stack with automatic query routing |
-| Compiled Wiki | Karpathy-style entities with citations and lifecycle tracking |
-| Semantic Search | BM25 + FTS5 over full session history |
-| Portable Scenarios | Save/recall working state across machines via git |
+| 5-Layer Memory | L0-L4 stack with automatic query routing |
 | Paper Curation | arXiv + Semantic Scholar discovery, scoring, wiki ingestion |
-| Visual Artifacts | Self-contained interactive HTML — graphs, clusters, timelines |
-| MCP Server | 15 tools for any LLM or IDE |
-| Team Handoffs | Push scenarios as PRs, pull on any machine |
+| Visual Artifacts | Self-contained interactive HTML - graphs, clusters, timelines |
+| Portable Scenarios | Save/recall working state across machines via git |
 | Schema Validation | JSON Schema Draft 2020-12 via Ajv |
-| FTS5 Search | Full-text search over all stored knowledge |
-
----
-
-## Paper Curation
-
-Automated discovery from arXiv and Semantic Scholar. Papers are scored on a 0–1 relevance scale, deduplicated, and **ingested directly into the wiki as structured entities** — not dumped into a folder.
 
 ```bash
-wiki-recall papers curate --topics "agents,retrieval" --min-score 0.3
-wiki-recall papers ingest arxiv-2301-07041
+bun test          # Run all TypeScript tests
+bun run build     # Build CLI binary
 ```
 
 ---
 
-## Visual Artifacts
+## Key Design Decisions
 
-Generate self-contained interactive HTML visualizations — knowledge graphs, topic clusters, research landscapes. **No external dependencies, no server required.** Open the file and explore.
+These emerged from 6 expert reviews and 18 simulation tests:
 
-```bash
-wiki-recall visualize --type knowledge-graph --output graph.html
-```
-
----
-
-## MCP Server
-
-15 tools. Connect once, your AI handles the rest.
-
-Knowledge management, scenario ops, memory queries, paper curation, and visualization — all exposed via the [Model Context Protocol](https://modelcontextprotocol.io).
-
-```bash
-claude mcp add wikirecall -- wikirecall mcp
-```
+- **Instructions file < 60 lines** - Copilot CLI truncates longer files
+- **brain.md < 550 tokens** - L0+L1 only; everything else on-demand
+- **Write-back is direct-with-ask** - no staging area (too much friction)
+- **Proactive feedback loop** - Copilot asks "save this decision?" without being prompted
+- **Session IDs link wiki to raw data** - full traceability
 
 ---
 
-## Built-in Skills
+## Separation: Template vs Data
 
-| Skill | What it does |
-|:------|:-------------|
-| `code-review` | Five-layer review: security → correctness → style → performance → testing |
-| `ci-monitor` | GitHub Actions monitoring and failure diagnosis |
-| `pr-management` | Full PR lifecycle — creation, review, merging |
-| `session-management` | Checkpointing and cross-machine context transfer |
-| `multi-agent` | Parallel agent orchestration via docs-as-bus |
+| | wiki-recall (this repo) | ~/.grain/ (your machine) |
+|:--|:--|:--|
+| **Contains** | Engine code, templates, scripts | Your personal brain, wiki, decisions |
+| **Pushed to** | GitHub (public) | Nowhere (local only) |
+| **PII** | None - all placeholders | Your name, projects, context |
 
----
-
-## Templates
-
-| Template | What you get |
-|:---------|:-------------|
-| `web-api` | REST API with auth, tests, CI, and contracts |
-| `frontend-app` | Dashboard with component library and design system |
-| `infra-pipeline` | CI/CD, build system, and deploy config |
-| `research-paper` | LaTeX paper with experiment tracking |
-| `multi-agent` | A2A orchestration with crew coordination |
+The setup wizard generates your personal `~/.grain/` from the templates. The engine code runs against your local data. **Data never flows out.**
 
 ---
 
 ## Inspiration
 
-wiki-recall stands on three ideas. [Andrej Karpathy](https://karpathy.ai/) showed that knowledge belongs in structured entities, not document dumps — the L2 layer is a direct implementation of that methodology. [MemPalace](https://github.com/codelahoma/mempalace) proved that different memory types deserve different retrieval costs — the L0–L4 layered stack draws from that insight. [Elvis Saravia / DAIR.AI](https://github.com/dair-ai) made research paper curation a first-class engineering activity — the discovery → scoring → ingestion pipeline builds on that work.
+Built on three proven patterns:
+
+1. **[Andrej Karpathy](https://karpathy.ai/)** - Compile knowledge into structured entities, don't re-derive it. The L2 wiki layer is a direct implementation.
+2. **[MemPalace](https://github.com/codelahoma/mempalace)** - Different memory types deserve different retrieval costs. The L0-L4 layered stack draws from this insight.
+3. **[Second Brain (NicholasSpisak)](https://github.com/NicholasSpisak)** - Skill-based packaging with ingest/query/lint operations.
 
 ---
 
 ## License
 
-[MIT](LICENSE) © Aviral Dua
+[MIT](LICENSE)

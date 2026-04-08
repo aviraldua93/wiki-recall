@@ -1,0 +1,9 @@
+{
+  "interfaceFontSize": 14,
+  "alwaysUpdateLinks": true,
+  "newLinkFormat": "shortest",
+  "useMarkdownLinks": false,
+  "attachmentFolderPath": "wiki/.mining",
+  "defaultViewMode": "preview",
+  "showFrontmatter": false
+}

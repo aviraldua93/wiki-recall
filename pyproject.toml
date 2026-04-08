@@ -1,0 +1,31 @@
+[project]
+name = "wiki-recall-engine"
+version = "0.1.0"
+description = "Personal knowledge base engine — session mining, hybrid search, and MCP server for Copilot CLI"
+requires-python = ">=3.11"
+license = "MIT"
+readme = "README.md"
+dependencies = [
+    "chromadb>=0.4.0",
+    "PyYAML>=6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/aviraldua93/wiki-recall"
+Repository = "https://github.com/aviraldua93/wiki-recall"
+
+[project.scripts]
+grain-index = "engine.indexer:main"
+
+[project.optional-dependencies]
+mcp = ["mcp>=1.0.0"]
+
+[tool.setuptools.packages.find]
+include = ["engine*"]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[tool.pyright]
+pythonVersion = "3.11"

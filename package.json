@@ -38,7 +38,7 @@
     "@types/inquirer": "^9.0.7",
     "typescript": "^5.7.0"
   },
-  "author": "Aviral Dua",
+  "author": "Wiki Recall Contributors",
   "license": "MIT",
   "repository": {
     "type": "git",

@@ -1,0 +1,244 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0a1a"/>
+      <stop offset="100%" stop-color="#0d1033"/>
+    </linearGradient>
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="50%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="recallLine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <radialGradient id="brainGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.2"/>
+      <stop offset="50%" stop-color="#8b5cf6" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="ring0" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowStrong">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowSoft">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1a1a3e" stroke-width="0.5"/>
+    </pattern>
+    <style>
+      @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+      @keyframes pulse-slow { 0%,100% { opacity: 0.2; } 50% { opacity: 0.6; } }
+      @keyframes dash-flow { 0% { stroke-dashoffset: 24; } 100% { stroke-dashoffset: 0; } }
+      @keyframes dash-flow-rev { 0% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 24; } }
+      @keyframes float-y { 0%,100% { transform: translateY(0px); } 50% { transform: translateY(-6px); } }
+      @keyframes scale-pulse { 0%,100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.15); opacity: 1; } }
+      @keyframes ripple { 0% { r: 8; opacity: 0.6; } 100% { r: 28; opacity: 0; } }
+      @keyframes ring-pulse-1 { 0%,100% { opacity: 0.7; stroke-width: 2; } 50% { opacity: 1; stroke-width: 2.5; } }
+      @keyframes ring-pulse-2 { 0%,100% { opacity: 0.5; } 50% { opacity: 0.8; } }
+      @keyframes ring-pulse-3 { 0%,100% { opacity: 0.35; } 50% { opacity: 0.6; } }
+      @keyframes ring-pulse-4 { 0%,100% { opacity: 0.2; } 50% { opacity: 0.4; } }
+      @keyframes ring-pulse-5 { 0%,100% { opacity: 0.1; } 50% { opacity: 0.25; } }
+      @keyframes scan { 0% { transform: translateY(-200px); opacity: 0; } 10% { opacity: 0.12; } 90% { opacity: 0.12; } 100% { transform: translateY(200px); opacity: 0; } }
+      @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+      @keyframes particle-in { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(0); opacity: 0; } }
+      @keyframes particle-out { 0% { transform: scale(0); opacity: 0; } 50% { opacity: 0.8; } 100% { transform: scale(1); opacity: 0; } }
+      @keyframes particle-up { 0% { transform: translateY(0) scale(1); opacity: 0.8; } 100% { transform: translateY(-60px) scale(0); opacity: 0; } }
+      @keyframes glow-breathe { 0%,100% { filter: drop-shadow(0 0 4px #8b5cf6); } 50% { filter: drop-shadow(0 0 12px #a78bfa); } }
+      @keyframes orbit { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      @keyframes orbit-rev { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
+      @keyframes data-flow-in { 0% { stroke-dashoffset: 0; opacity: 0.6; } 100% { stroke-dashoffset: -24; opacity: 0.2; } }
+      .grid-overlay { animation: pulse-slow 8s ease-in-out infinite; }
+      .conn-line { stroke-dasharray: 6 6; animation: dash-flow 1.5s linear infinite; }
+      .conn-line-in { stroke-dasharray: 4 8; animation: data-flow-in 2s linear infinite; }
+      .conn-line-slow { stroke-dasharray: 8 8; animation: dash-flow 2.5s linear infinite; }
+      .ring-1 { animation: ring-pulse-1 3s ease-in-out infinite; }
+      .ring-2 { animation: ring-pulse-2 3.5s ease-in-out 0.3s infinite; }
+      .ring-3 { animation: ring-pulse-3 4s ease-in-out 0.6s infinite; }
+      .ring-4 { animation: ring-pulse-4 4.5s ease-in-out 0.9s infinite; }
+      .ring-5 { animation: ring-pulse-5 5s ease-in-out 1.2s infinite; }
+      .node-pulse { animation: scale-pulse 3s ease-in-out infinite; }
+      .node-float { animation: float-y 4s ease-in-out infinite; }
+      .node-float-d1 { animation: float-y 4.5s ease-in-out 0.5s infinite; }
+      .ripple-ring { animation: ripple 3s ease-out infinite; }
+      .scan-line { animation: scan 7s ease-in-out infinite; }
+      .cursor-blink { animation: blink 1s step-end infinite; }
+      .particle { animation: particle-up 3s ease-out infinite; }
+      .particle-d1 { animation: particle-up 3.5s ease-out 0.5s infinite; }
+      .particle-d2 { animation: particle-up 4s ease-out 1s infinite; }
+      .particle-d3 { animation: particle-up 3s ease-out 1.8s infinite; }
+      .particle-d4 { animation: particle-up 4.5s ease-out 0.3s infinite; }
+      .breathe { animation: glow-breathe 4s ease-in-out infinite; }
+      .orbit-cw { animation: orbit 20s linear infinite; transform-origin: 400px 210px; }
+      .orbit-ccw { animation: orbit-rev 25s linear infinite; transform-origin: 400px 210px; }
+      .panel { fill: #0d0d2a; stroke: #1e1e4a; stroke-width: 1; rx: 6; }
+      .panel-header { fill: #8b5cf6; font-family: monospace; font-size: 8px; font-weight: bold; }
+      .panel-text { fill: #94a3b8; font-family: monospace; font-size: 8px; }
+      .panel-text-bright { fill: #e2e8f0; font-family: monospace; font-size: 8px; }
+      .label { fill: #cbd5e1; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 9px; text-anchor: middle; }
+      .status-text { fill: #64748b; font-family: monospace; font-size: 9px; }
+      .status-dot { animation: pulse 2s ease-in-out infinite; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="400" fill="url(#bg)"/>
+  <rect width="800" height="400" fill="url(#grid)" class="grid-overlay"/>
+  <circle cx="400" cy="210" r="160" fill="url(#brainGlow)"/>
+
+  <!-- Scan line -->
+  <rect x="0" y="0" width="800" height="3" fill="#8b5cf6" opacity="0.08" class="scan-line"/>
+
+  <!-- Title -->
+  <text x="400" y="48" text-anchor="middle" fill="url(#titleGrad)" font-family="'Segoe UI', system-ui, sans-serif" font-size="36" font-weight="bold" letter-spacing="6">WIKI RECALL</text>
+  <text x="400" y="70" text-anchor="middle" fill="#94a3b8" font-family="'Segoe UI', system-ui, sans-serif" font-size="12" letter-spacing="2">Compiled Knowledge Meets Layered Recall</text>
+
+  <!-- Concentric memory rings (L4 outermost → L0 innermost) -->
+  <!-- L4: Deep Archive -->
+  <circle cx="400" cy="210" r="130" fill="none" stroke="#3b82f6" stroke-width="0.8" class="ring-5" filter="url(#glowSoft)"/>
+  <text x="540" y="195" fill="#3b82f6" font-family="monospace" font-size="7" opacity="0.4">L4</text>
+  <!-- L3: Session History -->
+  <circle cx="400" cy="210" r="105" fill="none" stroke="#6366f1" stroke-width="1" class="ring-4" filter="url(#glowSoft)"/>
+  <text x="515" y="200" fill="#6366f1" font-family="monospace" font-size="7" opacity="0.5">L3</text>
+  <!-- L2: Knowledge Base -->
+  <circle cx="400" cy="210" r="80" fill="none" stroke="#8b5cf6" stroke-width="1.2" class="ring-3" filter="url(#glow)"/>
+  <text x="488" y="203" fill="#8b5cf6" font-family="monospace" font-size="7" opacity="0.6">L2</text>
+  <!-- L1: Active Work -->
+  <circle cx="400" cy="210" r="55" fill="none" stroke="#a78bfa" stroke-width="1.5" class="ring-2" filter="url(#glow)"/>
+  <text x="462" y="207" fill="#a78bfa" font-family="monospace" font-size="7" opacity="0.7">L1</text>
+  <!-- L0: Identity (innermost, brightest) -->
+  <circle cx="400" cy="210" r="30" fill="none" stroke="#f59e0b" stroke-width="2" class="ring-1" filter="url(#glowStrong)"/>
+  <circle cx="400" cy="210" r="22" fill="url(#ring0)"/>
+
+  <!-- Central brain node -->
+  <circle cx="400" cy="210" r="14" fill="#0d1033" stroke="#f59e0b" stroke-width="2" filter="url(#glowStrong)" class="node-pulse"/>
+  <text x="400" y="215" text-anchor="middle" fill="#f59e0b" font-family="monospace" font-size="12" font-weight="bold">🧠</text>
+
+  <!-- Ripple from center -->
+  <circle cx="400" cy="210" r="14" fill="none" stroke="#f59e0b" stroke-width="1" class="ripple-ring"/>
+
+  <!-- Data flow lines: recall (inward) -->
+  <line x1="268" y1="180" x2="380" y2="205" stroke="#f59e0b" stroke-width="0.8" class="conn-line-in" opacity="0.4"/>
+  <line x1="280" y1="270" x2="385" y2="220" stroke="#8b5cf6" stroke-width="0.8" class="conn-line-in" opacity="0.3"/>
+  <line x1="530" y1="175" x2="420" y2="205" stroke="#f59e0b" stroke-width="0.8" class="conn-line-in" opacity="0.4"/>
+  <line x1="520" y1="280" x2="415" y2="220" stroke="#8b5cf6" stroke-width="0.8" class="conn-line-in" opacity="0.3"/>
+
+  <!-- Data flow lines: compile (outward) -->
+  <line x1="400" y1="195" x2="350" y2="120" stroke="#3b82f6" stroke-width="0.8" class="conn-line" opacity="0.3"/>
+  <line x1="400" y1="195" x2="450" y2="120" stroke="#3b82f6" stroke-width="0.8" class="conn-line" opacity="0.3"/>
+  <line x1="400" y1="225" x2="350" y2="310" stroke="#3b82f6" stroke-width="0.8" class="conn-line" opacity="0.2"/>
+  <line x1="400" y1="225" x2="450" y2="310" stroke="#3b82f6" stroke-width="0.8" class="conn-line" opacity="0.2"/>
+
+  <!-- Orbiting data particles on rings -->
+  <g class="orbit-cw">
+    <circle cx="530" cy="210" r="2.5" fill="#f59e0b" opacity="0.7" filter="url(#glowSoft)"/>
+    <circle cx="400" cy="80" r="2" fill="#3b82f6" opacity="0.5" filter="url(#glowSoft)"/>
+    <circle cx="320" cy="258" r="1.8" fill="#8b5cf6" opacity="0.6" filter="url(#glowSoft)"/>
+  </g>
+  <g class="orbit-ccw">
+    <circle cx="270" cy="210" r="2" fill="#a78bfa" opacity="0.5" filter="url(#glowSoft)"/>
+    <circle cx="480" cy="280" r="2.5" fill="#f59e0b" opacity="0.6" filter="url(#glowSoft)"/>
+    <circle cx="355" cy="155" r="1.5" fill="#3b82f6" opacity="0.4" filter="url(#glowSoft)"/>
+  </g>
+
+  <!-- Small knowledge nodes on the rings -->
+  <g class="node-float breathe">
+    <circle cx="310" cy="140" r="6" fill="#0d1033" stroke="#8b5cf6" stroke-width="1" filter="url(#glow)"/>
+    <text x="310" y="143" text-anchor="middle" font-size="6">📄</text>
+  </g>
+  <g class="node-float-d1 breathe">
+    <circle cx="500" cy="155" r="6" fill="#0d1033" stroke="#3b82f6" stroke-width="1" filter="url(#glow)"/>
+    <text x="500" y="158" text-anchor="middle" font-size="6">🔗</text>
+  </g>
+  <g class="node-float breathe">
+    <circle cx="290" cy="280" r="6" fill="#0d1033" stroke="#a78bfa" stroke-width="1" filter="url(#glow)"/>
+    <text x="290" y="283" text-anchor="middle" font-size="6">💡</text>
+  </g>
+  <g class="node-float-d1 breathe">
+    <circle cx="515" cy="270" r="6" fill="#0d1033" stroke="#f59e0b" stroke-width="1" filter="url(#glow)"/>
+    <text x="515" y="273" text-anchor="middle" font-size="6">⚡</text>
+  </g>
+
+  <!-- Mini token-counter panel (left) -->
+  <rect x="30" y="140" width="150" height="95" class="panel"/>
+  <rect x="30" y="140" width="150" height="18" rx="6" fill="#1a1a3e"/>
+  <text x="42" y="153" class="panel-header">▸ TOKEN BUDGET</text>
+  <text x="42" y="172" class="panel-text" font-size="7">brain.md loaded:</text>
+  <text x="42" y="186" class="panel-text-bright" font-size="14" fill="#f59e0b">~550</text>
+  <text x="82" y="186" class="panel-text" font-size="8" fill="#94a3b8"> tokens</text>
+  <text x="42" y="200" class="panel-text" font-size="7" fill="#64748b">to wake up identity</text>
+  <line x1="42" y1="206" x2="168" y2="206" stroke="#1e1e4a" stroke-width="0.5"/>
+  <text x="42" y="218" class="panel-text" font-size="7">recall depth:</text>
+  <text x="108" y="218" class="panel-text" font-size="7" fill="#8b5cf6">5 layers</text>
+  <text x="42" y="228" class="panel-text" font-size="7">wiki pages:</text>
+  <text x="100" y="228" class="panel-text" font-size="7" fill="#a78bfa">89</text>
+
+  <!-- Mini layer-view panel (right) -->
+  <rect x="620" y="130" width="150" height="120" class="panel"/>
+  <rect x="620" y="130" width="150" height="18" rx="6" fill="#1a1a3e"/>
+  <text x="632" y="143" class="panel-header">▸ MEMORY LAYERS</text>
+  <!-- L0 -->
+  <circle cx="640" cy="160" r="4" fill="#f59e0b" opacity="0.9"/>
+  <text x="652" y="163" class="panel-text-bright" font-size="7">L0  Identity</text>
+  <rect x="720" y="157" width="40" height="5" rx="2" fill="#1a1a3e"/>
+  <rect x="720" y="157" width="40" height="5" rx="2" fill="#f59e0b" opacity="0.9"/>
+  <!-- L1 -->
+  <circle cx="640" cy="178" r="4" fill="#a78bfa" opacity="0.7"/>
+  <text x="652" y="181" class="panel-text-bright" font-size="7">L1  Active Work</text>
+  <rect x="720" y="175" width="40" height="5" rx="2" fill="#1a1a3e"/>
+  <rect x="720" y="175" width="33" height="5" rx="2" fill="#a78bfa" opacity="0.7"/>
+  <!-- L2 -->
+  <circle cx="640" cy="196" r="4" fill="#8b5cf6" opacity="0.55"/>
+  <text x="652" y="199" class="panel-text" font-size="7">L2  Knowledge Base</text>
+  <rect x="720" y="193" width="40" height="5" rx="2" fill="#1a1a3e"/>
+  <rect x="720" y="193" width="26" height="5" rx="2" fill="#8b5cf6" opacity="0.6"/>
+  <!-- L3 -->
+  <circle cx="640" cy="214" r="4" fill="#6366f1" opacity="0.4"/>
+  <text x="652" y="217" class="panel-text" font-size="7">L3  Session History</text>
+  <rect x="720" y="211" width="40" height="5" rx="2" fill="#1a1a3e"/>
+  <rect x="720" y="211" width="18" height="5" rx="2" fill="#6366f1" opacity="0.45"/>
+  <!-- L4 -->
+  <circle cx="640" cy="232" r="4" fill="#3b82f6" opacity="0.25"/>
+  <text x="652" y="235" class="panel-text" font-size="7">L4  Deep Archive</text>
+  <rect x="720" y="229" width="40" height="5" rx="2" fill="#1a1a3e"/>
+  <rect x="720" y="229" width="10" height="5" rx="2" fill="#3b82f6" opacity="0.3"/>
+  <!-- Legend -->
+  <line x1="632" y1="242" x2="758" y2="242" stroke="#1e1e4a" stroke-width="0.5"/>
+  <text x="632" y="250" class="panel-text" font-size="6" fill="#64748b">brightness = recall priority</text>
+
+  <!-- Rising particles -->
+  <circle cx="370" cy="320" r="1.5" fill="#8b5cf6" class="particle"/>
+  <circle cx="430" cy="330" r="1" fill="#f59e0b" class="particle-d1"/>
+  <circle cx="390" cy="340" r="1.2" fill="#3b82f6" class="particle-d2"/>
+  <circle cx="410" cy="315" r="1" fill="#a78bfa" class="particle-d3"/>
+  <circle cx="355" cy="335" r="1.5" fill="#f59e0b" class="particle-d4"/>
+  <circle cx="445" cy="345" r="1" fill="#8b5cf6" class="particle"/>
+
+  <!-- Corner decorations -->
+  <path d="M 10 30 L 10 10 L 30 10" fill="none" stroke="#8b5cf6" stroke-width="1" opacity="0.4"/>
+  <path d="M 770 10 L 790 10 L 790 30" fill="none" stroke="#8b5cf6" stroke-width="1" opacity="0.4"/>
+  <path d="M 10 370 L 10 390 L 30 390" fill="none" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
+  <path d="M 770 370 L 790 370 L 790 390" fill="none" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
+
+  <!-- Status bar -->
+  <rect x="0" y="378" width="800" height="22" fill="#08081a" opacity="0.8"/>
+  <line x1="0" y1="378" x2="800" y2="378" stroke="#1e1e4a" stroke-width="0.5"/>
+  <circle cx="25" cy="389" r="3" fill="#22c55e" class="status-dot"/>
+  <text x="35" y="393" class="status-text">karpathy wiki</text>
+  <text x="125" y="393" class="status-text" fill="#1e1e4a">│</text>
+  <text x="140" y="393" class="status-text">mempalace layers</text>
+  <text x="265" y="393" class="status-text" fill="#1e1e4a">│</text>
+  <text x="280" y="393" class="status-text">1,060 tests</text>
+  <text x="690" y="393" class="status-text" fill="#8b5cf6" font-size="8">▸ WIKI RECALL v1.0</text>
+</svg>

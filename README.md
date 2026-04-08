@@ -1,3 +1,5 @@
+<p align="center"><img src="hero.svg" alt="Wiki Recall Hero" width="800" /></p>
+
 # wiki-recall
 
 **Compiled knowledge + layered recall for Copilot CLI.**

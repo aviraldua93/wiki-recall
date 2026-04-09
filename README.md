@@ -2,7 +2,7 @@
 
 # wiki-recall
 
-**Your AI remembers everything. Yours doesn't. Fix that.**
+**Persistent memory for Copilot CLI.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-1,524_passing-brightgreen)]()
@@ -16,16 +16,16 @@
 
 ---
 
-## Every Copilot session starts from scratch. This one doesn't.
+## Every session starts from scratch. This one doesn't.
 
-You open your terminal on Monday. You haven't touched this project in two weeks. Instead of dumping your architecture, re-explaining your decisions, and reminding Copilot about the PR you left open — it already knows.
+You open your terminal on Monday. You haven't touched this project in two weeks. Instead of re-explaining your architecture, your decisions, and the PR you left open — Copilot already knows.
 
-**wiki-recall** compiles your Copilot CLI session history into a persistent, layered knowledge base. ~550 tokens loads your entire working context. Everything else loads on demand. Your AI gets smarter the more you use it — automatically.
+**wiki-recall** compiles your session history into a persistent, layered knowledge base that loads in ~550 tokens. Decisions auto-capture. Bug patterns auto-extract. People names auto-resolve. Your voice auto-learns. You just work.
 
 > *"The tedious part of maintaining a knowledge base is not the reading or the thinking — it's the bookkeeping."*
-> — Gap Analysis Review
+> — Gap Analysis Review (one of 9 expert reviews)
 
-wiki-recall eliminates the bookkeeping. Decisions auto-capture. Bug patterns auto-extract. People names auto-resolve. Your voice auto-learns. You just work.
+wiki-recall eliminates the bookkeeping.
 
 ---
 

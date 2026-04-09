@@ -1,5 +1,7 @@
 # Brain — [YOUR_NAME]
 Last refreshed: [TIMESTAMP]
+> If >7 days old, run `scripts/compact.ps1` to refresh.
+> Run `scripts/harvest.ps1` periodically to auto-capture decisions and patterns.
 
 ## L0 — Identity
 - Name: [YOUR_NAME]

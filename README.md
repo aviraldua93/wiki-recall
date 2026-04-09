@@ -5,12 +5,12 @@
 **Compiled knowledge + layered recall for Copilot CLI.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1,399_passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-1,524_passing-brightgreen)]()
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white)](https://python.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/MCP-10_tools-purple)](https://modelcontextprotocol.io)
 
-| **~550** | **5 layers** | **1,399 tests** | **10 MCP tools** |
+| **~550** | **5 layers** | **1,524 tests** | **10 MCP tools** |
 |:---:|:---:|:---:|:---:|
 | tokens to wake up | L0-L4 memory stack | all passing | search, recall, status |
 
@@ -31,18 +31,23 @@ wiki-recall fixes this by compiling your session history into a persistent, stru
 ```
 ~/.grain/                              (YOUR DATA - local only, never pushed)
 |- brain.md                            L0+L1 hot cache (~550 tokens, every session)
+|- persona.md                          Voice, tone, writing style (self-training)
 |- actions.md                          Follow-ups, commitments, todos
 |- decisions.md                        Things already decided (never re-debate)
 |- wiki/
 |  |- index.md                         Master catalog
 |  |- projects/                        One page per project
 |  |- patterns/                        Bugs, gotchas, workarounds
-|  +- concepts/                        Tech concepts
-|- domains/                            Domain context files (one per work area)
+|  |- concepts/                        Tech concepts
+|  +- people/                          One page per colleague
+|- domains/
+|  |- comms.md                         People name → identity routing
+|  +- [your-domains].md                Domain context files
 |- reference/                          Hard gates, multi-agent rules
 |- engine/
 |  |- chromadb/                        Semantic search index
-|  +- .last_indexed                    Timestamp tracking
+|  |- .last_indexed                    Timestamp tracking
+|  +- .last_harvested                  Auto-capture tracking
 +- .obsidian/                          Vault config for graph view
 ```
 
@@ -96,6 +101,83 @@ The setup wizard will:
 ## Python Engine
 
 The engine mines your Copilot CLI sessions and makes them searchable.
+
+### Auto-Capture (`engine/harvest.py`) ⭐ NEW
+
+**The #1 feature for going from A- to A+.** Instead of relying on you to say "save this decision", harvest.py automatically mines your session history and extracts:
+
+- **Decisions** — phrases like "decided to", "let's go with", "we're using"
+- **Bug patterns** — phrases like "fixed by", "the fix was", "workaround:", "gotcha:"
+- **Project updates** — session summaries mentioning your known projects
+- **New topics** — sessions about things not yet in your wiki
+
+```bash
+python engine/harvest.py                    # Dry-run (preview what would change)
+python engine/harvest.py --auto             # Actually write changes
+python engine/harvest.py --since 2026-04-08 # Harvest since specific date
+python engine/harvest.py --status           # Show last harvest time
+
+# Or use the PowerShell wrapper:
+powershell -ExecutionPolicy Bypass -File scripts/harvest.ps1 --auto
+```
+
+**Safety:** Dry-run by default. Deduplicates against existing content. Filters out agent-spawned sessions. Runs `backup.ps1` before any writes.
+
+### Staleness Detection ⭐ NEW
+
+Wiki pages go stale silently. Three months from now, a project page says "PR #405 submitted" when it merged weeks ago. Stale docs are **actively harmful**.
+
+- Every wiki page gets `last_verified: YYYY-MM-DD` in YAML frontmatter
+- `lint.ps1` flags pages >60 days unverified as **STALE**
+- `harvest.py` auto-updates `last_verified` when it touches a page
+- Domain templates include `last_verified` by default
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/lint.ps1
+# Output: "Stale: 3 (auth-patterns (72d unverified), old-project (95d unverified), ...)"
+```
+
+### Auto-Backup on Write ⭐ NEW
+
+Before any write to `~/.grain/`, `backup.ps1` creates a timestamped copy. No more "I accidentally overwrote brain.md."
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/backup.ps1
+# Creates: ~/.grain/.backups/20260409-173200/
+# Auto-prunes: keeps last 10 backups
+```
+
+The `copilot-instructions.md` template tells Copilot to run backup.ps1 before every write — **the LLM doesn't need to remember, the instructions enforce it.**
+
+### Token Benchmarking ⭐ NEW
+
+We don't just claim "~550 tokens to wake up" — the `benchmarks/token-benchmark.md` methodology doc shows you how to prove it:
+
+- 5 session types (cold start → full stack)
+- Metrics: wake-up cost, L2/L3 deltas, naive baseline comparison
+- Target: >95% token savings vs dump-everything
+
+### Proactive Pattern Surfacing ⭐ NEW
+
+When you mention "debugging PowerShell issue", Copilot now proactively surfaces `wiki/patterns/powershell-gotchas.md` **without being asked**. The `copilot-instructions.md` template includes trigger-matching rules for automatic pattern surfacing.
+
+### Persona & Voice Matching ⭐ NEW
+
+`persona.md` is a **self-training voice profile.** When Copilot drafts any communication — email, Teams message, PR description — it reads `persona.md` to match your voice. Say "that's not how I talk" and it immediately updates the file. The persona evolves from feedback.
+
+Setup wizard asks: communication style (casual/formal/mixed), greeting preference, sign-off style. The starter persona self-trains from there.
+
+### People Routing ⭐ NEW
+
+`domains/comms.md` is a **quick-resolve table** for people names. When you say "reply to Sarah", Copilot checks `comms.md` first instead of searching the entire directory. It self-trains: wrong match? Tell it and the table updates.
+
+`wiki/people/` stores detailed per-person pages — role, team, projects, collaboration style. `harvest.py` auto-detects new names mentioned across sessions and suggests creating pages:
+
+```
+🧑 People Mentioned (3):
+  + Sarah (3 sessions) — no wiki/people/sarah.md yet
+  + Jake (2 sessions) — no wiki/people/jake.md yet
+```
 
 ### Indexer (`engine/indexer.py`)
 
@@ -151,9 +233,11 @@ python -m engine
 | Script | What it does |
 |:-------|:-------------|
 | `scripts/setup.ps1` | Interactive onboarding wizard |
+| `scripts/harvest.ps1` | Auto-capture decisions & patterns from sessions |
 | `scripts/refresh.ps1` | Mine session_store - update brain.md Active Work |
 | `scripts/compact.ps1` | Archive old brain.md entries, reset timestamps |
-| `scripts/lint.ps1` | Wiki health check (orphans, stale pages, coverage) |
+| `scripts/backup.ps1` | Timestamped backup of ~/.grain/ (auto-prunes) |
+| `scripts/lint.ps1` | Wiki health check (orphans, stale pages, staleness detection) |
 
 ---
 
@@ -333,12 +417,13 @@ All benchmarks use reproducible seeded mock data. Zero API costs.
 | Category | Tests | Pass Rate |
 |:---------|------:|:---------:|
 | TypeScript unit + E2E | 1,399 | 100% |
-| Python engine | 16 | 100% |
+| Python engine (indexer, search, MCP) | 16 | 100% |
+| Python harvest (auto-capture + people) | 109 | 100% |
 | Stress tests (chaos engineering) | 193 | 100% |
 | Benchmark suites | 89 | 100% |
-| **Total** | **1,399** | **100%** |
+| **Total** | **1,524** | **100%** |
 
-Includes: schema injection, FTS5 injection, SQL injection, concurrent CRUD, corrupt YAML handling, 10K-char queries, 100 concurrent router queries, path traversal attempts. **1 real bug found and fixed** (listEntities crash on corrupt YAML). All other stress tests confirmed defenses hold.
+Includes: schema injection, FTS5 injection, SQL injection, concurrent CRUD, corrupt YAML handling, 10K-char queries, 100 concurrent router queries, path traversal attempts, **harvest decision extraction, bug pattern extraction, dedup validation, frontmatter updates, edge cases (unicode, None fields, empty sessions, missing store)**. **1 real bug found and fixed** (listEntities crash on corrupt YAML). All stress tests confirmed defenses hold.
 
 ```bash
 bun test              # All 1,399 tests

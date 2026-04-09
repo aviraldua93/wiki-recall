@@ -64,23 +64,49 @@ foreach ($link in $allWikiLinks) {
     }
 }
 
-# --- 3. Stale pages: frontmatter `updated:` older than 30 days ---
-$staleDays = 30
+# --- 3. Stale pages: frontmatter `last_verified:` or `updated:` older than threshold ---
+$staleDaysVerified = 60    # last_verified threshold (Feature 2: staleness detection)
+$staleDaysUpdated = 30     # updated threshold (legacy)
 $now = Get-Date
 $stalePages = @()
+$unverifiedPages = @()
 foreach ($p in $allPages) {
     $content = Get-Content $p.FullPath -Raw
-    if ($content -match '(?m)^updated:\s*(.+)$') {
+    $hasLastVerified = $false
+
+    # Check last_verified (preferred — set by harvest.py)
+    if ($content -match '(?m)^last_verified:\s*(.+)$') {
+        $hasLastVerified = $true
+        $dateStr = $Matches[1].Trim().Trim('"').Trim("'")
+        try {
+            $verifiedDate = [DateTime]::Parse($dateStr)
+            $age = ($now - $verifiedDate).Days
+            if ($age -gt $staleDaysVerified) {
+                $stalePages += "$($p.Name) (${age}d unverified)"
+            }
+        } catch {
+            # unparseable date — flag as stale
+            $stalePages += "$($p.Name) (bad last_verified date)"
+        }
+    }
+
+    # Fallback: check updated (legacy)
+    if (-not $hasLastVerified -and $content -match '(?m)^updated:\s*(.+)$') {
         $dateStr = $Matches[1].Trim().Trim('"').Trim("'")
         try {
             $updatedDate = [DateTime]::Parse($dateStr)
             $age = ($now - $updatedDate).Days
-            if ($age -gt $staleDays) {
-                $stalePages += "$($p.Name) (${age}d)"
+            if ($age -gt $staleDaysUpdated) {
+                $stalePages += "$($p.Name) (${age}d since update)"
             }
         } catch {
             # unparseable date, skip
         }
+    }
+
+    # Track pages with no verification date at all
+    if (-not $hasLastVerified -and -not ($content -match '(?m)^updated:\s*')) {
+        $unverifiedPages += $p.Name
     }
 }
 
@@ -150,9 +176,13 @@ if ($missingRefs.Count -eq 0) {
 }
 
 if ($stalePages.Count -eq 0) {
-    Write-Host "Stale (>30d): 0"
+    Write-Host "Stale: 0"
 } else {
-    Write-Host "Stale (>30d): $($stalePages.Count) ($($stalePages -join ', '))"
+    Write-Host "Stale: $($stalePages.Count) ($($stalePages -join ', '))"
+}
+
+if ($unverifiedPages.Count -gt 0) {
+    Write-Host "No last_verified: $($unverifiedPages.Count)"
 }
 
 Write-Host "No frontmatter: $($noFrontmatter.Count)"

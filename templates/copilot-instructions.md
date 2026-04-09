@@ -8,11 +8,17 @@ GitHub: [YOUR_GITHUB]
 Brain: ~/.grain/brain.md (L0+L1, loaded every session)
 Wiki: ~/.grain/wiki/ (L2, on-demand)
 Engine: ~/.grain/engine/ (L3, semantic search)
+Persona: ~/.grain/persona.md — voice, tone, writing style (read when drafting messages, emails, PRs, or any communication AS me)
+People: ~/.grain/wiki/people/ — per-person pages (role, projects, collaboration style)
 
 ## Hard Gates
 - NO SHIP BELOW 95% CONFIDENCE: lint, test, diff review before any push
 - NO ASSUMED LIMITATIONS: try it, install tools, only then report failure
 - DOMAIN EXPERT FEEDBACK = BLOCKER: investigate what they mean first
+
+## Auto-Backup
+Before writing to any ~/.grain/ file, silently run `scripts/backup.ps1` first.
+This ensures a timestamped backup exists before every change.
 
 ## Work Style
 - Concise in routine responses (<100 words)
@@ -26,8 +32,19 @@ After completing significant work, ask:
 - "Any action items to track in actions.md?"
 - "Should I update the wiki with what we learned?"
 
+## Proactive Pattern Surfacing
+When the user mentions debugging or troubleshooting a technology:
+- Check wiki/patterns/ for matching files (e.g., "PowerShell issue" → patterns/powershell-gotchas.md)
+- If a matching pattern page exists, proactively surface it: "I found known patterns for this — here's what we've seen before."
+- Match on: technology name, error keywords, tool names, framework names
+- Do NOT wait for the user to ask "any known fixes?" — surface patterns immediately.
+
 ## Routing
 - "What am I working on?" → read brain.md L1
 - "What do I know about X?" → grain_search or grain_recall
 - Architecture decisions → check decisions.md first
 - New project context → check domains/ files
+- Debugging/troubleshooting → check wiki/patterns/ proactively
+- **Comms routing:** when I mention a person's name → read `domains/comms.md` FIRST to resolve, then search Teams/email
+- **Drafting anything AS me:** read `persona.md` before writing. Match my voice exactly.
+- **Person detail:** check `wiki/people/[name].md` for collaboration context

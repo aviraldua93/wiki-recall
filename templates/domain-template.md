@@ -2,6 +2,7 @@
 title: [DOMAIN_NAME]
 created: [TIMESTAMP]
 updated: [TIMESTAMP]
+last_verified: [DATE]
 ---
 
 # [DOMAIN_NAME]

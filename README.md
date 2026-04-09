@@ -236,11 +236,29 @@ cd wiki-recall
 pip install chromadb pyyaml          # Python engine
 bun install                          # TypeScript modules
 
-# Run the setup wizard
+# Run the setup wizard (creates ~/.grain/, prompts to harvest existing sessions)
 powershell -ExecutionPolicy Bypass -File scripts/setup.ps1
 ```
 
-The wizard asks your name, GitHub identities, work domains, **communication style, greeting preference, and sign-off** — then generates your personal `~/.grain/` with `brain.md`, `persona.md`, `copilot-instructions.md`, and domain files.
+The wizard asks your name, GitHub identities, work domains, **communication style, greeting preference, and sign-off** — then generates your personal `~/.grain/` with `brain.md`, `persona.md`, `copilot-instructions.md`, and domain files. If you have existing Copilot CLI sessions, setup will offer to harvest them into your brain automatically.
+
+### Standalone Install
+
+If you only need the search engine (no TypeScript modules, no cloning the full repo):
+
+```bash
+# Download just the engine
+mkdir -p ~/.grain/engine
+cd ~/.grain/engine
+curl -sLO https://raw.githubusercontent.com/aviraldua93/wiki-recall/main/engine/indexer.py
+curl -sLO https://raw.githubusercontent.com/aviraldua93/wiki-recall/main/engine/search.py
+curl -sLO https://raw.githubusercontent.com/aviraldua93/wiki-recall/main/engine/mcp_server.py
+curl -sLO https://raw.githubusercontent.com/aviraldua93/wiki-recall/main/engine/__init__.py
+curl -sLO https://raw.githubusercontent.com/aviraldua93/wiki-recall/main/engine/__main__.py
+pip install chromadb pyyaml
+```
+
+This gives you the indexer, hybrid search, and MCP server without the full repo.
 
 ### Daily Workflow
 
@@ -255,6 +273,10 @@ powershell -File scripts/lint.ps1
 # Reindex for semantic search
 python engine/indexer.py --incremental
 ```
+
+### Obsidian Integration
+
+wiki-recall ships with an Obsidian graph view config. See [docs/obsidian-setup.md](docs/obsidian-setup.md) for setup and color coding.
 
 ---
 

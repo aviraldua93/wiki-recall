@@ -44,6 +44,10 @@ $domains = ($domainsInput -split ',') | ForEach-Object { $_.Trim() } | Where-Obj
 $principles = Read-Host "Your core work principles (comma-separated, e.g., ship fast, test everything)"
 $principlesList = ($principles -split ',') | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
 
+$commStyle = Read-Host "Your communication style (e.g., direct, concise, casual)"
+$greeting = Read-Host "Your preferred greeting (e.g., Hey, Hi team, Hello)"
+$signOff = Read-Host "Your sign off (e.g., Thanks, Best, Cheers)"
+
 Write-Host ""
 Write-Host "Setting up ~/.grain/ ..." -ForegroundColor Green
 
@@ -54,6 +58,7 @@ $dirs = @(
     (Join-Path $grainDir 'wiki' 'projects'),
     (Join-Path $grainDir 'wiki' 'patterns'),
     (Join-Path $grainDir 'wiki' 'concepts'),
+    (Join-Path $grainDir 'wiki' 'people'),
     (Join-Path $grainDir 'domains'),
     (Join-Path $grainDir 'reference'),
     (Join-Path $grainDir 'engine')
@@ -147,6 +152,7 @@ foreach ($domain in $domains) {
 title: $domain
 created: $nowIso
 updated: $nowIso
+last_verified: $(Get-Date -Format 'yyyy-MM-dd')
 ---
 
 # $domain
@@ -200,7 +206,36 @@ if (-not (Test-Path $instructionsPath)) {
     Write-Host "  Skipped: copilot-instructions.md (already exists)" -ForegroundColor Yellow
 }
 
-# --- Step 8: Copy .obsidian config ---
+# --- Step 7b: Generate persona.md ---
+$personaPath = Join-Path $grainDir 'persona.md'
+if (-not (Test-Path $personaPath)) {
+    $personaSrc = Join-Path $templateDir 'persona.md'
+    if (Test-Path $personaSrc) {
+        $personaContent = Get-Content $personaSrc -Raw
+        $personaContent = $personaContent -replace '\[YOUR_NAME\]', $name
+        $personaContent = $personaContent -replace '\[COMM_STYLE\]', $commStyle
+        $personaContent = $personaContent -replace '\[GREETING\]', $greeting
+        $personaContent = $personaContent -replace '\[SIGNOFF\]', $signOff
+        Set-Content -Path $personaPath -Value $personaContent -Encoding UTF8
+        Write-Host "  Generated: persona.md" -ForegroundColor Green
+    } else {
+        Write-Host "  Skipped: persona.md template not found" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  Skipped: persona.md (already exists)" -ForegroundColor Yellow
+}
+
+# --- Step 7c: Copy comms.md domain ---
+$commsSrc = Join-Path $templateDir 'domains' 'comms.md'
+$commsDst = Join-Path $grainDir 'domains' 'comms.md'
+if (-not (Test-Path $commsDst)) {
+    if (Test-Path $commsSrc) {
+        Copy-Item -Path $commsSrc -Destination $commsDst
+        Write-Host "  Copied: domains/comms.md" -ForegroundColor DarkGray
+    }
+}
+
+# --- Step 8: Copy .obsidian config and register vault ---
 $obsidianSrc = Join-Path $PSScriptRoot '..' '.obsidian'
 $obsidianDst = Join-Path $grainDir '.obsidian'
 if ((Test-Path $obsidianSrc) -and -not (Test-Path $obsidianDst)) {
@@ -208,19 +243,67 @@ if ((Test-Path $obsidianSrc) -and -not (Test-Path $obsidianDst)) {
     Write-Host "  Copied: .obsidian/ config" -ForegroundColor DarkGray
 }
 
-# --- Step 9: Try to index session_store ---
+# --- Step 8b: Copy .gitignore template ---
+$gitignoreSrc = Join-Path $templateDir 'grain-gitignore'
+$gitignoreDst = Join-Path $grainDir '.gitignore'
+if (-not (Test-Path $gitignoreDst)) {
+    if (Test-Path $gitignoreSrc) {
+        Copy-Item -Path $gitignoreSrc -Destination $gitignoreDst
+        Write-Host "  Copied: .gitignore (PII protection)" -ForegroundColor DarkGray
+    }
+} else {
+    Write-Host "  Skipped: .gitignore (already exists)" -ForegroundColor Yellow
+}
+
+# --- Step 9: Try to index and harvest session_store ---
 $engineDir = Join-Path $PSScriptRoot '..' 'engine'
 $indexerPath = Join-Path $engineDir 'indexer.py'
+$harvestPath = Join-Path $engineDir 'harvest.py'
 $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
 if ($pythonCmd -and (Test-Path $indexerPath)) {
     $sessionDb = Join-Path $env:USERPROFILE '.copilot' 'session-store.db'
     if (Test-Path $sessionDb) {
-        Write-Host ""
-        Write-Host "Found session_store — indexing into ChromaDB..." -ForegroundColor Cyan
+        # Count sessions to give user context
+        $sessionCount = 0
         try {
-            & python $indexerPath 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
-        } catch {
-            Write-Host "  Indexing failed (you can run it later): $_" -ForegroundColor Yellow
+            $countOutput = & python -c "import sqlite3; conn = sqlite3.connect('$($sessionDb -replace '\\','/')'); print(conn.execute('SELECT COUNT(*) FROM sessions').fetchone()[0]); conn.close()" 2>$null
+            $sessionCount = [int]$countOutput
+        } catch {}
+
+        Write-Host ""
+        Write-Host "Found session_store with $sessionCount existing session(s)." -ForegroundColor Cyan
+        $runHarvest = Read-Host "Run harvest to populate your brain? [Y/n]"
+        if ($runHarvest -ne 'n' -and $runHarvest -ne 'N') {
+            Write-Host "  Indexing into ChromaDB..." -ForegroundColor Cyan
+            try {
+                & python $indexerPath 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
+            } catch {
+                Write-Host "  Indexing failed (you can run it later): $_" -ForegroundColor Yellow
+            }
+
+            if (Test-Path $harvestPath) {
+                Write-Host "  Running harvest (dry-run preview)..." -ForegroundColor Cyan
+                try {
+                    & python $harvestPath 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
+                    Write-Host ""
+                    $autoHarvest = Read-Host "  Write these findings to your brain? [Y/n]"
+                    if ($autoHarvest -ne 'n' -and $autoHarvest -ne 'N') {
+                        & python $harvestPath --auto 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
+                        Write-Host "  ✓ Harvest complete!" -ForegroundColor Green
+                    }
+                } catch {
+                    Write-Host "  Harvest failed (you can run it later): $_" -ForegroundColor Yellow
+                }
+            }
+
+            # Mark harvest timestamp
+            $lastHarvested = Join-Path $grainDir 'engine' '.last_harvested'
+            if (-not (Test-Path $lastHarvested)) {
+                $nowIsoHarvest = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.000Z')
+                Set-Content -Path $lastHarvested -Value $nowIsoHarvest -Encoding UTF8
+            }
+        } else {
+            Write-Host "  Skipped — run 'python engine/harvest.py' later to populate." -ForegroundColor DarkGray
         }
     } else {
         Write-Host "  No session_store found (will index after first Copilot CLI sessions)" -ForegroundColor DarkGray
@@ -230,13 +313,54 @@ if ($pythonCmd -and (Test-Path $indexerPath)) {
 }
 
 # --- Step 10: Open Obsidian ---
-$obsidian = Get-Command obsidian -ErrorAction SilentlyContinue
-if ($obsidian) {
-    Write-Host ""
-    $openVault = Read-Host "Open ~/.grain/ in Obsidian? (y/N)"
-    if ($openVault -eq 'y' -or $openVault -eq 'Y') {
-        Start-Process "obsidian://open?vault=$([Uri]::EscapeDataString($grainDir))"
+$obsidianConfigPath = Join-Path $env:APPDATA 'obsidian' 'obsidian.json'
+if (Test-Path $obsidianConfigPath) {
+    # Obsidian is installed — check if vault is registered
+    try {
+        $obsidianConfig = Get-Content $obsidianConfigPath -Raw | ConvertFrom-Json
+        $vaultPath = $grainDir -replace '\\', '/'
+        $vaultRegistered = $false
+
+        if ($obsidianConfig.vaults -and $obsidianConfig.vaults.PSObject.Properties) {
+            foreach ($prop in $obsidianConfig.vaults.PSObject.Properties) {
+                $vaultEntry = $prop.Value
+                if ($vaultEntry.path -and ($vaultEntry.path -replace '\\', '/') -eq $vaultPath) {
+                    $vaultRegistered = $true
+                    break
+                }
+            }
+        }
+
+        if (-not $vaultRegistered) {
+            # Auto-register the vault
+            $vaultId = [guid]::NewGuid().ToString('N').Substring(0, 16)
+            $newVault = @{ path = $vaultPath }
+
+            if (-not $obsidianConfig.vaults) {
+                $obsidianConfig | Add-Member -NotePropertyName 'vaults' -NotePropertyValue ([PSCustomObject]@{})
+            }
+            $obsidianConfig.vaults | Add-Member -NotePropertyName $vaultId -NotePropertyValue ([PSCustomObject]$newVault)
+            $obsidianConfig | ConvertTo-Json -Depth 10 | Set-Content $obsidianConfigPath -Encoding UTF8
+            Write-Host "  Registered ~/.grain/ as Obsidian vault" -ForegroundColor Green
+        } else {
+            Write-Host "  Obsidian vault already registered" -ForegroundColor DarkGray
+        }
+
+        Write-Host ""
+        $openVault = Read-Host "Open ~/.grain/ in Obsidian? (y/N)"
+        if ($openVault -eq 'y' -or $openVault -eq 'Y') {
+            Start-Process "obsidian://open?vault=$([Uri]::EscapeDataString((Split-Path $grainDir -Leaf)))"
+        }
+    } catch {
+        Write-Host "  Could not read Obsidian config: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "  Open Obsidian manually and use 'Open folder as vault' -> select ~/.grain/" -ForegroundColor Yellow
+        Write-Host "  See docs/obsidian-setup.md for details" -ForegroundColor DarkGray
     }
+} else {
+    Write-Host ""
+    Write-Host "  Obsidian not detected — skipping vault registration." -ForegroundColor Yellow
+    Write-Host "  Install Obsidian from https://obsidian.md for visual wiki browsing." -ForegroundColor DarkGray
+    Write-Host "  After installing, see docs/obsidian-setup.md for manual setup." -ForegroundColor DarkGray
 }
 
 # --- Step 11: Set up automatic maintenance ---
@@ -280,8 +404,9 @@ Write-Host "Your knowledge base is at: $grainDir" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Next steps:"
 Write-Host "  1. Start using Copilot CLI — your sessions will be mined automatically"
-Write-Host "  2. Run 'scripts/refresh.ps1' periodically to update brain.md"
-Write-Host "  3. Run 'scripts/lint.ps1' to check wiki health"
-Write-Host "  4. Run 'python engine/indexer.py' to reindex ChromaDB"
-Write-Host "  5. Run 'scripts/maintenance.ps1' for full maintenance cycle"
+Write-Host "  2. Run 'python engine/harvest.py' to extract decisions & patterns"
+Write-Host "  3. Run 'scripts/refresh.ps1' periodically to update brain.md"
+Write-Host "  4. Run 'scripts/lint.ps1' to check wiki health"
+Write-Host "  5. Run 'python engine/indexer.py' to reindex ChromaDB"
+Write-Host "  6. Run 'scripts/maintenance.ps1' for full maintenance cycle"
 Write-Host ""

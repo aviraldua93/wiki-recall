@@ -43,7 +43,35 @@ PATTERNS_PATH = WIKI_PATH / "patterns"
 PROJECTS_PATH = WIKI_PATH / "projects"
 PEOPLE_PATH = WIKI_PATH / "people"
 LAST_HARVESTED_PATH = GRAIN_ROOT / "engine" / ".last_harvested"
-BACKUP_SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "backup.ps1"
+def _resolve_backup_script() -> Path | None:
+    """Resolve backup.ps1 location with multiple fallbacks.
+
+    Search order:
+    1. WIKIRECALL_BACKUP_SCRIPT environment variable
+    2. ~/.grain/scripts/backup.ps1 (where setup.ps1 may have placed it)
+    3. Relative to this file's repo location (scripts/backup.ps1)
+    """
+    # 1. Environment variable override
+    env_path = os.environ.get("WIKIRECALL_BACKUP_SCRIPT")
+    if env_path:
+        p = Path(env_path)
+        if p.exists():
+            return p
+
+    # 2. User's grain scripts directory
+    grain_scripts = Path.home() / ".grain" / "scripts" / "backup.ps1"
+    if grain_scripts.exists():
+        return grain_scripts
+
+    # 3. Repo-relative location (next to this file)
+    repo_path = Path(__file__).resolve().parent.parent / "scripts" / "backup.ps1"
+    if repo_path.exists():
+        return repo_path
+
+    return None
+
+
+BACKUP_SCRIPT = _resolve_backup_script()
 
 
 # ── Extraction patterns ──────────────────────────────────────────────────────
@@ -83,6 +111,24 @@ _NOT_NAMES = frozenset({
     "something", "start", "still", "thing", "think", "those", "under",
     "until", "working", "already", "because", "getting",
     "hey", "dear", "thanks", "best", "cheers",
+    # Common English words that appear capitalized at sentence start
+    "testing", "experts", "maybe", "loaded", "prompt", "why", "dom", "dev",
+    "clicks", "note", "notes", "please", "also", "team", "build", "file",
+    "code", "test", "data", "type", "pull", "push", "read", "show",
+    "save", "move", "look", "find", "open", "close", "next", "last",
+    "true", "false", "null", "none", "many", "most", "same", "real",
+    "full", "auto", "main", "base", "core", "spec", "plan", "fast",
+    "long", "hard", "free", "safe", "stop", "skip", "left", "keep",
+    "drop", "pass", "fail", "warn", "info", "nice", "good", "fine",
+    "cool", "sure", "wait", "call", "send", "load", "dump", "sort",
+    "copy", "edit", "view", "list", "link", "sync", "diff", "grep",
+    "merge", "patch", "debug", "reset", "clean", "setup", "refactor",
+    "deploy", "query", "fetch", "parse", "cache", "proxy", "batch",
+    "async", "await", "yield", "super", "class", "const", "model",
+    "table", "field", "index", "route", "scope", "token", "agent",
+    "brain", "grain", "vault", "stack", "layer", "state", "store",
+    "queue", "event", "input", "print", "write", "added", "tried",
+    "given", "known", "asked", "said", "based", "below", "above",
 })
 
 
@@ -144,6 +190,21 @@ def get_turns(conn: sqlite3.Connection, session_id: str) -> list[dict]:
 
 # ── Extraction functions ─────────────────────────────────────────────────────
 
+# Words that indicate template/meta-language rather than real decisions
+_DECISION_META_WORDS = frozenset({
+    "decisions.md", "brain.md", "actions.md", "persona.md",
+    "saved automatically", "template", "placeholder", "example",
+    "copilot-instructions", "last_verified", "frontmatter",
+    "wiki-recall", "session_store", "auto-captured",
+})
+
+
+def _is_template_decision(text: str) -> bool:
+    """Check if a decision looks like template or meta-language."""
+    text_lower = text.lower()
+    return any(meta in text_lower for meta in _DECISION_META_WORDS)
+
+
 def extract_decisions(turns: list[dict]) -> list[str]:
     """Extract decision statements from conversation turns."""
     decisions = []
@@ -153,7 +214,11 @@ def extract_decisions(turns: list[dict]) -> list[str]:
             for pattern in DECISION_PATTERNS:
                 for match in pattern.finditer(text):
                     decision = match.group(1).strip().rstrip(".,;")
-                    if len(decision) >= 15 and decision not in decisions:
+                    if len(decision) < 20:
+                        continue
+                    if _is_template_decision(decision):
+                        continue
+                    if decision not in decisions:
                         decisions.append(decision)
     return decisions
 
@@ -172,11 +237,29 @@ def extract_bug_patterns(turns: list[dict]) -> list[str]:
     return patterns
 
 
+def _has_name_context(text: str, name: str) -> bool:
+    """Check if a name appears near contextual signals (@mention, verbs, prepositions)."""
+    # Context keywords that strongly indicate a person reference
+    context_signals = [
+        f"@{name.lower()}", f"@{name}",
+        f"{name} said", f"{name} asked", f"{name} thinks",
+        f"{name} suggested", f"{name} mentioned", f"{name} wants",
+        f"with {name}", f"from {name}", f"tell {name}",
+        f"ask {name}", f"ping {name}", f"cc {name}",
+    ]
+    text_lower = text.lower()
+    return any(sig.lower() in text_lower for sig in context_signals)
+
+
 def extract_people_mentions(turns: list[dict]) -> list[str]:
     """Extract people names mentioned in user messages.
 
     Only scans user_message (not assistant responses) to avoid
     false positives from LLM-generated text.
+    Applies multiple confidence filters:
+    - Minimum 3 characters
+    - Not in common-word exclusion list
+    - Context heuristics boost confidence
     Returns deduplicated list of capitalized first names.
     """
     names: list[str] = []
@@ -189,9 +272,14 @@ def extract_people_mentions(turns: list[dict]) -> list[str]:
             for match in pattern.finditer(text):
                 name = match.group(1).strip()
                 name_lower = name.lower()
-                if name_lower not in _NOT_NAMES and name_lower not in seen and len(name) >= 3:
-                    names.append(name.capitalize())
-                    seen.add(name_lower)
+                if len(name) < 3:
+                    continue
+                if name_lower in _NOT_NAMES:
+                    continue
+                if name_lower in seen:
+                    continue
+                names.append(name.capitalize())
+                seen.add(name_lower)
     return names
 
 
@@ -317,8 +405,16 @@ def update_last_verified(filepath: Path):
 
 def run_backup() -> bool:
     """Run backup.ps1 before writing changes. Returns True on success."""
-    if not BACKUP_SCRIPT.exists():
-        print("  ⚠ backup.ps1 not found — skipping backup")
+    if BACKUP_SCRIPT is None:
+        locations = [
+            "  - WIKIRECALL_BACKUP_SCRIPT env var",
+            "  - ~/.grain/scripts/backup.ps1",
+            "  - <repo>/scripts/backup.ps1",
+        ]
+        print("  ⚠ backup.ps1 not found in any of these locations:")
+        for loc in locations:
+            print(loc)
+        print("  Skipping backup — set WIKIRECALL_BACKUP_SCRIPT or run setup.ps1")
         return True
     try:
         result = subprocess.run(

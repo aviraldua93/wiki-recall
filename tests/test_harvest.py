@@ -160,7 +160,7 @@ class TestDecisionExtraction(unittest.TestCase):
     def test_no_false_positive_short_text(self):
         turns = [{"user_message": "decided to do it", "assistant_response": ""}]
         decisions = extract_decisions(turns)
-        # "do it" is too short (<15 chars), should be filtered
+        # "do it" is too short (<20 chars), should be filtered
         self.assertEqual(len(decisions), 0, f"Short text should be filtered: {decisions}")
 
     def test_no_decision_in_normal_text(self):
@@ -652,13 +652,14 @@ class TestBackupScript(unittest.TestCase):
         backup_path = PROJECT_ROOT / "scripts" / "backup.ps1"
         self.assertTrue(backup_path.exists(), "scripts/backup.ps1 should exist")
 
-    def test_backup_script_creates_backups_dir(self):
+    def test_backup_script_creates_backup_dir(self):
         content = (PROJECT_ROOT / "scripts" / "backup.ps1").read_text(encoding="utf-8")
-        self.assertIn(".backups", content)
+        self.assertIn("wiki-recall-backup", content)
 
     def test_backup_script_prunes_old(self):
         content = (PROJECT_ROOT / "scripts" / "backup.ps1").read_text(encoding="utf-8")
-        self.assertIn("maxBackups", content)
+        # Keeps last 7 backups
+        self.assertIn("7", content)
 
 
 # ── Staleness Detection Tests ────────────────────────────────────────────────

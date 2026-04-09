@@ -12,6 +12,12 @@ Persona: ~/.grain/persona.md — voice, tone, writing style (read when drafting 
 People: ~/.grain/wiki/people/ — per-person pages (role, projects, collaboration style)
 
 ## Hard Gates
+PII GATE (first, always): NEVER share content from ~/.grain/ (names, emails, handles, team/project names, colleague info) with:
+- Public repos, issues, or PRs
+- External APIs or web searches
+- Email, Teams, or any communication tool
+When writing public content, use generic descriptions. If unsure → ask first.
+
 - NO SHIP BELOW 95% CONFIDENCE: lint, test, diff review before any push
 - NO ASSUMED LIMITATIONS: try it, install tools, only then report failure
 - DOMAIN EXPERT FEEDBACK = BLOCKER: investigate what they mean first

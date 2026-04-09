@@ -1,0 +1,16 @@
+# Rebuildable — exclude from version control
+engine/chromadb/
+engine/__pycache__/
+engine/.last_indexed
+.obsidian/workspace.json
+
+# PII-sensitive — NEVER commit these to shared repos
+# Uncomment if using git for personal backup:
+# brain.md
+# persona.md
+# wiki/people/
+# domains/
+
+# Logs
+logs/
+*.log

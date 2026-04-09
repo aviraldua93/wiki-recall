@@ -3,20 +3,27 @@
     wiki-recall setup wizard — creates your personal ~/.grain/ knowledge base.
 
 .DESCRIPTION
-    Interactive onboarding:
-    1. Ask: name, GitHub identities, work domains
-    2. Create ~/.grain/ directory structure
-    3. Generate brain.md L0+L1 from your answers
-    4. Generate copilot-instructions.md from template
-    5. Index existing session_store (if available)
-    6. Open Obsidian vault (if installed)
+    Interactive onboarding with two modes:
+
+    --Quick     Form-based setup (5 min). Produces a minimal brain.
+    --Interview Deep interview mode (15-30 min). Copilot CLI interviews you,
+                mines your sessions, and produces a 10x richer brain.
+
+    If neither flag is passed, the wizard prompts you to choose.
 
     Run once after cloning wiki-recall:
       powershell -ExecutionPolicy Bypass -File scripts/setup.ps1
+      powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Quick
+      powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Interview
 
 .NOTES
     All data stays local in ~/.grain/. Nothing is pushed anywhere.
 #>
+
+param(
+    [switch]$Interview,
+    [switch]$Quick
+)
 
 $ErrorActionPreference = 'Stop'
 
@@ -30,6 +37,133 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "This will create your personal knowledge base at $grainDir"
 Write-Host "All data stays local. Nothing is pushed to any repo."
+Write-Host ""
+
+# --- Mode selection ---
+if (-not $Interview -and -not $Quick) {
+    Write-Host "Choose setup mode:" -ForegroundColor Cyan
+    Write-Host "  1. Quick setup    (5 min)     — form-based, produces minimal brain" -ForegroundColor White
+    Write-Host "  2. Deep interview (15-30 min) — Copilot CLI interviews you, mines sessions" -ForegroundColor White
+    Write-Host ""
+    $modeChoice = Read-Host "Which mode? (1/2, default: 1)"
+    if ($modeChoice -eq '2') {
+        $Interview = $true
+    } else {
+        $Quick = $true
+    }
+}
+
+# --- Interview mode ---
+if ($Interview) {
+    Write-Host "Setting up directory structure for interview mode..." -ForegroundColor Green
+
+    # Create the same directory structure as quick mode
+    $dirs = @(
+        $grainDir,
+        (Join-Path $grainDir 'wiki'),
+        (Join-Path $grainDir 'wiki' 'projects'),
+        (Join-Path $grainDir 'wiki' 'patterns'),
+        (Join-Path $grainDir 'wiki' 'concepts'),
+        (Join-Path $grainDir 'wiki' 'people'),
+        (Join-Path $grainDir 'domains'),
+        (Join-Path $grainDir 'reference'),
+        (Join-Path $grainDir 'engine')
+    )
+
+    foreach ($d in $dirs) {
+        if (-not (Test-Path $d)) {
+            New-Item -ItemType Directory -Path $d -Force | Out-Null
+            Write-Host "  Created: $d" -ForegroundColor DarkGray
+        }
+    }
+
+    # Copy template files that the interview will build on
+    $templateFiles = @{
+        'actions.md'    = (Join-Path $grainDir 'actions.md')
+        'decisions.md'  = (Join-Path $grainDir 'decisions.md')
+        'wiki-index.md' = (Join-Path $grainDir 'wiki' 'index.md')
+    }
+
+    foreach ($tmpl in $templateFiles.GetEnumerator()) {
+        $src = Join-Path $templateDir $tmpl.Key
+        $dst = $tmpl.Value
+        if (-not (Test-Path $dst)) {
+            if (Test-Path $src) {
+                Copy-Item -Path $src -Destination $dst
+            } else {
+                Set-Content -Path $dst -Value "# $($tmpl.Key -replace '\.md$','' -replace '-',' ')`n`n(empty — will be populated during interview)`n" -Encoding UTF8
+            }
+        }
+    }
+
+    # Copy reference files
+    $repoRefDir = Join-Path $PSScriptRoot '..' 'reference'
+    $grainRefDir = Join-Path $grainDir 'reference'
+    if (Test-Path $repoRefDir) {
+        Get-ChildItem -Path $repoRefDir -Filter '*.md' | ForEach-Object {
+            $dst = Join-Path $grainRefDir $_.Name
+            if (-not (Test-Path $dst)) {
+                Copy-Item -Path $_.FullName -Destination $dst
+            }
+        }
+    }
+
+    # Copy engine files for session mining
+    $engineSrc = Join-Path $PSScriptRoot '..' 'engine'
+    $engineDst = Join-Path $grainDir 'engine'
+    if (Test-Path $engineSrc) {
+        Get-ChildItem -Path $engineSrc -Filter '*.py' | ForEach-Object {
+            $dst = Join-Path $engineDst $_.Name
+            if (-not (Test-Path $dst)) {
+                Copy-Item -Path $_.FullName -Destination $dst
+            }
+        }
+    }
+
+    # Copy interview protocol
+    $protocolSrc = Join-Path $PSScriptRoot 'interview-protocol.md'
+    $protocolDst = Join-Path $grainDir 'interview-protocol.md'
+    if (Test-Path $protocolSrc) {
+        Copy-Item -Path $protocolSrc -Destination $protocolDst -Force
+        Write-Host "  Copied: interview-protocol.md" -ForegroundColor Green
+    } else {
+        Write-Host "  Warning: interview-protocol.md not found in scripts/" -ForegroundColor Yellow
+    }
+
+    # Copy .obsidian config
+    $obsidianSrc = Join-Path $PSScriptRoot '..' '.obsidian'
+    $obsidianDst = Join-Path $grainDir '.obsidian'
+    if ((Test-Path $obsidianSrc) -and -not (Test-Path $obsidianDst)) {
+        Copy-Item -Path $obsidianSrc -Destination $obsidianDst -Recurse
+    }
+
+    # Copy .gitignore
+    $gitignoreSrc = Join-Path $templateDir 'grain-gitignore'
+    $gitignoreDst = Join-Path $grainDir '.gitignore'
+    if (-not (Test-Path $gitignoreDst)) {
+        if (Test-Path $gitignoreSrc) {
+            Copy-Item -Path $gitignoreSrc -Destination $gitignoreDst
+        }
+    }
+
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Green
+    Write-Host "  Starting deep interview mode..." -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Run this in your terminal:" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host '  copilot -p "Read ~/.grain/interview-protocol.md and follow it step by step to set up my knowledge base."' -ForegroundColor White
+    Write-Host ""
+    Write-Host "The interview takes 15-30 minutes. Copilot will mine your sessions,"
+    Write-Host "ask about your work domains, people, decisions, and writing style."
+    Write-Host "The result is a 10x richer brain than quick setup."
+    Write-Host ""
+    exit 0
+}
+
+# --- Quick mode (original form-based setup below) ---
+Write-Host "Running quick setup..." -ForegroundColor Green
 Write-Host ""
 
 # --- Step 1: Gather info ---

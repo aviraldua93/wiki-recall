@@ -235,12 +235,37 @@ cd wiki-recall
 
 pip install chromadb pyyaml          # Python engine
 bun install                          # TypeScript modules
-
-# Run the setup wizard (creates ~/.grain/, prompts to harvest existing sessions)
-powershell -ExecutionPolicy Bypass -File scripts/setup.ps1
 ```
 
-The wizard asks your name, GitHub identities, work domains, **communication style, greeting preference, and sign-off** — then generates your personal `~/.grain/` with `brain.md`, `persona.md`, `copilot-instructions.md`, and domain files. If you have existing Copilot CLI sessions, setup will offer to harvest them into your brain automatically.
+## Setup Modes
+
+### Quick Setup (5 minutes)
+
+For trying it out. Form-based prompts produce a minimal brain.
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Quick
+```
+
+The wizard asks your name, GitHub identities, work domains, communication style, greeting preference, and sign-off — then generates your personal `~/.grain/` with `brain.md`, `persona.md`, `copilot-instructions.md`, and domain files. If you have existing Copilot CLI sessions, setup will offer to harvest them into your brain automatically.
+
+### Deep Interview (15-30 minutes, recommended)
+
+Copilot CLI interviews you. Mines your sessions, shows data, asks for corrections.
+Produces a brain that's 10x richer.
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Interview
+```
+
+The interviewer:
+1. **Mines your existing sessions** → auto-discovers repos, topics, and patterns
+2. **Shows repo clusters** → you name them as domains
+3. **Shows frequent names** → you add context about people you collaborate with
+4. **Analyzes your writing style** → captures your voice for persona.md
+5. **Extracts decisions and pending actions** → you confirm what's still relevant
+
+If neither flag is passed, the wizard prompts you to choose between quick and deep modes.
 
 ### Standalone Install
 

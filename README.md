@@ -1,39 +1,30 @@
-<p align="center"><img src="hero.svg" alt="Wiki Recall Hero" width="800" /></p>
-
 # wiki-recall
 
 **Persistent memory for Copilot CLI.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1,524_passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-1,508_passing-brightgreen)]()
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white)](https://python.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/MCP-10_tools-purple)](https://modelcontextprotocol.io)
 
-| **~550 tokens** | **98.4% savings** | **93% recall** | **1,524 tests** |
-|:---:|:---:|:---:|:---:|
-| wake-up cost | vs dump-everything | hybrid search accuracy | all passing |
+| **~550 tokens** | **1,508 tests** | **93% hybrid recall** |
+|:---:|:---:|:---:|
+| wake-up cost | all passing | search accuracy |
 
 ---
 
 ## Every session starts from scratch. This one doesn't.
 
-You open your terminal on Monday. You haven't touched this project in two weeks. Instead of re-explaining your architecture, your decisions, and the PR you left open — Copilot already knows.
+You open your terminal on Monday. Two weeks since you touched this project. Instead of re-explaining your architecture, your decisions, and the PR you left open — Copilot already knows.
 
-**wiki-recall** compiles your session history into a persistent, layered knowledge base that loads in ~550 tokens. Decisions auto-capture. Bug patterns auto-extract. People names auto-resolve. Your voice auto-learns. You just work.
-
-> *"The tedious part of maintaining a knowledge base is not the reading or the thinking — it's the bookkeeping."*
-> — Gap Analysis Review (one of 9 expert reviews)
-
-wiki-recall eliminates the bookkeeping.
+**wiki-recall** compiles your session history into a persistent, layered knowledge base that loads in ~550 tokens. Decisions auto-capture. Bug patterns auto-extract. Your voice auto-learns. You just work.
 
 ---
 
 ## The Proof
 
-Reviewed by **9 domain experts** across memory systems, DevEx, security, and architecture. Validated with **18 simulation tests**.
-
-### The Ablation
+Reviewed by 9 domain experts. Validated with 18 simulation tests.
 
 | Approach | Recall | Tokens/query | Verdict |
 |:---------|:------:|:------------:|:--------|
@@ -41,30 +32,88 @@ Reviewed by **9 domain experts** across memory systems, DevEx, security, and arc
 | Search only (RAG) | ~45% | High | Drowns in noise |
 | **Hybrid (wiki-recall)** | **~93%** | **Low** | **Best of both worlds** |
 
-### Key Numbers
-
 | Metric | Result |
 |:-------|:-------|
-| Token savings vs dump-everything | **98.4%** (550 vs 13,000+ tokens) |
-| Hybrid vs wiki-only recall | **+33 percentage points** |
-| Hybrid vs search-only recall | **+49.5 percentage points** |
+| Token savings vs dump-everything | **98.4%** (550 vs 13,000+) |
+| Hybrid vs wiki-only | **+33 percentage points** |
+| Hybrid vs search-only | **+49.5 percentage points** |
 | Scale ceiling | **1,000 entities**, zero degradation |
-
-> *"Obsidian is the IDE; the LLM is the programmer; the wiki is the codebase."*
-> — Karpathy Pattern Expert
 
 ---
 
-## What Makes This Different
+## How It Works
 
-### 🧠 Auto-Capture — Your AI Takes Its Own Notes
+You open your terminal. `copilot-instructions.md` tells Copilot to read `brain.md`. That's **L0 + L1** — your identity and active work. ~550 tokens. Loaded every session. Your AI knows who you are, what you're working on, and what's blocked.
 
-The #1 gap in every knowledge system: **it relies on you to write things down.** wiki-recall's `harvest.py` automatically mines your session history and extracts:
+You ask: *"how does our retry handler work?"*
+
+Architecture question. Routing sends it to the wiki. **L2** loads the project page on demand. The answer is already compiled: *"Exponential backoff, max 3 retries, jitter, then dead-letter queue."* No search needed. The wiki understood it.
+
+You ask: *"what did we discuss about rate limiting last month?"*
+
+The wiki doesn't have that — never compiled. **L3** kicks in: ChromaDB semantic search over your full session history. It finds the exact conversation from months ago. The solution you forgot existed.
+
+**L4** is the safety net. Raw session replay by ID. You almost never need it.
+
+```
+Question → L0+L1 (already loaded) → L2 wiki → L3 search → L4 replay
+```
+
+| Layer | What | When |
+|:------|:-----|:-----|
+| **L0** | Identity — who you are | Always loaded |
+| **L1** | Active work — projects, blockers, decisions | Always loaded |
+| **L2** | Compiled wiki — entities with citations | On demand |
+| **L3** | Semantic search — ChromaDB over sessions | When wiki has gaps |
+| **L4** | Raw sessions — full replay | Last resort |
+
+The write-back loop makes this compound. You decide: *"Let's use WebSockets instead of polling."* Copilot asks: *"Save this decision?"* You say yes. Written to `decisions.md`. Next month, it's there. Knowledge accumulates instead of resetting.
+
+Karpathy's wiki understands but can't recall. MemPalace recalls but doesn't understand. wiki-recall does both.
+
+---
+
+## Quick Start
+
+**Prerequisites:** Python 3.11+, [Bun](https://bun.sh), Copilot CLI
+
+```bash
+git clone https://github.com/YOUR_USERNAME/wiki-recall.git
+cd wiki-recall
+pip install chromadb pyyaml && bun install
+```
+
+**Quick setup** (5 minutes) — form-based prompts, minimal brain:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Quick
+```
+
+**Deep interview** (15–30 min, recommended) — Copilot mines your sessions, clusters repos into domains, discovers collaborators, captures your voice, extracts decisions:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Interview
+```
+
+**Daily workflow:**
+
+```bash
+powershell -File scripts/harvest.ps1          # dry-run preview
+powershell -File scripts/harvest.ps1 --auto   # write changes
+powershell -File scripts/lint.ps1             # wiki health check
+python engine/indexer.py --incremental        # reindex for search
+```
+
+---
+
+## What It Auto-Captures
+
+The #1 gap in every knowledge system: it relies on you to write things down. `harvest.py` mines your session history and extracts:
 
 - **Decisions** — "decided to", "let's go with", "we're using"
-- **Bug patterns** — "fixed by", "the fix was", "workaround:", "gotcha:"
-- **Project updates** — sessions mentioning your known projects
-- **New topics** — sessions about things not yet in your wiki
+- **Bug patterns** — "fixed by", "the fix was", "workaround:"
+- **Project updates** — sessions mentioning known projects
+- **New topics** — things not yet in your wiki
 - **People mentions** — names referenced across sessions
 
 ```
@@ -77,339 +126,132 @@ The #1 gap in every knowledge system: **it relies on you to write things down.**
   + Sarah (3 sessions) — no wiki/people/sarah.md yet
 ```
 
-Dry-run by default. Deduplicates. Filters out agent sessions. Backs up before writing. **Zero manual effort.**
+Dry-run by default. Deduplicates. Backs up before writing. Zero manual effort.
 
-### 🎭 Persona — Your AI Learns Your Voice
+Beyond harvest, wiki-recall ships with:
 
-`persona.md` is a **self-training voice profile.** When Copilot drafts an email, PR description, or Teams message — it matches *your* voice, not generic AI-speak.
-
-Say "that's not how I talk" and the persona immediately self-corrects. It evolves from feedback, not configuration.
-
-### 🧑‍🤝‍🧑 People Routing — "Reply to Sarah" Just Works
-
-Say a first name. Copilot resolves it instantly from `domains/comms.md` instead of searching the entire directory. Per-person context pages in `wiki/people/` store role, team, collaboration style. **harvest.py** auto-discovers new names across sessions.
-
-### 🛡️ Staleness Detection — Dead Docs Don't Lie
-
-Every wiki page gets `last_verified: YYYY-MM-DD`. Pages unverified for >60 days get flagged as **STALE**. `harvest.py` auto-updates verification timestamps when it touches a page. Stale docs are *"actively harmful"* — this catches them.
-
-### 💾 Auto-Backup — The LLM Can't Forget to Back Up
-
-`backup.ps1` creates timestamped copies before every write. But the real trick: the `copilot-instructions.md` template **tells Copilot to run it automatically.** The LLM doesn't need to remember — the instructions enforce it.
-
-### 🔍 Proactive Pattern Surfacing — Don't Wait to Be Asked
-
-Mention "debugging PowerShell issue" and Copilot proactively surfaces `wiki/patterns/powershell-gotchas.md` — **without you asking "any known fixes?"** Trigger matching rules in `copilot-instructions.md` handle the routing.
-
----
-
-## The Architecture
-
-### How a Query Flows Through 5 Layers
-
-You open your terminal. `copilot-instructions.md` tells Copilot to read `brain.md`. That's **L0 + L1** — your identity and active work, ~550 tokens. Loaded every single session. Your AI now knows who you are, what you're working on, and what's blocked. Cost so far: 550 tokens.
-
-You ask: *"how does our retry handler work?"*
-
-That's an architecture question — the routing in `copilot-instructions.md` sends it to your wiki. **L2** loads `wiki/projects/api-service.md` on demand. The answer is already compiled: *"Exponential backoff, max 3 retries, jitter, then dead-letter queue. [Source: session-abc-123]."* No search needed. The wiki already understood it.
-
-You ask: *"what did we discuss about rate limiting last month?"*
-
-The wiki doesn't have a page for that — it was never compiled. **L3** kicks in: ChromaDB semantic search over your full session history. It finds the verbatim conversation from 3 months ago. The exact solution you forgot existed.
-
-**L4** is the safety net. If you need the raw conversation by session ID, it's there. You almost never need it.
-
-```
-YOU ASK A QUESTION
-     │
-     ▼
-L0 + L1 already loaded (550 tokens, every session)
-     │
-     ▼
-Is it in the wiki? ──yes──▶ L2: compiled answer with citations
-     │
-     no
-     │
-     ▼
-L3: semantic search finds it in session history
-     │
-     ▼
-L4: raw session replay (last resort)
-```
-
-The write-back loop is what makes this compound. During your conversation, you make a decision — *"Let's use WebSockets instead of polling."* Copilot proactively asks: *"Save this decision?"* You say yes. Written directly to `decisions.md`. Next month when someone asks *"why WebSockets?"* — it's already there. Knowledge accumulates instead of resetting.
-
-### 5-Layer Memory Stack
-
-| Layer | What | Size | When |
-|:------|:-----|:-----|:-----|
-| **L0** | Identity — who you are, core principles | ~50 tokens | Always loaded |
-| **L1** | Active work — projects, blockers, recent decisions | ~500 tokens | Always loaded |
-| **L2** | Compiled wiki — Karpathy-style entities with citations | On demand | Domain-routed |
-| **L3** | Semantic search — ChromaDB over session history | On demand | When wiki gaps exist |
-| **L4** | Raw sessions — full conversation replay | On demand | Reference only |
-
-**L0 + L1 = ~550 tokens.** That's your wake-up cost. Compare that to 1,500+ token context dumps most tools use.
-
-**What Karpathy doesn't have:** L0/L1 hot cache, semantic search fallback, proactive write-back, automated maintenance.
-**What MemPalace doesn't have:** Compiled wiki (L2), structured understanding, cross-references, contradiction tracking.
-**wiki-recall = both.**
-
-### File Structure
-
-```
-~/.grain/                              YOUR DATA — local only, never pushed
-├── brain.md                           L0+L1 hot cache (~550 tokens)
-├── persona.md                         Self-training voice profile
-├── actions.md                         Follow-ups, commitments, todos
-├── decisions.md                       Things already decided (never re-debate)
-├── wiki/
-│   ├── index.md                       Master catalog
-│   ├── projects/                      One page per project
-│   ├── patterns/                      Bugs, gotchas, workarounds
-│   ├── concepts/                      Tech concepts
-│   └── people/                        One page per colleague
-├── domains/
-│   ├── comms.md                       People name → identity routing
-│   └── [your-domains].md              Domain context files
-├── reference/                         Hard gates, multi-agent rules
-└── engine/
-    ├── harvest.py                     Auto-capture from sessions
-    ├── chromadb/                      Semantic search index
-    └── .last_harvested                Auto-capture tracking
-```
-
-### Separation: Template vs Data
-
-| | wiki-recall (this repo) | ~/.grain/ (your machine) |
-|:--|:--|:--|
-| **Contains** | Engine code, templates, scripts | Your personal brain, wiki, decisions |
-| **Pushed to** | GitHub (public) | Nowhere (local only) |
-| **PII** | None — all placeholders | Your name, projects, context |
+- **Persona** — `persona.md` self-trains your voice. Say "that's not how I talk" and it corrects.
+- **People routing** — say a first name, Copilot resolves it from `comms.md` instantly.
+- **Staleness detection** — pages unverified >60 days get flagged. Dead docs don't stay hidden.
+- **Auto-backup** — `backup.ps1` runs before every write. The instructions enforce it.
+- **Proactive surfacing** — mention "debugging PowerShell" and known gotchas appear without asking.
 
 ---
 
 ## Real-World Use Cases
 
 ### Monday Morning Cold Start
-
 ```
-# You open terminal. Haven't touched this project in 2 weeks.
-# brain.md auto-loads. ~550 tokens.
-
 > "What was I working on?"
-
-# Copilot already knows your 3 active projects, the open PR,
-# the retry logic decision, and the blocker on a teammate.
-# Zero context dump. Productive in 30 seconds.
+# brain.md auto-loaded. ~550 tokens. Copilot knows your 3 projects,
+# the open PR, and the blocker. Productive in 30 seconds.
 ```
 
 ### Cross-Project Pattern Recognition
-
 ```
-# You hit a rate-limiting bug in Project B.
-
 > "Have I dealt with rate limiting before?"
-
-# L3 semantic search finds a conversation from 3 months ago:
-# "Exponential backoff with jitter, max 3 retries,
-#  then dead-letter queue. Decided 2025-11-03."
+# L3 finds a conversation from 3 months ago.
 # The exact solution. From a session you forgot existed.
 ```
 
 ### The Self-Training Loop
-
 ```
-# You make a decision mid-conversation:
 > "Let's use WebSockets instead of polling"
+# Copilot: "Save this decision?" → Yes → decisions.md.
 
-# Copilot proactively asks:
-> "Save this decision?"
-
-# You say yes. Written to decisions.md.
-# Next month, it's there. No staging. No review folder.
-
-# Later, you ask Copilot to draft an email. It sounds wrong.
-> "That's too formal. I don't say 'Dear team'."
-
-# persona.md self-updates. Next draft matches your voice.
+> "That email is too formal. I don't say 'Dear team'."
+# persona.md updates. Next draft matches your voice.
 ```
 
-### The "Handle Sarah's Message" Flow
-
+### People Routing
 ```
 > "Handle Sarah's last message"
-
-# copilot-instructions.md → sees person name → reads comms.md
-# comms.md → Sarah = Sarah Chen, Platform Team
-# Teams search → finds Sarah's latest message
-# persona.md → reads your voice before drafting
-# Draft reply in YOUR voice → you confirm → sent
+# comms.md → Sarah Chen, Platform Team → Teams search
+# → drafts reply in YOUR voice → you confirm → sent
 ```
 
-### Onboarding a New Team Member
-
+### The Voice Match
 ```
-# Day 1:   Setup wizard → empty brain.md, blank wiki
-# Week 1:  brain.md has 5 projects, harvest found 12 decisions
-# Month 1: 50+ wiki entities, patterns emerging, persona trained
-# Month 3: Their AI knows their domain better than most teammates
+> "Draft a message declining the meeting"
+# persona.md already knows: you're direct, no fluff,
+# you say "can't make it" not "regrettably unable to attend."
+```
+
+### Onboarding Over Time
+```
+# Day 1:   Empty brain.md
+# Week 1:  5 projects, 12 decisions harvested
+# Month 1: 50+ wiki entities, persona trained
+# Month 3: Your AI knows your domain better than most teammates
 ```
 
 ---
 
-## Getting Started
+## File Structure
 
-### Prerequisites
-- Python 3.11+ with `pip`
-- [Bun](https://bun.sh) (for TypeScript modules)
-- Copilot CLI (for session history)
-
-### Setup
-
-```bash
-git clone https://github.com/YOUR_USERNAME/wiki-recall.git
-cd wiki-recall
-
-pip install chromadb pyyaml          # Python engine
-bun install                          # TypeScript modules
+```
+~/.grain/                          YOUR DATA — local only, never pushed
+├── brain.md                       L0+L1 (~550 tokens)
+├── persona.md                     Voice profile
+├── actions.md                     Follow-ups, commitments
+├── decisions.md                   Settled decisions
+├── wiki/
+│   ├── index.md                   Master catalog
+│   ├── projects/                  One page per project
+│   ├── patterns/                  Bugs, gotchas, workarounds
+│   ├── concepts/                  Tech concepts
+│   └── people/                    One page per colleague
+├── domains/                       Domain context files
+├── reference/                     Hard gates, multi-agent rules
+└── engine/
+    ├── harvest.py                 Auto-capture
+    ├── chromadb/                  Search index
+    └── .last_harvested            Tracking
 ```
 
-## Setup Modes
-
-### Quick Setup (5 minutes)
-
-For trying it out. Form-based prompts produce a minimal brain.
-
-```bash
-powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Quick
-```
-
-The wizard asks your name, GitHub identities, work domains, communication style, greeting preference, and sign-off — then generates your personal `~/.grain/` with `brain.md`, `persona.md`, `copilot-instructions.md`, and domain files. If you have existing Copilot CLI sessions, setup will offer to harvest them into your brain automatically.
-
-### Deep Interview (15-30 minutes, recommended)
-
-Copilot CLI interviews you. Mines your sessions, shows data, asks for corrections.
-Produces a brain that's 10x richer.
-
-```bash
-powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Interview
-```
-
-The interviewer:
-1. **Mines your existing sessions** → auto-discovers repos, topics, and patterns
-2. **Shows repo clusters** → you name them as domains
-3. **Shows frequent names** → you add context about people you collaborate with
-4. **Analyzes your writing style** → captures your voice for persona.md
-5. **Extracts decisions and pending actions** → you confirm what's still relevant
-
-If neither flag is passed, the wizard prompts you to choose between quick and deep modes.
-
-### Standalone Install
-
-If you only need the search engine (no TypeScript modules, no cloning the full repo):
-
-```bash
-# Download just the engine
-mkdir -p ~/.grain/engine
-cd ~/.grain/engine
-curl -sLO https://raw.githubusercontent.com/aviraldua93/wiki-recall/main/engine/indexer.py
-curl -sLO https://raw.githubusercontent.com/aviraldua93/wiki-recall/main/engine/search.py
-curl -sLO https://raw.githubusercontent.com/aviraldua93/wiki-recall/main/engine/mcp_server.py
-curl -sLO https://raw.githubusercontent.com/aviraldua93/wiki-recall/main/engine/__init__.py
-curl -sLO https://raw.githubusercontent.com/aviraldua93/wiki-recall/main/engine/__main__.py
-pip install chromadb pyyaml
-```
-
-This gives you the indexer, hybrid search, and MCP server without the full repo.
-
-### Daily Workflow
-
-```bash
-# Auto-capture decisions and patterns from your sessions
-powershell -File scripts/harvest.ps1          # dry-run preview
-powershell -File scripts/harvest.ps1 --auto   # write changes
-
-# Check wiki health (staleness, orphans, coverage)
-powershell -File scripts/lint.ps1
-
-# Reindex for semantic search
-python engine/indexer.py --incremental
-```
-
-### Obsidian Integration
-
-wiki-recall ships with an Obsidian graph view config. See [docs/obsidian-setup.md](docs/obsidian-setup.md) for setup and color coding.
+Template (this repo) ships engine code and placeholders. `~/.grain/` holds your data. No PII crosses the boundary.
 
 ---
 
-## Engine Reference
+## MCP Server + Engine
 
-### harvest.py — Auto-Capture
+### 10 MCP Tools
 
-```bash
-python engine/harvest.py                    # Dry-run since last harvest
-python engine/harvest.py --auto             # Write changes
-python engine/harvest.py --since 2026-04-08 # Harvest since date
-python engine/harvest.py --status           # Show last harvest time
-```
-
-### indexer.py — ChromaDB Indexer
-
-```bash
-python engine/indexer.py                # Full reindex
-python engine/indexer.py --incremental  # Only new sessions
-python engine/indexer.py --stats        # Collection stats
-```
-
-### search.py — Hybrid Search
-
-```python
-from engine.search import GrainSearcher
-s = GrainSearcher()
-results = s.hybrid_search("why did we switch auth approach?")
-```
-
-### MCP Server — 10 Tools
-
-| Tool | What it does |
-|:-----|:-------------|
+| Tool | Purpose |
+|:-----|:--------|
 | `grain_wake_up` | Load L0+L1 identity context |
 | `grain_search` | Hybrid search (wiki + semantic + decisions) |
 | `grain_recall` | Read a specific wiki page |
-| `grain_domains` | List domain files |
-| `grain_domain` | Read a specific domain |
+| `grain_domains` / `grain_domain` | List or read domain files |
 | `grain_decisions` | Search decisions |
 | `grain_projects` | List project pages |
 | `grain_patterns` | List pattern pages |
 | `grain_session` | Get session details |
 | `grain_status` | System health check |
 
-### Scripts
+### Engine Commands
 
-| Script | Purpose |
-|:-------|:--------|
-| `setup.ps1` | Interactive onboarding wizard |
-| `harvest.ps1` | Auto-capture decisions & patterns |
-| `refresh.ps1` | Update brain.md from session_store |
-| `compact.ps1` | Archive old entries, reset timestamps |
-| `backup.ps1` | Timestamped backup (auto-prunes to 10) |
-| `lint.ps1` | Wiki health check + staleness detection |
+```bash
+python engine/harvest.py                    # Dry-run
+python engine/harvest.py --auto             # Write changes
+python engine/harvest.py --since 2026-04-08 # Since date
+python engine/indexer.py                    # Full reindex
+python engine/indexer.py --incremental      # Incremental
+```
 
-### TypeScript Modules
+```python
+from engine.search import GrainSearcher
+results = GrainSearcher().hybrid_search("why did we switch auth?")
+```
 
-| Feature | Description |
-|:--------|:------------|
-| 5-Layer Memory | L0-L4 stack with automatic query routing |
-| Paper Curation | arXiv + Semantic Scholar discovery, scoring |
-| Visual Artifacts | Self-contained interactive HTML |
-| Portable Scenarios | Save/recall working state via git |
-| Schema Validation | JSON Schema Draft 2020-12 via Ajv |
+**Scripts:** `setup.ps1` (onboarding) · `harvest.ps1` (auto-capture) · `refresh.ps1` (brain update) · `compact.ps1` (archival) · `backup.ps1` (backup) · `lint.ps1` (health check)
 
-### Benchmark Suites
+---
 
-| Suite | What it measures |
-|:------|:-----------------|
+## Benchmarks
+
+| Suite | Measures |
+|:------|:---------|
 | Token Efficiency | L0 → L0+L1 → full stack → naive dump |
 | Recall & Precision | 200 queries by type |
 | Routing Accuracy | Correct layer selection per query |
@@ -417,53 +259,47 @@ results = s.hybrid_search("why did we switch auth approach?")
 | Layer Ablation | Wiki-only vs search-only vs hybrid |
 
 ```bash
-bun run benchmark                          # Run all suites
-bun run benchmark --suite token-efficiency  # Run one suite
+bun run benchmark                          # All suites
+bun run benchmark --suite token-efficiency  # One suite
 ```
 
----
-
-## Test Results
+### Test Results
 
 | Category | Tests | Pass Rate |
 |:---------|------:|:---------:|
-| TypeScript unit + E2E | 1,399 | 100% |
+| TypeScript unit + E2E | 1,383 | 100% |
 | Python engine (indexer, search, MCP) | 16 | 100% |
 | Python harvest (auto-capture + people) | 109 | 100% |
-| Stress tests (chaos engineering) | 193 | 100% |
-| Benchmark suites | 89 | 100% |
-| **Total** | **1,524** | **100%** |
+| **Total** | **1,508** | **100%** |
 
-Stress-tested with: schema injection, FTS5 injection, SQL injection, concurrent CRUD, corrupt YAML, 10K-char queries, 100 concurrent router queries, path traversal, **harvest extraction, dedup validation, frontmatter updates, unicode, None fields, empty sessions, missing store**. One real bug found and fixed (listEntities crash on corrupt YAML).
+Stress-tested with: schema injection, FTS5 injection, SQL injection, concurrent CRUD, corrupt YAML, 10K-char queries, path traversal, harvest dedup, unicode, empty sessions.
 
 ```bash
-bun test                                  # TypeScript (1,399 tests)
-python -m pytest tests/                   # Python (125 tests)
+bun test                   # TypeScript (1,383 tests)
+python -m pytest tests/    # Python (125 tests)
 ```
 
 ---
 
 ## Design Decisions
 
-Emerged from 9 expert reviews and 18 simulation tests:
+From 9 expert reviews and 18 simulation tests:
 
-- **Instructions file < 60 lines** — Copilot CLI truncates longer files
+- **Instructions file < 60 lines** — longer files get truncated
 - **brain.md < 550 tokens** — L0+L1 only; everything else on-demand
-- **Write-back is direct-with-ask** — no staging area (too much friction killed every alternative)
-- **Proactive, not reactive** — Copilot asks "save this decision?" without being prompted
-- **Persona self-trains** — say "that's not how I talk" and it corrects immediately
-- **Session IDs link wiki to raw data** — full traceability from compiled entity to source conversation
-- **Auto-capture by default** — harvest.py eliminates the #1 failure mode: forgetting to write things down
+- **Write-back is direct-with-ask** — no staging; friction killed every alternative
+- **Proactive, not reactive** — Copilot asks "save this?" without prompting
+- **Persona self-trains** — "that's not how I talk" corrects immediately
+- **Session IDs link wiki to source** — full traceability
+- **Auto-capture by default** — eliminates the #1 failure: forgetting to write things down
 
 ---
 
 ## Inspiration
 
-Built on three proven patterns:
-
-1. **[Andrej Karpathy](https://karpathy.ai/)** — Compile knowledge into structured entities, don't re-derive it. The L2 wiki layer is a direct implementation.
-2. **[MemPalace](https://github.com/codelahoma/mempalace)** — Different memory types deserve different retrieval costs. The L0-L4 layered stack draws from this insight.
-3. **[Second Brain (NicholasSpisak)](https://github.com/NicholasSpisak)** — Skill-based packaging with ingest/query/lint operations.
+1. **[Andrej Karpathy](https://karpathy.ai/)** — Compile knowledge into structured entities. The L2 wiki is a direct implementation.
+2. **[MemPalace](https://github.com/codelahoma/mempalace)** — Different memory types, different retrieval costs. The L0-L4 stack draws from this.
+3. **[Second Brain](https://github.com/NicholasSpisak)** — Skill-based packaging with ingest/query/lint operations.
 
 ---
 

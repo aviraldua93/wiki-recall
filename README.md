@@ -105,17 +105,55 @@ Mention "debugging PowerShell issue" and Copilot proactively surfaces `wiki/patt
 
 ## The Architecture
 
+### How a Query Flows Through 5 Layers
+
+You open your terminal. `copilot-instructions.md` tells Copilot to read `brain.md`. That's **L0 + L1** — your identity and active work, ~550 tokens. Loaded every single session. Your AI now knows who you are, what you're working on, and what's blocked. Cost so far: 550 tokens.
+
+You ask: *"how does our retry handler work?"*
+
+That's an architecture question — the routing in `copilot-instructions.md` sends it to your wiki. **L2** loads `wiki/projects/api-service.md` on demand. The answer is already compiled: *"Exponential backoff, max 3 retries, jitter, then dead-letter queue. [Source: session-abc-123]."* No search needed. The wiki already understood it.
+
+You ask: *"what did we discuss about rate limiting last month?"*
+
+The wiki doesn't have a page for that — it was never compiled. **L3** kicks in: ChromaDB semantic search over your full session history. It finds the verbatim conversation from 3 months ago. The exact solution you forgot existed.
+
+**L4** is the safety net. If you need the raw conversation by session ID, it's there. You almost never need it.
+
+```
+YOU ASK A QUESTION
+     │
+     ▼
+L0 + L1 already loaded (550 tokens, every session)
+     │
+     ▼
+Is it in the wiki? ──yes──▶ L2: compiled answer with citations
+     │
+     no
+     │
+     ▼
+L3: semantic search finds it in session history
+     │
+     ▼
+L4: raw session replay (last resort)
+```
+
+The write-back loop is what makes this compound. During your conversation, you make a decision — *"Let's use WebSockets instead of polling."* Copilot proactively asks: *"Save this decision?"* You say yes. Written directly to `decisions.md`. Next month when someone asks *"why WebSockets?"* — it's already there. Knowledge accumulates instead of resetting.
+
 ### 5-Layer Memory Stack
 
-```
-L0  Identity         ~50 tokens    Always loaded
-L1  Active Work      ~500 tokens   Always loaded
-L2  Compiled Wiki    On demand     Domain-routed (Karpathy pattern)
-L3  Semantic Search  On demand     ChromaDB embeddings
-L4  Raw Sessions     On demand     Full conversation replay
-```
+| Layer | What | Size | When |
+|:------|:-----|:-----|:-----|
+| **L0** | Identity — who you are, core principles | ~50 tokens | Always loaded |
+| **L1** | Active work — projects, blockers, recent decisions | ~500 tokens | Always loaded |
+| **L2** | Compiled wiki — Karpathy-style entities with citations | On demand | Domain-routed |
+| **L3** | Semantic search — ChromaDB over session history | On demand | When wiki gaps exist |
+| **L4** | Raw sessions — full conversation replay | On demand | Reference only |
 
-**L0 + L1 = ~550 tokens.** That's your wake-up cost. Everything else loads only when needed.
+**L0 + L1 = ~550 tokens.** That's your wake-up cost. Compare that to 1,500+ token context dumps most tools use.
+
+**What Karpathy doesn't have:** L0/L1 hot cache, semantic search fallback, proactive write-back, automated maintenance.
+**What MemPalace doesn't have:** Compiled wiki (L2), structured understanding, cross-references, contradiction tracking.
+**wiki-recall = both.**
 
 ### File Structure
 

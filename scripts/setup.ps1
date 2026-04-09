@@ -22,7 +22,6 @@ $ErrorActionPreference = 'Stop'
 
 $grainDir = Join-Path $env:USERPROFILE '.grain'
 $templateDir = Join-Path $PSScriptRoot '..' 'templates'
-$now = Get-Date
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
@@ -45,16 +44,6 @@ $domains = ($domainsInput -split ',') | ForEach-Object { $_.Trim() } | Where-Obj
 $principles = Read-Host "Your core work principles (comma-separated, e.g., ship fast, test everything)"
 $principlesList = ($principles -split ',') | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
 
-# Persona questions
-Write-Host ""
-Write-Host "--- Communication Style (for persona.md) ---" -ForegroundColor Cyan
-$commStyle = Read-Host "How would you describe your communication style? (casual/formal/mixed)"
-if ([string]::IsNullOrWhiteSpace($commStyle)) { $commStyle = "mixed" }
-$greeting = Read-Host "How do you usually greet people? (Hey/Hi/Dear/No greeting)"
-if ([string]::IsNullOrWhiteSpace($greeting)) { $greeting = "Hey" }
-$signoff = Read-Host "How do you sign off? (Thanks/Best/Cheers/Just name)"
-if ([string]::IsNullOrWhiteSpace($signoff)) { $signoff = "Thanks" }
-
 Write-Host ""
 Write-Host "Setting up ~/.grain/ ..." -ForegroundColor Green
 
@@ -65,7 +54,6 @@ $dirs = @(
     (Join-Path $grainDir 'wiki' 'projects'),
     (Join-Path $grainDir 'wiki' 'patterns'),
     (Join-Path $grainDir 'wiki' 'concepts'),
-    (Join-Path $grainDir 'wiki' 'people'),
     (Join-Path $grainDir 'domains'),
     (Join-Path $grainDir 'reference'),
     (Join-Path $grainDir 'engine')
@@ -130,7 +118,6 @@ $templateFiles = @{
     'actions.md'    = (Join-Path $grainDir 'actions.md')
     'decisions.md'  = (Join-Path $grainDir 'decisions.md')
     'wiki-index.md' = (Join-Path $grainDir 'wiki' 'index.md')
-    'people-readme.md' = (Join-Path $grainDir 'wiki' 'people' 'README.md')
 }
 
 foreach ($tmpl in $templateFiles.GetEnumerator()) {
@@ -150,35 +137,6 @@ foreach ($tmpl in $templateFiles.GetEnumerator()) {
     }
 }
 
-# --- Step 4b: Generate persona.md ---
-$personaPath = Join-Path $grainDir 'persona.md'
-if (-not (Test-Path $personaPath)) {
-    $personaSrc = Join-Path $templateDir 'persona.md'
-    if (Test-Path $personaSrc) {
-        $personaContent = Get-Content $personaSrc -Raw
-        $personaContent = $personaContent -replace '\[YOUR_NAME\]', $name
-        $personaContent = $personaContent -replace '\[COMM_STYLE\]', $commStyle
-        $personaContent = $personaContent -replace '\[GREETING\]', $greeting
-        $personaContent = $personaContent -replace '\[SIGNOFF\]', $signoff
-        Set-Content -Path $personaPath -Value $personaContent -Encoding UTF8
-        Write-Host "  Generated: persona.md" -ForegroundColor Green
-    }
-} else {
-    Write-Host "  Skipped: persona.md (already exists)" -ForegroundColor Yellow
-}
-
-# --- Step 4c: Generate domains/comms.md ---
-$commsPath = Join-Path $grainDir 'domains' 'comms.md'
-if (-not (Test-Path $commsPath)) {
-    $commsSrc = Join-Path $templateDir 'domains' 'comms.md'
-    if (Test-Path $commsSrc) {
-        Copy-Item -Path $commsSrc -Destination $commsPath
-        Write-Host "  Copied: domains/comms.md" -ForegroundColor DarkGray
-    }
-} else {
-    Write-Host "  Skipped: domains/comms.md (already exists)" -ForegroundColor Yellow
-}
-
 # --- Step 5: Create domain files ---
 foreach ($domain in $domains) {
     $slug = $domain.ToLower() -replace '\s+', '-'
@@ -189,7 +147,6 @@ foreach ($domain in $domains) {
 title: $domain
 created: $nowIso
 updated: $nowIso
-last_verified: $($now.ToString('yyyy-MM-dd'))
 ---
 
 # $domain
@@ -272,15 +229,7 @@ if ($pythonCmd -and (Test-Path $indexerPath)) {
     Write-Host "  Python not found — skip indexing (run 'python engine/indexer.py' later)" -ForegroundColor Yellow
 }
 
-# --- Step 10: Initialize .last_harvested ---
-$lastHarvestedPath = Join-Path $grainDir 'engine' '.last_harvested'
-if (-not (Test-Path $lastHarvestedPath)) {
-    $harvestTimestamp = $now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.000Z')
-    Set-Content -Path $lastHarvestedPath -Value $harvestTimestamp -Encoding UTF8
-    Write-Host "  Set .last_harvested to $harvestTimestamp (first harvest catches only new sessions)" -ForegroundColor DarkGray
-}
-
-# --- Step 11: Open Obsidian ---
+# --- Step 10: Open Obsidian ---
 $obsidian = Get-Command obsidian -ErrorAction SilentlyContinue
 if ($obsidian) {
     Write-Host ""
@@ -288,6 +237,37 @@ if ($obsidian) {
     if ($openVault -eq 'y' -or $openVault -eq 'Y') {
         Start-Process "obsidian://open?vault=$([Uri]::EscapeDataString($grainDir))"
     }
+}
+
+# --- Step 11: Set up automatic maintenance ---
+Write-Host ""
+$setupMaintenance = Read-Host "Set up automatic maintenance? (Y/n)"
+if ($setupMaintenance -ne 'n' -and $setupMaintenance -ne 'N') {
+    Write-Host "  Frequency options:" -ForegroundColor Cyan
+    Write-Host "    1. hourly        — refresh every hour (recommended)" -ForegroundColor White
+    Write-Host "    2. every4hours   — refresh every 4 hours" -ForegroundColor White
+    Write-Host "    3. daily         — refresh once a day" -ForegroundColor White
+    $freqChoice = Read-Host "  Frequency? (1/2/3, default: 1)"
+    $freq = switch ($freqChoice) {
+        '2' { 'every4hours' }
+        '3' { 'daily' }
+        default { 'hourly' }
+    }
+
+    $schedulerScript = Join-Path $PSScriptRoot 'setup-scheduler.ps1'
+    if (Test-Path $schedulerScript) {
+        try {
+            & powershell -ExecutionPolicy Bypass -File $schedulerScript -Frequency $freq
+            Write-Host "  Automatic maintenance configured ($freq)!" -ForegroundColor Green
+        } catch {
+            Write-Host "  Could not set up scheduler: $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "  You can run it manually later: scripts/setup-scheduler.ps1 -Frequency $freq" -ForegroundColor DarkGray
+        }
+    } else {
+        Write-Host "  setup-scheduler.ps1 not found — skip scheduler setup" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  Skipping automatic maintenance (run setup-scheduler.ps1 later)" -ForegroundColor DarkGray
 }
 
 # --- Done ---
@@ -300,8 +280,8 @@ Write-Host "Your knowledge base is at: $grainDir" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Next steps:"
 Write-Host "  1. Start using Copilot CLI — your sessions will be mined automatically"
-Write-Host "  2. Run 'scripts/harvest.ps1' to auto-capture decisions and patterns"
-Write-Host "  3. Run 'scripts/refresh.ps1' periodically to update brain.md"
-Write-Host "  4. Run 'scripts/lint.ps1' to check wiki health (staleness detection)"
-Write-Host "  5. Run 'python engine/indexer.py' to reindex ChromaDB"
+Write-Host "  2. Run 'scripts/refresh.ps1' periodically to update brain.md"
+Write-Host "  3. Run 'scripts/lint.ps1' to check wiki health"
+Write-Host "  4. Run 'python engine/indexer.py' to reindex ChromaDB"
+Write-Host "  5. Run 'scripts/maintenance.ps1' for full maintenance cycle"
 Write-Host ""

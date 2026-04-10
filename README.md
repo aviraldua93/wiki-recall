@@ -1,3 +1,5 @@
+<p align="center"><img src="hero.svg" alt="wiki-recall" width="800" /></p>
+
 # wiki-recall
 
 **Persistent memory for Copilot CLI.**

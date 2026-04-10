@@ -127,6 +127,7 @@ The #1 gap in every knowledge system: it relies on you to write things down. `ha
 ```
 
 Dry-run by default. Deduplicates. Backs up before writing. Zero manual effort.
+Candidates are verified by LLM to filter noise — precision >90%.
 
 Beyond harvest, wiki-recall ships with:
 

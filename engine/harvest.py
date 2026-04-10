@@ -20,6 +20,7 @@ backup runs before any writes.
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import re
 import shutil
@@ -29,6 +30,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
@@ -550,6 +553,8 @@ def harvest(
     auto_write: bool = False,
     store_path: Optional[Path] = None,
     grain_root: Optional[Path] = None,
+    llm_filter: bool = True,
+    dry_run: bool = False,
 ) -> HarvestResult:
     """Run the harvest pipeline.
 
@@ -558,6 +563,8 @@ def harvest(
         auto_write: If True, write changes. If False, dry-run only.
         store_path: Override session store path (for testing).
         grain_root: Override grain root path (for testing).
+        llm_filter: If True, run LLM verification on candidates.
+        dry_run: If True, LLM filter shows what would be filtered but keeps all.
 
     Returns:
         HarvestResult with all findings.
@@ -651,6 +658,56 @@ def harvest(
     finally:
         conn.close()
 
+    # ── LLM filtering step ───────────────────────────────────────────
+    if llm_filter and result.total_findings > 0:
+        try:
+            from engine.llm_filter import filter_decisions as llm_filter_decisions
+            from engine.llm_filter import filter_patterns as llm_filter_patterns
+            from engine.llm_filter import filter_people as llm_filter_people
+
+            raw_decision_count = len(result.decisions)
+            raw_pattern_count = len(result.bug_patterns)
+            raw_people_count = len(result.people_mentioned)
+
+            # Filter decisions
+            if result.decisions:
+                decision_candidates = [{"text": d} for d in result.decisions]
+                filtered = llm_filter_decisions(decision_candidates, dry_run=dry_run)
+                if not dry_run:
+                    result.decisions = [c["text"] for c in filtered]
+
+            # Filter patterns
+            if result.bug_patterns:
+                pattern_candidates = [{"text": p} for p, _ in result.bug_patterns]
+                filtered = llm_filter_patterns(pattern_candidates, dry_run=dry_run)
+                if not dry_run:
+                    filtered_texts = {c["text"] for c in filtered}
+                    result.bug_patterns = [
+                        (p, sid) for p, sid in result.bug_patterns
+                        if p in filtered_texts
+                    ]
+
+            # Filter people
+            if result.people_mentioned:
+                people_candidates = [{"text": n} for n in result.people_mentioned]
+                filtered = llm_filter_people(people_candidates, dry_run=dry_run)
+                if not dry_run:
+                    filtered_names = {c["text"] for c in filtered}
+                    result.people_mentioned = {
+                        n: c for n, c in result.people_mentioned.items()
+                        if n in filtered_names
+                    }
+
+            # Log stats
+            logger.info(
+                "LLM filter: decisions %d→%d, patterns %d→%d, people %d→%d",
+                raw_decision_count, len(result.decisions),
+                raw_pattern_count, len(result.bug_patterns),
+                raw_people_count, len(result.people_mentioned),
+            )
+        except Exception as e:
+            logger.warning("LLM filtering failed: %s — using regex-only results", e)
+
     return result
 
 
@@ -703,6 +760,19 @@ def main():
         action="store_true",
         help="Show last harvest time and exit",
     )
+    parser.add_argument(
+        "--llm-filter",
+        action="store_true",
+        default=True,
+        dest="llm_filter",
+        help="Enable LLM verification of candidates (default: on)",
+    )
+    parser.add_argument(
+        "--no-llm-filter",
+        action="store_false",
+        dest="llm_filter",
+        help="Disable LLM filtering (regex-only, for CI/testing)",
+    )
     args = parser.parse_args()
 
     if args.status:
@@ -721,8 +791,14 @@ def main():
         else:
             print("First harvest — scanning all sessions")
 
-    result = harvest(since=since, auto_write=args.auto)
-    result.display(dry_run=not args.auto)
+    dry_run = not args.auto
+    result = harvest(
+        since=since,
+        auto_write=args.auto,
+        llm_filter=args.llm_filter,
+        dry_run=dry_run,
+    )
+    result.display(dry_run=dry_run)
 
     if args.auto and result.total_findings > 0:
         write_results(result)

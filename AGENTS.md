@@ -318,3 +318,27 @@ When working with a user's wiki-recall knowledge base, do these WITHOUT being as
 - Recurring question → Suggest compiling into a permanent wiki entity
 
 **No staging.** When the user confirms, write directly. The conversation is the review process.
+
+## LLM Integration Pattern
+
+All features that need LLM judgment use `engine/llm_client.py`:
+
+```python
+from engine.llm_client import LLMClient
+
+client = LLMClient()
+if client.available:
+    verified = client.verify(candidates, "decisions")
+    summary = client.summarize(long_text, max_words=50)
+else:
+    verified = candidates  # fallback: pass all through
+```
+
+**Rules:**
+- Python does plumbing (find candidates, structural checks)
+- LLM does judgment (classify, verify, summarize, rewrite)
+- ALWAYS provide fallback when LLM unavailable
+- Structured prompts with expected JSON output
+- Batch items to minimize API calls (BATCH_SIZE = 20)
+
+**Backend priority:** OpenAI API → Copilot CLI → graceful degradation (regex-only)

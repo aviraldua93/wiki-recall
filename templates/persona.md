@@ -10,22 +10,22 @@ When drafting messages, emails, Teams chats, PR descriptions, or any communicati
 - Default sign-off: [SIGNOFF]
 
 ## Writing Style — Emails
-<!-- How you write emails — length, structure, greetings, sign-offs -->
+[No data yet]
 
 ## Writing Style — PRs
-<!-- How you write PR descriptions — sell first? table of changes? vision section? -->
+[No data yet]
 
 ## Writing Style — Teams/Chat
-<!-- How you write in group chats — short? long? emoji? humor? -->
+[No data yet]
 
 ## Writing Style — Technical Docs
-<!-- Tables vs prose? Diagrams? Commands vs concepts? -->
+[No data yet]
 
 ## What NOT to sound like
-<!-- Anti-patterns — what to avoid -->
+[No data yet]
 
 ## Professional Influences
-<!-- Optional — whose communication style inspires you? -->
+[No data yet]
 
 ## Honesty Gate (NON-NEGOTIABLE)
 - If a fact isn't 100% verified — DON'T include it. Say "let me check."

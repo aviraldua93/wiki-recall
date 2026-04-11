@@ -45,7 +45,10 @@ Write outputs to `~/.grain/` as you go.
     Sarah (23 mentions, 8 sessions)
     Jake (15 mentions, 5 sessions)"
 - For the top 5-10 people, ask: "Who is [name]? What's their role and what do you work on together?"
-- Create `~/.grain/wiki/people/{name}.md` for each confirmed person
+- Create `~/.grain/wiki/people/{name}.md` for each confirmed person using the **people-template.md** format:
+  - Compiled Truth section with role and key context
+  - Working Relationship section (reports to, collaborates on, communication, review pattern)
+  - Timeline section with discovery date and session attribution
 - Create or update `~/.grain/domains/comms.md` with name-to-identity mappings
 - If no people found in sessions, ask: "Who are the key people you collaborate with?"
 
@@ -117,4 +120,7 @@ Write outputs to `~/.grain/` as you go.
 - All data stays local in `~/.grain/`. Nothing is pushed anywhere.
 - When creating files, use UTF-8 encoding.
 - For wiki pages, include YAML frontmatter with `title`, `created`, `updated`, and `last_verified` fields.
+- When creating project or people entities, use the **compiled truth + timeline** format from `templates/project-template.md` and `templates/people-template.md`.
+- Use source attribution on all claims: `observed`, `self-stated`, or `inferred` (with confidence level).
+- Follow `templates/RESOLVER.md` filing rules to decide where new knowledge goes.
 - When done, say: "Your brain is ready. Next session, Copilot will know your world."

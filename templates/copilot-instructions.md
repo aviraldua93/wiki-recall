@@ -51,6 +51,8 @@ When the user mentions debugging or troubleshooting a technology:
 - Architecture decisions → check decisions.md first
 - New project context → check domains/ files
 - Debugging/troubleshooting → check wiki/patterns/ proactively
+- **New knowledge arrives:** follow RESOLVER.md filing rules to decide where it goes
 - **Comms routing:** when I mention a person's name → read `domains/comms.md` FIRST to resolve, then search Teams/email
 - **Drafting anything AS me:** read `persona.md` before writing. Match my voice exactly.
 - **Person detail:** check `wiki/people/[name].md` for collaboration context
+- **Filing new info:** see `templates/RESOLVER.md` — 8 rules for where knowledge goes

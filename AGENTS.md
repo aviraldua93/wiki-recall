@@ -167,6 +167,25 @@ This is a public open-source project. Zero references to:
 
 Use only generic, public GitHub references.
 
+## Source Attribution
+
+Every claim in compiled truth sections must have a source type:
+- `observed: session <id>` — from code, PRs, or session transcripts
+- `self-stated: session <id>` — user said it directly
+- `inferred: <reasoning>, confidence: high|medium|low` — derived from context
+
+When writing to any compiled truth or timeline section, always include the source type.
+See `templates/RESOLVER.md` for filing rules and page format conventions.
+
+## Compiled Truth + Timeline Format
+
+All wiki pages, project pages, people pages, and domain files use a two-layer format:
+- **Compiled Truth** — always current, rewritten on every update (max 5-10 lines)
+- **Timeline** — append-only, never delete, always dated, always attributed with session ID
+
+These layers are separated by `---`. The compiled truth is what agents read for quick context.
+The timeline is the audit trail.
+
 ## Proactive Feedback Loop
 
 When working with a user's wiki-recall knowledge base, do these WITHOUT being asked:

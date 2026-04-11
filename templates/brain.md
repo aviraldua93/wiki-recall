@@ -7,23 +7,28 @@ Last refreshed: [TIMESTAMP]
 - Name: [YOUR_NAME]
 - GitHub: [YOUR_GITHUB]
 - Principles:
-  - (your core work principles)
+  - [No data yet]
 
 ## L1 — Active Work
+### Compiled Truth
+[No data yet — rewrite this section on every update, max 5-10 lines summarizing current state]
 
-| Project | Status | Branch | Notes |
-|---------|--------|--------|-------|
-| (none yet) | — | — | Run refresh.ps1 after some sessions |
+---
+
+### Timeline (append-only, never delete)
+- [YYYY-MM-DD] What happened (session: session-id)
 
 ### Decisions (recent)
-- (none yet — decisions are captured during sessions)
+- [No data yet — decisions are captured during sessions]
 
 ## Recently Learned
-(empty — entries appear as you work)
+[No data yet — entries appear as you work]
 
 ## Routing
-- Wiki: ~/.grain/wiki/ (projects, patterns, concepts)
+- Wiki: ~/.grain/wiki/ (projects, patterns, concepts, people)
 - Domains: ~/.grain/domains/
 - Decisions: ~/.grain/decisions.md
 - Actions: ~/.grain/actions.md
+- People: ~/.grain/wiki/people/
+- Resolver: See RESOLVER.md for filing rules
 - Engine: ~/.grain/engine/ (indexer, search, MCP server)

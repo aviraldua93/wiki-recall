@@ -487,3 +487,62 @@ import re  # needed for TestRetrofitConstants
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+# ── API CONTRACT TESTS ─────────────────────────────────────────────────
+# These tests verify retrofit.py uses the REAL HygieneReport API.
+# This is how the grades/scores mismatch should have been caught.
+
+class TestHygieneApiContract:
+    """Verify retrofit.py only uses attributes that HygieneReport actually exposes."""
+
+    def test_hygiene_report_has_scores_attr(self):
+        """HygieneReport must have 'scores' (not 'grades')."""
+        from engine.hygiene import HygieneReport
+        report = HygieneReport(Path(tempfile.mkdtemp()))
+        assert hasattr(report, "scores"), "HygieneReport missing 'scores' attribute"
+
+    def test_hygiene_report_no_grades_attr(self):
+        """HygieneReport must NOT have 'grades' — retrofit.py should use 'scores'."""
+        from engine.hygiene import HygieneReport
+        report = HygieneReport(Path(tempfile.mkdtemp()))
+        assert not hasattr(report, "grades"), "HygieneReport has 'grades' — should be 'scores'"
+
+    def test_retrofit_references_scores_not_grades(self):
+        """retrofit.py source code must reference .scores, not .grades."""
+        retrofit_src = Path("engine/retrofit.py").read_text()
+        assert ".grades" not in retrofit_src, "retrofit.py still references .grades — use .scores"
+        assert ".scores" in retrofit_src, "retrofit.py doesn't reference .scores"
+
+    def test_hygiene_report_scores_is_dict(self):
+        """scores must be a dict (so dict(report.scores) works)."""
+        from engine.hygiene import HygieneReport
+        report = HygieneReport(Path(tempfile.mkdtemp()))
+        assert isinstance(report.scores, dict), f"scores is {type(report.scores)}, expected dict"
+
+    def test_hygiene_report_has_issues_attr(self):
+        """HygieneReport must have 'issues' list."""
+        from engine.hygiene import HygieneReport
+        report = HygieneReport(Path(tempfile.mkdtemp()))
+        assert hasattr(report, "issues"), "HygieneReport missing 'issues' attribute"
+        assert isinstance(report.issues, list)
+
+    def test_hygiene_report_has_run_method(self):
+        """HygieneReport must have 'run' method."""
+        from engine.hygiene import HygieneReport
+        assert callable(getattr(HygieneReport, "run", None)), "HygieneReport missing 'run' method"
+
+    def test_hygiene_report_has_print_report_method(self):
+        """HygieneReport must have 'print_report' method."""
+        from engine.hygiene import HygieneReport
+        assert callable(getattr(HygieneReport, "print_report", None)), "HygieneReport missing 'print_report' method"
+
+    def test_hygiene_report_run_populates_scores(self):
+        """After run(), scores dict must have category keys."""
+        from engine.hygiene import HygieneReport
+        tmp = Path(tempfile.mkdtemp())
+        (tmp / "brain.md").write_text("# Brain\n## L0\nTest\n## L1\nTest")
+        (tmp / "wiki").mkdir()
+        report = HygieneReport(tmp)
+        report.run()
+        assert len(report.scores) > 0, "run() didn't populate scores"

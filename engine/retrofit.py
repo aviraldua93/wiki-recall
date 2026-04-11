@@ -550,7 +550,7 @@ def phase_6_hygiene_report(root: Path) -> dict:
     report.run()
     report.print_report()
 
-    stats["grades"] = dict(report.grades)
+    stats["grades"] = dict(report.scores)
     return stats
 
 
@@ -577,7 +577,7 @@ def retrofit(root: Path) -> None:
 
     before_report = HygieneReport(root)
     before_report.run()
-    before_grades = dict(before_report.grades)
+    before_grades = dict(before_report.scores)
 
     # Always backup first
     print("-- Pre-flight: Backup --")

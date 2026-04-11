@@ -265,7 +265,16 @@ from engine.search import GrainSearcher
 results = GrainSearcher().hybrid_search("why did we switch auth?")
 ```
 
-**Scripts:** `setup.ps1` (onboarding) · `harvest.ps1` (auto-capture) · `refresh.ps1` (brain update) · `compact.ps1` (archival) · `backup.ps1` (backup) · `lint.ps1` (health check)
+### Hygiene + Refactoring
+
+```bash
+python engine/hygiene.py                    # 4-category health check
+python engine/hygiene.py --fix              # Auto-fix safe issues
+python engine/hygiene.py --json             # Structured JSON output
+python engine/refactor.py                   # Interactive 6-phase cleanup
+```
+
+**Scripts:** `setup.ps1` (onboarding) · `harvest.ps1` (auto-capture) · `refresh.ps1` (brain update) · `compact.ps1` (archival) · `backup.ps1` (backup) · `lint.ps1` (health check) · `hygiene.ps1` (deep hygiene)
 
 ---
 

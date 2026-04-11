@@ -64,7 +64,7 @@ Write-Verbose "Scripts directory: $scriptsDir"
 Write-Verbose "Log file: $logFile"
 
 # --- Step 1: Harvest new sessions ---
-Write-Log "Step 1/4: Harvesting sessions (refresh.ps1)..."
+Write-Log "Step 1/6: Harvesting sessions (refresh.ps1)..."
 try {
     if ($PSCmdlet.ShouldProcess('session_store', 'Refresh brain.md from sessions')) {
         $refreshScript = Join-Path $scriptsDir 'refresh.ps1'
@@ -86,7 +86,7 @@ try {
 }
 
 # --- Step 2: Backup ---
-Write-Log "Step 2/4: Backing up (backup.ps1 local)..."
+Write-Log "Step 2/6: Backing up (backup.ps1 local)..."
 try {
     if ($PSCmdlet.ShouldProcess('~/.grain/', 'Backup core files')) {
         $backupScript = Join-Path $scriptsDir 'backup.ps1'
@@ -108,7 +108,7 @@ try {
 }
 
 # --- Step 3: Lint ---
-Write-Log "Step 3/4: Running lint (lint.ps1)..."
+Write-Log "Step 3/6: Running lint (lint.ps1)..."
 try {
     if ($PSCmdlet.ShouldProcess('wiki', 'Run wiki health check')) {
         $lintScript = Join-Path $scriptsDir 'lint.ps1'
@@ -129,8 +129,52 @@ try {
     $hasFailure = $true
 }
 
-# --- Step 4: Compact brain.md if >80 lines ---
-Write-Log "Step 4/4: Checking brain.md size..."
+# --- Step 4: Weekly hygiene check ---
+# Run hygiene once per week (check last run date)
+$hygieneLastRun = Join-Path $logDir 'hygiene-last-run.txt'
+$runHygiene = $true
+if (Test-Path $hygieneLastRun) {
+    $lastRunDate = Get-Content $hygieneLastRun -Raw
+    try {
+        $lastRun = [DateTime]::Parse($lastRunDate.Trim())
+        if (($now - $lastRun).Days -lt 7) {
+            $runHygiene = $false
+        }
+    } catch {
+        # Can't parse — run it
+    }
+}
+
+if ($runHygiene) {
+    Write-Log "Step 4/6: Running hygiene check..."
+    try {
+        if ($PSCmdlet.ShouldProcess('wiki', 'Run brain hygiene check')) {
+            $hygieneScript = Join-Path (Split-Path $scriptsDir -Parent) 'engine' 'hygiene.py'
+            if (Test-Path $hygieneScript) {
+                & python $hygieneScript $grainDir 2>&1 | ForEach-Object {
+                    Write-Verbose "  hygiene: $_"
+                }
+                Write-Log "Step 4: PASS — hygiene check completed" 'OK'
+                $stepResults += @{ Step = 'hygiene'; Status = 'PASS' }
+                # Record last run
+                (Get-Date).ToString('yyyy-MM-dd') | Set-Content $hygieneLastRun -Encoding UTF8
+            } else {
+                Write-Log "Step 4: SKIP — hygiene.py not found" 'WARN'
+                $stepResults += @{ Step = 'hygiene'; Status = 'SKIP' }
+            }
+        }
+    } catch {
+        Write-Log "Step 4: FAIL — $($_.Exception.Message)" 'ERROR'
+        $stepResults += @{ Step = 'hygiene'; Status = 'FAIL'; Error = $_.Exception.Message }
+        $hasFailure = $true
+    }
+} else {
+    Write-Log "Step 4/6: SKIP — hygiene ran within last 7 days"
+    $stepResults += @{ Step = 'hygiene'; Status = 'SKIP' }
+}
+
+# --- Step 5: Compact brain.md if >80 lines ---
+Write-Log "Step 5/6: Checking brain.md size..."
 try {
     $brainFile = Join-Path $grainDir 'brain.md'
     if (Test-Path $brainFile) {
@@ -163,7 +207,7 @@ try {
     $hasFailure = $true
 }
 
-# --- Step 5: Prune old logs ---
+# --- Step 6: Prune old logs ---
 Write-Log "Pruning logs older than 30 days..."
 try {
     if (Test-Path $logDir) {

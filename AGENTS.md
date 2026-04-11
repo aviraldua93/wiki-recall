@@ -193,6 +193,51 @@ Entities should be periodically reviewed for:
 - Contradictions between entities
 - Uncited claims (missing source attribution)
 
+### Hygiene Check (Deep Health)
+
+`engine/hygiene.py` performs a 4-category deep health check beyond what lint covers:
+
+```bash
+python engine/hygiene.py                    # check ~/.grain (default)
+python engine/hygiene.py /path/to/kb        # check specific path
+python engine/hygiene.py --fix              # auto-fix safe issues
+python engine/hygiene.py --json             # structured JSON output
+```
+
+**Categories scored A–F:**
+- **Structure** — root bloat (>6 files), script duplication, empty dirs, orphan pages, construction artifacts
+- **Content** — stubs (<200 bytes), missing frontmatter, missing last_verified, stale tier-3 pages (30+ days), decisions.md noise
+- **Depth** — missing Timeline/Compiled Truth sections, person pages without working relationships, pattern pages without incidents
+- **Duplication** — content overlap >60% (Jaccard similarity), similar page names (Levenshtein distance <3)
+
+**--fix mode** (safe only):
+- Deletes duplicate root scripts (keeps scripts/ copy)
+- Adds `last_verified` to pages missing it
+- Adds `[No data yet]` to empty sections
+- Archives `.mining/` and `.verification/` to `.archive/`
+- Does NOT delete, merge, or rewrite any pages
+
+PowerShell wrapper: `scripts/hygiene.ps1 [-Path] [-Fix] [-Refactor] [-Json]`
+
+### Refactoring (Interactive Cleanup)
+
+`engine/refactor.py` provides guided 6-phase interactive cleanup:
+
+```bash
+python engine/refactor.py                   # refactor ~/.grain (default)
+python engine/refactor.py /path/to/kb       # refactor specific path
+```
+
+**Phases:**
+1. Root cleanup (automated — scripts, artifacts, empty dirs)
+2. Projects cleanup (interactive — archive stubs/thin pages per prompt)
+3. Content depth review (show noise and stubs)
+4. Dedup check (show overlapping pages)
+5. Rebuild index (regenerate index.md from actual pages)
+6. Final validation (re-run hygiene check)
+
+Safety: Always backs up first. Archives instead of deleting.
+
 ## Testing
 
 - Unit tests in `tests/unit/` — mock all externals

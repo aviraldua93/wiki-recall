@@ -34,6 +34,7 @@ from engine.harvest import (
     DECISION_PATTERNS,
     BUG_PATTERNS,
     HarvestResult,
+    HarvestLLMUnavailableError,
     append_bug_patterns,
     append_decisions,
     detect_new_topics,
@@ -642,6 +643,82 @@ class TestHarvestPipeline(unittest.TestCase):
         result.people_mentioned = {"Sarah": 2}
         self.assertEqual(result.total_findings, 6)
 
+
+# ── LLM Mandatory Tests (additional coverage for #32) ────────────────────────
+
+class TestLLMMandatoryInAutoMode(unittest.TestCase):
+    """Additional tests for --auto requiring LLM (#32), complementing TestHarvestLLMMandatory."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp())
+        self.store_path = self.tmpdir / "session-store.db"
+        self.grain_root = make_grain_dir(self.tmpdir / "grain")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def test_auto_mode_blocks_without_llm(self):
+        """harvest() with auto_write=True raises HarvestLLMUnavailableError when no LLM is available."""
+        create_mock_session_store(self.store_path, [
+            {
+                "id": "sess-llm-001",
+                "summary": "Working on auth",
+                "turns": [
+                    {"turn_index": 0, "user_message": "Let's go with JWT tokens for the authentication layer", "assistant_response": "Good choice."},
+                ],
+            }
+        ])
+        with patch("engine.harvest._check_llm_available", return_value=False):
+            with self.assertRaises(HarvestLLMUnavailableError) as ctx:
+                harvest(
+                    store_path=self.store_path,
+                    grain_root=self.grain_root,
+                    auto_write=True,
+                )
+            self.assertIn("--auto", str(ctx.exception).lower())
+
+    def test_dry_run_works_without_llm(self):
+        """harvest() without auto_write works fine without LLM (regex-only)."""
+        create_mock_session_store(self.store_path, [
+            {
+                "id": "sess-llm-002",
+                "summary": "Working on auth",
+                "turns": [
+                    {"turn_index": 0, "user_message": "Let's go with JWT tokens for the authentication layer", "assistant_response": "Good choice."},
+                ],
+            }
+        ])
+        with patch("engine.harvest._check_llm_available", return_value=False):
+            # Should NOT raise — dry-run is OK without LLM
+            result = harvest(
+                store_path=self.store_path,
+                grain_root=self.grain_root,
+                auto_write=False,
+            )
+            # Decisions should still be found via regex
+            self.assertGreater(len(result.decisions), 0)
+
+    def test_auto_mode_with_llm_filter_disabled_bypasses(self):
+        """harvest() with auto_write=True and llm_filter=False bypasses LLM check."""
+        create_mock_session_store(self.store_path, [
+            {
+                "id": "sess-llm-003",
+                "summary": "Debugging parser crash",
+                "turns": [
+                    {"turn_index": 0, "user_message": "Let's go with a custom parser for the data ingestion pipeline", "assistant_response": "OK"},
+                ],
+            }
+        ])
+        with patch("engine.harvest._check_llm_available", return_value=False):
+            # llm_filter=False explicitly bypasses the check
+            result = harvest(
+                store_path=self.store_path,
+                grain_root=self.grain_root,
+                auto_write=True,
+                llm_filter=False,
+            )
+            self.assertGreater(len(result.decisions), 0)
+
 
 # ── Backup Script Tests ─────────────────────────────────────────────────────
 
@@ -1079,6 +1156,118 @@ class TestPersonaTemplates(unittest.TestCase):
     def test_setup_creates_people_dir(self):
         content = (PROJECT_ROOT / "scripts" / "setup.ps1").read_text(encoding="utf-8")
         self.assertIn("people", content)
+
+
+# ── LLM Mandatory Filter Tests ──────────────────────────────────────────────
+
+class TestHarvestLLMMandatory(unittest.TestCase):
+    """Test that --auto mode requires LLM backend for filtering (#32)."""
+
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp())
+        self.store_path = self.tmpdir / "session-store.db"
+        self.grain_root = make_grain_dir(self.tmpdir / "grain")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def test_auto_blocks_without_llm(self):
+        """harvest() with auto_write=True raises HarvestLLMUnavailableError when no LLM."""
+        create_mock_session_store(self.store_path, [
+            {
+                "id": "sess-llm-1",
+                "summary": "Design discussion",
+                "turns": [
+                    {"turn_index": 0, "user_message": "Let's go with GraphQL for the API layer", "assistant_response": "OK"},
+                ],
+            }
+        ])
+
+        # Ensure no LLM backend is available
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("engine.harvest._check_llm_available", return_value=False):
+            with self.assertRaises(HarvestLLMUnavailableError) as ctx:
+                harvest(
+                    store_path=self.store_path,
+                    grain_root=self.grain_root,
+                    auto_write=True,
+                    llm_filter=True,
+                )
+            self.assertIn("LLM backend", str(ctx.exception))
+            self.assertIn("OPENAI_API_KEY", str(ctx.exception))
+
+    def test_dry_run_works_without_llm(self):
+        """harvest() without --auto works fine without LLM (dry-run mode)."""
+        create_mock_session_store(self.store_path, [
+            {
+                "id": "sess-llm-2",
+                "summary": "Design discussion",
+                "turns": [
+                    {"turn_index": 0, "user_message": "Let's go with REST for the public API endpoints", "assistant_response": "OK"},
+                ],
+            }
+        ])
+
+        # No LLM but dry-run should work
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("engine.harvest._check_llm_available", return_value=False):
+            result = harvest(
+                store_path=self.store_path,
+                grain_root=self.grain_root,
+                auto_write=False,
+                llm_filter=True,
+            )
+        # Should succeed and return unfiltered candidates
+        self.assertGreater(len(result.decisions), 0)
+
+    def test_auto_with_no_llm_filter_flag_bypasses_check(self):
+        """harvest() with auto_write=True but llm_filter=False bypasses LLM check."""
+        create_mock_session_store(self.store_path, [
+            {
+                "id": "sess-llm-3",
+                "summary": "Quick discussion",
+                "turns": [
+                    {"turn_index": 0, "user_message": "Let's go with SQLite for testing database needs", "assistant_response": "OK"},
+                ],
+            }
+        ])
+
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("engine.harvest._check_llm_available", return_value=False):
+            # Should NOT raise because llm_filter=False explicitly bypasses
+            result = harvest(
+                store_path=self.store_path,
+                grain_root=self.grain_root,
+                auto_write=True,
+                llm_filter=False,
+            )
+        self.assertGreater(len(result.decisions), 0)
+
+    def test_error_message_is_actionable(self):
+        """Error message tells user exactly what to do."""
+        create_mock_session_store(self.store_path, [
+            {
+                "id": "sess-llm-4",
+                "summary": "Auth design",
+                "turns": [
+                    {"turn_index": 0, "user_message": "We decided to use OAuth2 for all external API access", "assistant_response": "OK"},
+                ],
+            }
+        ])
+
+        with patch.dict(os.environ, {}, clear=True), \
+             patch("engine.harvest._check_llm_available", return_value=False):
+            with self.assertRaises(HarvestLLMUnavailableError) as ctx:
+                harvest(
+                    store_path=self.store_path,
+                    grain_root=self.grain_root,
+                    auto_write=True,
+                    llm_filter=True,
+                )
+            msg = str(ctx.exception)
+            self.assertIn("OPENAI_API_KEY", msg)
+            self.assertIn("copilot CLI", msg)
+            self.assertIn("dry-run", msg.lower())
 
 
 if __name__ == "__main__":

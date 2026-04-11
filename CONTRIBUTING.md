@@ -79,6 +79,42 @@ tests/          — Unit and e2e tests
 
 For repo-specific conventions, architecture decisions, LLM integration patterns, and file formats, see [AGENTS.md](AGENTS.md).
 
+## LLM Integration Pattern
+
+All LLM usage goes through the shared client in `engine/llm_client.py`.
+Never call OpenAI or subprocess directly — use `LLMClient` instead.
+
+```python
+from engine.llm_client import LLMClient
+
+client = LLMClient()
+if client.available:
+    verified = client.verify(candidates, "decisions")
+    summary = client.summarize(long_text, max_words=50)
+    label = client.classify(text, categories=["bug", "feature", "chore"])
+else:
+    # fallback: regex-only path, reduced quality
+    verified = candidates
+```
+
+**Backend priority:** The client tries backends in order:
+
+1. `OPENAI_API_KEY` environment variable → OpenAI API
+2. `copilot` CLI on PATH → Copilot subprocess
+3. Neither → graceful fallback (no LLM, script-only)
+
+Use `BATCH_SIZE` (default 20) to stay under token limits when sending
+multiple items in a single LLM call.
+
+### Adding LLM to a New Feature
+
+1. Import the shared client: `from engine.llm_client import LLMClient`
+2. Guard every LLM call with `client.available` so the feature still works
+   without an LLM backend.
+3. Use the existing methods — `verify(`, `summarize(`, `classify(` — before
+   adding new ones.
+4. Keep fallback behavior simple: return inputs unchanged or use regex.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).

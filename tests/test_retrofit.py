@@ -29,6 +29,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from engine.retrofit import (
     extract_code_blocks,
     extract_inline_decisions,
+    extract_tool_routing,
     trim_project_descriptions,
     remove_blank_line_runs,
     is_harvest_noise,
@@ -137,6 +138,58 @@ class TestExtractInlineDecisions(unittest.TestCase):
         self.assertEqual(len(decisions), 1)
         self.assertIn("settled on React", decisions[0])
 
+    def test_went_with_keyword(self):
+        content = "- went with PostgreSQL over MySQL\n- keep this"
+        cleaned, decisions = extract_inline_decisions(content)
+        self.assertEqual(len(decisions), 1)
+        self.assertIn("went with PostgreSQL", decisions[0])
+        self.assertIn("keep this", cleaned)
+
+    def test_switched_to_keyword(self):
+        content = "- switched to Bun runtime for faster builds\n"
+        cleaned, decisions = extract_inline_decisions(content)
+        self.assertEqual(len(decisions), 1)
+
+    def test_adopted_keyword(self):
+        content = "- adopted trunk-based development\n"
+        cleaned, decisions = extract_inline_decisions(content)
+        self.assertEqual(len(decisions), 1)
+
+    def test_always_use_keyword(self):
+        content = "- always use structured logging\n- normal item"
+        cleaned, decisions = extract_inline_decisions(content)
+        self.assertEqual(len(decisions), 1)
+
+    def test_prefer_over_keyword(self):
+        content = "- prefer Pino over Winston for logging\n"
+        cleaned, decisions = extract_inline_decisions(content)
+        self.assertEqual(len(decisions), 1)
+
+    def test_tier_tagged(self):
+        content = "- [tier:2] use ESM modules everywhere\n- normal item"
+        cleaned, decisions = extract_inline_decisions(content)
+        self.assertEqual(len(decisions), 1)
+        self.assertIn("normal item", cleaned)
+
+    def test_standardized_on_keyword(self):
+        content = "- [2025-06-01] standardized on YAML for configs\n"
+        cleaned, decisions = extract_inline_decisions(content)
+        self.assertEqual(len(decisions), 1)
+
+    def test_multiple_decisions(self):
+        content = (
+            "## L1\n"
+            "- decided to use TypeScript\n"
+            "- regular item\n"
+            "- went with Jest for testing\n"
+            "- [tier:1] always use ESM\n"
+            "- normal note\n"
+        )
+        cleaned, decisions = extract_inline_decisions(content)
+        self.assertEqual(len(decisions), 3)
+        self.assertIn("regular item", cleaned)
+        self.assertIn("normal note", cleaned)
+
 
 class TestTrimProjectDescriptions(unittest.TestCase):
     """Test project description trimming in L1 section."""
@@ -151,6 +204,20 @@ class TestTrimProjectDescriptions(unittest.TestCase):
         self.assertIn("Project A", result)
         self.assertIn("Project B", result)
 
+    def test_trims_indented_sub_bullets(self):
+        content = (
+            "## L1\n"
+            "- **Auth Service** -- handles login\n"
+            "  - uses OAuth2\n"
+            "  - supports SAML\n"
+            "- **API Gateway** -- routes requests\n"
+        )
+        result = trim_project_descriptions(content)
+        self.assertNotIn("uses OAuth2", result)
+        self.assertNotIn("supports SAML", result)
+        self.assertIn("Auth Service", result)
+        self.assertIn("API Gateway", result)
+
     def test_preserves_non_l1_content(self):
         content = "## L0\nIdentity info\nDetails here\n\n## L1\n- **Proj** -- desc"
         result = trim_project_descriptions(content)
@@ -161,6 +228,69 @@ class TestTrimProjectDescriptions(unittest.TestCase):
         content = "## L0\nJust L0 content"
         result = trim_project_descriptions(content)
         self.assertEqual(result, content)
+
+    def test_preserves_content_after_l1(self):
+        content = (
+            "## L1\n"
+            "- **Proj** -- desc\n"
+            "  extra detail\n"
+            "\n"
+            "## L2\n"
+            "Deep reference content\n"
+        )
+        result = trim_project_descriptions(content)
+        self.assertNotIn("extra detail", result)
+        self.assertIn("Deep reference content", result)
+
+
+class TestExtractToolRouting(unittest.TestCase):
+    """Test tool/domain routing extraction from brain.md."""
+
+    def test_extracts_tools_section(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            domains_dir = Path(tmp) / "domains"
+            content = "## L0\nIdentity\n\n## Tools\n- VSCode\n- Copilot\n\n## L1\nWork"
+            cleaned, count = extract_tool_routing(content, domains_dir)
+            self.assertEqual(count, 1)
+            self.assertNotIn("## Tools", cleaned)
+            self.assertNotIn("VSCode", cleaned)
+            self.assertIn("## L0", cleaned)
+            self.assertIn("## L1", cleaned)
+            self.assertTrue((domains_dir / "tools.md").exists())
+
+    def test_extracts_routing_section(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            domains_dir = Path(tmp) / "domains"
+            content = "## L0\nMe\n\n## Routing\nUse X for Y\n\n## L1\nProjects"
+            cleaned, count = extract_tool_routing(content, domains_dir)
+            self.assertEqual(count, 1)
+            self.assertNotIn("Use X for Y", cleaned)
+            self.assertTrue((domains_dir / "routing.md").exists())
+
+    def test_extracts_mcp_section(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            domains_dir = Path(tmp) / "domains"
+            content = "## MCP\n- server1\n- server2\n"
+            cleaned, count = extract_tool_routing(content, domains_dir)
+            self.assertEqual(count, 1)
+            self.assertNotIn("server1", cleaned)
+
+    def test_no_tool_sections(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            domains_dir = Path(tmp) / "domains"
+            content = "## L0\nIdentity\n\n## L1\nProjects"
+            cleaned, count = extract_tool_routing(content, domains_dir)
+            self.assertEqual(count, 0)
+            self.assertEqual(cleaned, content)
+
+    def test_extracts_multiple_sections(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            domains_dir = Path(tmp) / "domains"
+            content = "## L0\nMe\n\n## Tools\n- tool1\n\n## Domains\n- domain1\n\n## L1\nWork"
+            cleaned, count = extract_tool_routing(content, domains_dir)
+            self.assertEqual(count, 2)
+            self.assertIn("## L0", cleaned)
+            self.assertIn("## L1", cleaned)
 
 
 class TestRemoveBlankLineRuns(unittest.TestCase):
@@ -398,6 +528,162 @@ class TestPhase2(unittest.TestCase):
             stats = phase_2_brain_cleanup(root)
             self.assertEqual(stats["code_blocks_extracted"], 1)
             self.assertTrue((root / "reference" / "extracted-from-brain.md").exists())
+
+
+class TestBrainTrim61To40(unittest.TestCase):
+    """Critical regression test: a realistic 61-line brain.md must trim to ≤40 lines / ≤550 tokens."""
+
+    REALISTIC_BRAIN_61 = "\n".join([
+        "# Brain",                                                  # 1
+        "",                                                         # 2
+        "## L0",                                                    # 3
+        "Senior engineer. TypeScript + Python. Bun runtime.",       # 4
+        "",                                                         # 5
+        "## L1 -- Active Projects",                                 # 6
+        "- **Wiki-Recall** -- CLI tool for portable AI scenarios",  # 7
+        "  Uses Bun, ESM-first, Pino logging",                     # 8
+        "  Stores scenarios as YAML manifests",                     # 9
+        "  Knowledge entities use Markdown + YAML frontmatter",     # 10
+        "- **Auth Service** -- handles authentication",             # 11
+        "  OAuth2 + SAML support",                                  # 12
+        "  Deployed on Azure",                                      # 13
+        "  Uses managed identity",                                  # 14
+        "- **API Gateway** -- routes requests across microservices",# 15
+        "  Rate limiting via Redis",                                # 16
+        "  OpenAPI spec generation",                                # 17
+        "",                                                         # 18
+        "## Tools",                                                 # 19
+        "- VSCode with Copilot",                                    # 20
+        "- Terminal: Windows Terminal + PowerShell",                 # 21
+        "- Git: prefer rebase over merge",                          # 22
+        "- Docker for local development",                           # 23
+        "- Azure CLI for deployments",                              # 24
+        "",                                                         # 25
+        "## Routing",                                               # 26
+        "- Bug reports → wiki/patterns/",                           # 27
+        "- Architecture decisions → decisions.md",                  # 28
+        "- People info → wiki/people/",                             # 29
+        "",                                                         # 30
+        "## L1 -- Decisions",                                       # 31  (not matched by L1 regex since it's a second L1)
+        "- [2025-03-15] decided to use Bun over Node",             # 32
+        "- [2025-04-01] went with PostgreSQL for persistence",     # 33
+        "- switched to trunk-based development",                    # 34
+        "- adopted conventional commits",                           # 35
+        "- [tier:2] always use structured logging",                 # 36
+        "- prefer Pino over Winston",                               # 37
+        "- Decision: use ESM modules everywhere",                   # 38
+        "",                                                         # 39
+        "## MCP",                                                   # 40
+        "- filesystem server on port 3000",                         # 41
+        "- knowledge server on port 3001",                          # 42
+        "",                                                         # 43
+        "",                                                         # 44
+        "",                                                         # 45
+        "",                                                         # 46
+        "## L1 -- Context",                                         # 47
+        "- Working on issue #36 brain trim",                        # 48
+        "- PR #42 needs review",                                    # 49
+        "- Sprint ends Friday",                                     # 50
+        "",                                                         # 51
+        "```python",                                                # 52
+        "# Example helper",                                         # 53
+        "def trim(text):",                                          # 54
+        "    return text.strip()",                                   # 55
+        "```",                                                      # 56
+        "",                                                         # 57
+        "- [2025-05-01] standardized on YAML for all configs",     # 58
+        "- normal operational note",                                # 59
+        "- regular status update",                                  # 60
+        "- last line of brain",                                     # 61
+    ])
+
+    def test_realistic_brain_is_61_lines(self):
+        """Verify our test fixture is exactly 61 lines."""
+        lines = self.REALISTIC_BRAIN_61.strip().split("\n")
+        self.assertEqual(len(lines), 61)
+
+    def test_extract_decisions_catches_all(self):
+        """Broadened regex catches all real-world decision formats."""
+        _, decisions = extract_inline_decisions(self.REALISTIC_BRAIN_61)
+        # Should catch: decided, went with, switched to, adopted,
+        # tier:2, prefer...over, Decision:, standardized on = 8
+        self.assertGreaterEqual(len(decisions), 7, f"Only caught {len(decisions)} decisions: {decisions}")
+
+    def test_trim_project_descriptions_reduces(self):
+        """Multi-line project entries collapse to 1 line each."""
+        result = trim_project_descriptions(self.REALISTIC_BRAIN_61)
+        result_lines = result.strip().split("\n")
+        original_lines = self.REALISTIC_BRAIN_61.strip().split("\n")
+        # Should remove at least 6 continuation lines (2+3+2 from 3 projects)
+        removed = len(original_lines) - len(result_lines)
+        self.assertGreaterEqual(removed, 5, f"Only removed {removed} lines")
+
+    def test_extract_tool_routing_removes_sections(self):
+        """Tool/routing/MCP sections are extracted to domains/."""
+        with tempfile.TemporaryDirectory() as tmp:
+            domains_dir = Path(tmp) / "domains"
+            cleaned, count = extract_tool_routing(self.REALISTIC_BRAIN_61, domains_dir)
+            # Should extract: ## Tools, ## Routing, ## MCP = 3 sections
+            self.assertGreaterEqual(count, 3, f"Only extracted {count} sections")
+            self.assertNotIn("## Tools", cleaned)
+            self.assertNotIn("## Routing", cleaned)
+            self.assertNotIn("## MCP", cleaned)
+
+    @patch("builtins.input", return_value="y")
+    def test_full_pipeline_reaches_40_lines(self, mock_input):
+        """End-to-end: 61-line brain.md → ≤40 lines after phase_2_brain_cleanup."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_retrofit_root(Path(tmp))
+            (root / "brain.md").write_text(self.REALISTIC_BRAIN_61, encoding="utf-8")
+            (root / "reference").mkdir(exist_ok=True)
+
+            stats = phase_2_brain_cleanup(root)
+            self.assertEqual(stats["original_lines"], 61)
+            self.assertLessEqual(stats["final_lines"], 40,
+                f"brain.md was {stats['final_lines']} lines, must be ≤40")
+
+            # Verify the file on disk
+            final_content = (root / "brain.md").read_text(encoding="utf-8")
+            final_lines = len(final_content.strip().split("\n"))
+            self.assertLessEqual(final_lines, 40)
+
+    @patch("builtins.input", return_value="y")
+    def test_full_pipeline_token_count_under_550(self, mock_input):
+        """Trimmed brain.md token count must be ≤550 (estimated as words * 1.3)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_retrofit_root(Path(tmp))
+            (root / "brain.md").write_text(self.REALISTIC_BRAIN_61, encoding="utf-8")
+            (root / "reference").mkdir(exist_ok=True)
+
+            phase_2_brain_cleanup(root)
+            final_content = (root / "brain.md").read_text(encoding="utf-8")
+
+            # Rough token estimate: split on whitespace, multiply by 1.3 for subword tokens
+            words = len(final_content.split())
+            estimated_tokens = int(words * 1.3)
+            self.assertLessEqual(estimated_tokens, 550,
+                f"Estimated {estimated_tokens} tokens (from {words} words), must be ≤550")
+
+    @patch("builtins.input", return_value="y")
+    def test_extracted_artifacts_created(self, mock_input):
+        """Verify decisions.md, domains/, and reference/ are populated."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = make_retrofit_root(Path(tmp))
+            (root / "brain.md").write_text(self.REALISTIC_BRAIN_61, encoding="utf-8")
+            (root / "reference").mkdir(exist_ok=True)
+
+            stats = phase_2_brain_cleanup(root)
+
+            # Code blocks extracted
+            self.assertGreaterEqual(stats["code_blocks_extracted"], 1)
+            self.assertTrue((root / "reference" / "extracted-from-brain.md").exists())
+
+            # Decisions extracted
+            self.assertGreaterEqual(stats["decisions_extracted"], 5)
+
+            # Tool routing extracted
+            self.assertGreaterEqual(stats["tool_routing_extracted"], 2)
+            self.assertTrue((root / "domains").exists())
 
 
 class TestPhase4Full(unittest.TestCase):

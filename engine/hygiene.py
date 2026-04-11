@@ -2,8 +2,11 @@
 hygiene.py -- Brain hygiene system for wiki-recall.
 
 Performs 5-category health checks on a knowledge base directory:
-  1. Structure -- root bloat, script duplication, empty dirs, orphan pages, artifacts
-  2. Content  -- stubs, missing frontmatter, missing last_verified, stale tiers, noise
+  1. Structure -- root bloat (warn >10, error >15), file classification
+                  (CORE/SCRIPT/ARCHIVE/DELETE), script duplication, empty dirs,
+                  orphan pages, artifacts
+  2. Content  -- stubs, missing frontmatter, missing last_verified, stale tiers,
+                 noise, stale file detection (>7 days)
   3. Depth    -- missing timeline/compiled truth, thin people/pattern pages
   4. Duplication -- content overlap (Jaccard), similar names (Levenshtein)
   5. Brain    -- brain.md format budget (lines, tokens, code blocks, L0/L1 sections)
@@ -37,9 +40,11 @@ logger = logging.getLogger(__name__)
 # ── Defaults ───────────────────────────────────────────────────────────────────
 
 DEFAULT_ROOT = Path(os.environ.get("GRAIN_ROOT", Path.home() / ".grain"))
-ROOT_FILE_WARN_THRESHOLD = 6
+ROOT_FILE_WARN_THRESHOLD = 10
+ROOT_FILE_ERROR_THRESHOLD = 15
 STUB_SIZE_BYTES = 200
 STALE_TIER3_DAYS = 30
+STALE_FILE_DAYS = 7
 LEVENSHTEIN_THRESHOLD = 3
 JACCARD_OVERLAP_THRESHOLD = 0.60
 
@@ -48,6 +53,21 @@ CONSTRUCTION_ARTIFACTS = [".mining", ".verification"]
 
 # Script extensions to check for duplication
 SCRIPT_EXTENSIONS = {".ps1", ".sh", ".py"}
+
+# Root file classification rules
+CORE_FILES = {
+    "brain.md", "decisions.md", "actions.md", "copilot-instructions.md",
+    "index.md", "log.md", ".gitignore", "README.md", "CHANGELOG.md",
+}
+CORE_EXTENSIONS = {".md", ".yaml", ".yml", ".json", ".toml"}
+ARCHIVE_EXTENSIONS = {".bak", ".old", ".tmp", ".orig", ".backup"}
+ARCHIVE_PATTERNS = re.compile(
+    r'(backup|old|tmp|temp|draft|deprecated|archive|\.copy)',
+    re.IGNORECASE,
+)
+
+# Classification categories for root files
+ROOT_FILE_CATEGORIES = ("CORE", "SCRIPT", "ARCHIVE", "DELETE")
 
 
 # ── Utility functions ──────────────────────────────────────────────────────────
@@ -211,18 +231,95 @@ def compute_depth_grade(issue_count: int, total_pages: int) -> str:
 
 # ── Checkers ───────────────────────────────────────────────────────────────────
 
+def classify_root_file(filename: str) -> tuple[str, str]:
+    """Classify a root file as CORE/SCRIPT/ARCHIVE/DELETE with recommended action.
+
+    Returns (category, action) where action is one of:
+        keep, move_to_scripts, archive, delete
+    """
+    name_lower = filename.lower()
+    suffix = Path(filename).suffix.lower()
+
+    # Hidden files are always CORE (config)
+    if filename.startswith("."):
+        return ("CORE", "keep")
+
+    # Explicitly known core files
+    if filename in CORE_FILES:
+        return ("CORE", "keep")
+
+    # Script files -> SCRIPT (move to scripts/)
+    if suffix in SCRIPT_EXTENSIONS:
+        return ("SCRIPT", "move_to_scripts")
+
+    # Archive-pattern names
+    if ARCHIVE_PATTERNS.search(name_lower):
+        return ("ARCHIVE", "archive")
+
+    # Archive extensions
+    if suffix in ARCHIVE_EXTENSIONS:
+        return ("ARCHIVE", "archive")
+
+    # Known core extensions (markdown, yaml, json, toml)
+    if suffix in CORE_EXTENSIONS:
+        return ("CORE", "keep")
+
+    # Anything else with no extension or unknown extension -> DELETE candidate
+    if not suffix or suffix not in CORE_EXTENSIONS:
+        return ("DELETE", "delete")
+
+    return ("CORE", "keep")
+
+
 def check_structure(root: Path) -> list[HygieneIssue]:
     """Check structural health of the knowledge base."""
     issues: list[HygieneIssue] = []
 
-    # 1. Root file count
+    # 1. Root file count with classification
     root_files = [f for f in root.iterdir() if f.is_file()] if root.exists() else []
-    if len(root_files) > ROOT_FILE_WARN_THRESHOLD:
+    file_count = len(root_files)
+
+    if file_count > ROOT_FILE_ERROR_THRESHOLD:
         issues.append(HygieneIssue(
-            "structure", "warning",
-            f"Root has {len(root_files)} files (threshold: {ROOT_FILE_WARN_THRESHOLD})",
+            "structure", "error",
+            f"Root has {file_count} files (error threshold: {ROOT_FILE_ERROR_THRESHOLD})",
             fixable=False,
         ))
+    elif file_count > ROOT_FILE_WARN_THRESHOLD:
+        issues.append(HygieneIssue(
+            "structure", "warning",
+            f"Root has {file_count} files (warn threshold: {ROOT_FILE_WARN_THRESHOLD})",
+            fixable=False,
+        ))
+
+    # 1b. Classify each root file and report non-CORE files
+    for f in root_files:
+        if f.name.startswith("."):
+            continue
+        category, action = classify_root_file(f.name)
+        if category == "SCRIPT":
+            issues.append(HygieneIssue(
+                "structure", "info",
+                f"Root file '{f.name}' classified as SCRIPT — move to scripts/",
+                file=f.name,
+                fixable=True,
+                fix_action="move_to_scripts",
+            ))
+        elif category == "ARCHIVE":
+            issues.append(HygieneIssue(
+                "structure", "warning",
+                f"Root file '{f.name}' classified as ARCHIVE — move to .archive/",
+                file=f.name,
+                fixable=True,
+                fix_action="archive_root_file",
+            ))
+        elif category == "DELETE":
+            issues.append(HygieneIssue(
+                "structure", "warning",
+                f"Root file '{f.name}' classified as DELETE candidate — review and remove",
+                file=f.name,
+                fixable=False,
+            ))
 
     # 2. Script duplication (same script at root AND scripts/)
     scripts_dir = root / "scripts"
@@ -592,6 +689,149 @@ def check_brain_health(root: Path) -> list[HygieneIssue]:
     return issues
 
 
+def check_staleness(root: Path) -> list[HygieneIssue]:
+    """Check for stale files with outdated timestamps.
+
+    Scans files with YAML frontmatter 'updated' or 'last_verified' fields
+    and flags those older than STALE_FILE_DAYS as stale.
+    """
+    issues: list[HygieneIssue] = []
+    now = datetime.now()
+    stale_threshold = timedelta(days=STALE_FILE_DAYS)
+
+    # Scan wiki pages
+    wiki_dir = root / "wiki"
+    if wiki_dir.exists():
+        for md_file in wiki_dir.rglob("*.md"):
+            if md_file.name in ("index.md", "log.md"):
+                continue
+            if md_file.parent.name.startswith("."):
+                continue
+
+            try:
+                content = md_file.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+
+            if not has_frontmatter(content):
+                continue
+
+            rel = md_file.relative_to(root)
+
+            # Check last_verified first, then updated
+            date_str = (
+                extract_frontmatter_field(content, "last_verified")
+                or extract_frontmatter_field(content, "updated")
+            )
+            if not date_str:
+                continue
+
+            dt = parse_date_safe(date_str)
+            if dt and (now - dt) > stale_threshold:
+                days_old = (now - dt).days
+                issues.append(HygieneIssue(
+                    "content", "info",
+                    f"Stale file: last updated {days_old} days ago (threshold: {STALE_FILE_DAYS}d)",
+                    file=str(rel),
+                ))
+
+    # Also check brain.md "Last refreshed" line
+    brain_path = root / "brain.md"
+    if brain_path.exists():
+        try:
+            brain_content = brain_path.read_text(encoding="utf-8", errors="replace")
+            match = re.search(r"Last refreshed:\s*(\S+)", brain_content)
+            if match:
+                dt = parse_date_safe(match.group(1))
+                if dt and (now - dt) > stale_threshold:
+                    days_old = (now - dt).days
+                    issues.append(HygieneIssue(
+                        "content", "info",
+                        f"brain.md stale: last refreshed {days_old} days ago (threshold: {STALE_FILE_DAYS}d)",
+                        file="brain.md",
+                    ))
+        except Exception:
+            pass
+
+    # Check other root-level markdown files with frontmatter
+    if root.exists():
+        for md_file in root.iterdir():
+            if not md_file.is_file() or md_file.suffix != ".md":
+                continue
+            if md_file.name == "brain.md":
+                continue  # Already checked above
+
+            try:
+                content = md_file.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+
+            if not has_frontmatter(content):
+                continue
+
+            date_str = (
+                extract_frontmatter_field(content, "last_verified")
+                or extract_frontmatter_field(content, "updated")
+            )
+            if not date_str:
+                continue
+
+            dt = parse_date_safe(date_str)
+            if dt and (now - dt) > stale_threshold:
+                days_old = (now - dt).days
+                issues.append(HygieneIssue(
+                    "content", "info",
+                    f"Stale file: last updated {days_old} days ago (threshold: {STALE_FILE_DAYS}d)",
+                    file=md_file.name,
+                ))
+
+    return issues
+
+
+def update_brain_timestamp(root: Path) -> bool:
+    """Update the 'Last refreshed' line in brain.md with the current date.
+
+    Call this after any engine function that modifies brain.md.
+    Returns True if the timestamp was updated, False otherwise.
+    """
+    brain_path = root / "brain.md"
+    if not brain_path.exists():
+        return False
+
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    try:
+        content = brain_path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return False
+
+    # Replace existing "Last refreshed: ..." line
+    new_content, count = re.subn(
+        r"(Last refreshed:\s*)\S+",
+        rf"\g<1>{today}",
+        content,
+    )
+
+    if count > 0:
+        brain_path.write_text(new_content, encoding="utf-8")
+        return True
+
+    # If no "Last refreshed" line exists, add one after the first heading or at top
+    lines = content.split("\n")
+    inserted = False
+    for idx, line in enumerate(lines):
+        if line.startswith("# "):
+            lines.insert(idx + 1, f"Last refreshed: {today}")
+            inserted = True
+            break
+
+    if not inserted:
+        lines.insert(0, f"Last refreshed: {today}")
+
+    brain_path.write_text("\n".join(lines), encoding="utf-8")
+    return True
+
+
 # Index section mapping for orphan fix
 INDEX_SECTION_MAP = {
     "people": "People",
@@ -728,6 +968,35 @@ def apply_fixes(
             if _add_orphan_to_index(index_path, page_name, section, page_path):
                 actions.append(f"Added orphan '{page_name}' to index.md [{section}]")
 
+        elif issue.fix_action == "move_to_scripts" and issue.file:
+            script_path = root / issue.file
+            scripts_dir = root / "scripts"
+            if script_path.exists():
+                scripts_dir.mkdir(parents=True, exist_ok=True)
+                dest = scripts_dir / issue.file
+                if not dest.exists():
+                    shutil.move(str(script_path), str(dest))
+                    actions.append(f"Moved script '{issue.file}' to scripts/")
+                else:
+                    # Already exists in scripts/ — treat as duplicate, delete root copy
+                    script_path.unlink()
+                    actions.append(f"Deleted duplicate root script: {issue.file} (already in scripts/)")
+
+        elif issue.fix_action == "archive_root_file" and issue.file:
+            file_path = root / issue.file
+            archive_dir = root / ".archive"
+            if file_path.exists():
+                archive_dir.mkdir(parents=True, exist_ok=True)
+                dest = archive_dir / issue.file
+                if dest.exists():
+                    # Add timestamp suffix to avoid overwrite
+                    stem = Path(issue.file).stem
+                    suffix = Path(issue.file).suffix
+                    ts = datetime.now().strftime("%Y%m%d%H%M%S")
+                    dest = archive_dir / f"{stem}-{ts}{suffix}"
+                shutil.move(str(file_path), str(dest))
+                actions.append(f"Archived root file '{issue.file}' to .archive/")
+
     # Add [No Data Yet] to empty sections in wiki pages
     wiki_dir = root / "wiki"
     if wiki_dir.exists():
@@ -850,11 +1119,14 @@ class HygieneReport:
         """Run all checks and compute scores."""
         structure = check_structure(self.root)
         content = check_content(self.root)
+        staleness = check_staleness(self.root)
         depth = check_depth(self.root)
         duplication = check_duplication(self.root)
         brain = check_brain_health(self.root)
 
-        self.issues = structure + content + depth + duplication + brain
+        # Staleness issues are folded into the content category
+        content_all = content + staleness
+        self.issues = structure + content_all + depth + duplication + brain
 
         # Count total wiki pages for depth percentage grading
         total_pages = 0
@@ -870,7 +1142,7 @@ class HygieneReport:
         # Compute per-category scores
         for cat, cat_issues in [
             ("structure", structure),
-            ("content", content),
+            ("content", content_all),
             ("duplication", duplication),
             ("brain", brain),
         ]:

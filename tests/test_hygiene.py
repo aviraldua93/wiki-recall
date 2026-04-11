@@ -37,7 +37,9 @@ from engine.hygiene import (
     check_content,
     check_depth,
     check_duplication,
+    check_staleness,
     check_structure,
+    classify_root_file,
     compute_depth_grade,
     compute_grade,
     extract_frontmatter_field,
@@ -48,6 +50,7 @@ from engine.hygiene import (
     main,
     parse_date_safe,
     section_has_content,
+    update_brain_timestamp,
     _determine_index_section,
     _add_orphan_to_index,
 )
@@ -271,13 +274,42 @@ class TestStructureChecks(unittest.TestCase):
         self.assertEqual(len(errors), 0)
 
     def test_root_file_bloat(self):
-        # Create >6 files at root
-        for i in range(8):
+        # Create >10 files at root (warn threshold)
+        for i in range(12):
             (self.root / f"file{i}.txt").write_text(f"content {i}")
         make_index(self.root, [])
         issues = check_structure(self.root)
         bloat = [i for i in issues if "Root has" in i.message]
         self.assertGreater(len(bloat), 0)
+        self.assertEqual(bloat[0].severity, "warning")
+
+    def test_root_file_error_threshold(self):
+        # Create >15 files at root (error threshold)
+        for i in range(18):
+            (self.root / f"file{i}.txt").write_text(f"content {i}")
+        make_index(self.root, [])
+        issues = check_structure(self.root)
+        bloat = [i for i in issues if "Root has" in i.message]
+        self.assertGreater(len(bloat), 0)
+        self.assertEqual(bloat[0].severity, "error")
+
+    def test_root_file_classification(self):
+        # Test SCRIPT classification
+        (self.root / "deploy.sh").write_text("#!/bin/bash\necho deploy")
+        # Test ARCHIVE classification
+        (self.root / "old-config.bak").write_text("old config")
+        # Test CORE stays as core
+        (self.root / "notes.md").write_text("# Notes")
+        make_index(self.root, [])
+        issues = check_structure(self.root)
+        scripts = [i for i in issues if "SCRIPT" in i.message]
+        archives = [i for i in issues if "ARCHIVE" in i.message]
+        self.assertGreater(len(scripts), 0)
+        self.assertTrue(scripts[0].fixable)
+        self.assertEqual(scripts[0].fix_action, "move_to_scripts")
+        self.assertGreater(len(archives), 0)
+        self.assertTrue(archives[0].fixable)
+        self.assertEqual(archives[0].fix_action, "archive_root_file")
 
     def test_script_duplication(self):
         (self.root / "lint.ps1").write_text("# root lint")
@@ -1058,6 +1090,192 @@ class TestOrphanFix(unittest.TestCase):
         self.assertGreater(len(orphans), 0)
         self.assertTrue(orphans[0].fixable)
         self.assertEqual(orphans[0].fix_action, "add_to_index")
+
+
+class TestRootFileClassification(unittest.TestCase):
+    """Tests for root file classification (CORE/SCRIPT/ARCHIVE/DELETE)."""
+
+    def test_core_files(self):
+        cat, action = classify_root_file("brain.md")
+        self.assertEqual(cat, "CORE")
+        self.assertEqual(action, "keep")
+
+        cat, action = classify_root_file("decisions.md")
+        self.assertEqual(cat, "CORE")
+        self.assertEqual(action, "keep")
+
+        cat, action = classify_root_file(".gitignore")
+        self.assertEqual(cat, "CORE")
+        self.assertEqual(action, "keep")
+
+    def test_script_files(self):
+        cat, action = classify_root_file("deploy.sh")
+        self.assertEqual(cat, "SCRIPT")
+        self.assertEqual(action, "move_to_scripts")
+
+        cat, action = classify_root_file("lint.ps1")
+        self.assertEqual(cat, "SCRIPT")
+        self.assertEqual(action, "move_to_scripts")
+
+        cat, action = classify_root_file("harvest.py")
+        self.assertEqual(cat, "SCRIPT")
+        self.assertEqual(action, "move_to_scripts")
+
+    def test_archive_files(self):
+        cat, action = classify_root_file("config.bak")
+        self.assertEqual(cat, "ARCHIVE")
+        self.assertEqual(action, "archive")
+
+        cat, action = classify_root_file("brain-backup.md")
+        self.assertEqual(cat, "ARCHIVE")
+        self.assertEqual(action, "archive")
+
+        cat, action = classify_root_file("data.old")
+        self.assertEqual(cat, "ARCHIVE")
+        self.assertEqual(action, "archive")
+
+    def test_delete_candidate(self):
+        cat, action = classify_root_file("random_file")
+        self.assertEqual(cat, "DELETE")
+        self.assertEqual(action, "delete")
+
+    def test_md_files_are_core(self):
+        cat, action = classify_root_file("notes.md")
+        self.assertEqual(cat, "CORE")
+        self.assertEqual(action, "keep")
+
+
+class TestStalenessChecks(unittest.TestCase):
+    """Tests for stale file detection."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.root = make_wiki_root(Path(self.tmpdir))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def test_stale_wiki_page(self):
+        old_date = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
+        content = f"---\ntitle: Old Page\nupdated: {old_date}\n---\n# Old Page\n"
+        write_page(self.root, "wiki/projects/old-page.md", content)
+        issues = check_staleness(self.root)
+        stale = [i for i in issues if "Stale file" in i.message]
+        self.assertGreater(len(stale), 0)
+        self.assertIn("10 days", stale[0].message)
+
+    def test_fresh_wiki_page_no_flag(self):
+        today = datetime.now().strftime("%Y-%m-%d")
+        content = f"---\ntitle: Fresh Page\nupdated: {today}\n---\n# Fresh\n"
+        write_page(self.root, "wiki/projects/fresh-page.md", content)
+        issues = check_staleness(self.root)
+        stale = [i for i in issues if "fresh-page" in str(i.file)]
+        self.assertEqual(len(stale), 0)
+
+    def test_stale_brain_md(self):
+        old_date = (datetime.now() - timedelta(days=15)).strftime("%Y-%m-%d")
+        (self.root / "brain.md").write_text(f"# Brain\nLast refreshed: {old_date}\n")
+        issues = check_staleness(self.root)
+        brain_stale = [i for i in issues if "brain.md stale" in i.message]
+        self.assertGreater(len(brain_stale), 0)
+
+    def test_last_verified_field(self):
+        old_date = (datetime.now() - timedelta(days=14)).strftime("%Y-%m-%d")
+        content = f"---\ntitle: Verified Page\nlast_verified: {old_date}\n---\n# Page\n"
+        write_page(self.root, "wiki/concepts/test-concept.md", content)
+        issues = check_staleness(self.root)
+        stale = [i for i in issues if "test-concept" in str(i.file)]
+        self.assertGreater(len(stale), 0)
+
+    def test_staleness_in_report(self):
+        """Staleness issues should appear in the full hygiene report under content."""
+        old_date = (datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d")
+        content = f"---\ntitle: Old Page\nupdated: {old_date}\n---\n# Old Page\n"
+        write_page(self.root, "wiki/projects/stale-test.md", content)
+        # Need index for orphan check
+        idx_content = "# Index\n## Projects\n| [[stale-test]] | | |\n"
+        (self.root / "wiki" / "index.md").write_text(idx_content)
+        # Need valid brain.md
+        (self.root / "brain.md").write_text(
+            "# Brain\nLast refreshed: " + datetime.now().strftime("%Y-%m-%d") + "\n"
+            "## L0 Identity\nI am test.\n## L1 Active Work\nTesting.\n"
+        )
+        report = HygieneReport(self.root)
+        report.run()
+        stale = [i for i in report.issues if "Stale file" in i.message]
+        self.assertGreater(len(stale), 0)
+        self.assertEqual(stale[0].category, "content")
+
+
+class TestBrainTimestamp(unittest.TestCase):
+    """Tests for brain.md timestamp auto-update."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.root = make_wiki_root(Path(self.tmpdir))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def test_update_existing_timestamp(self):
+        (self.root / "brain.md").write_text("# Brain\nLast refreshed: 2020-01-01\n## L0\nTest\n")
+        result = update_brain_timestamp(self.root)
+        self.assertTrue(result)
+        content = (self.root / "brain.md").read_text()
+        today = datetime.now().strftime("%Y-%m-%d")
+        self.assertIn(f"Last refreshed: {today}", content)
+        self.assertNotIn("2020-01-01", content)
+
+    def test_add_timestamp_when_missing(self):
+        (self.root / "brain.md").write_text("# Brain\n## L0\nTest\n")
+        result = update_brain_timestamp(self.root)
+        self.assertTrue(result)
+        content = (self.root / "brain.md").read_text()
+        today = datetime.now().strftime("%Y-%m-%d")
+        self.assertIn(f"Last refreshed: {today}", content)
+
+    def test_no_brain_file(self):
+        (self.root / "brain.md").unlink()
+        result = update_brain_timestamp(self.root)
+        self.assertFalse(result)
+
+
+class TestFixModeRootCleanup(unittest.TestCase):
+    """Tests for --fix mode moving SCRIPT files and archiving ARCHIVE files."""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+        self.root = make_wiki_root(Path(self.tmpdir))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmpdir)
+
+    def test_fix_moves_script_to_scripts(self):
+        (self.root / "deploy.sh").write_text("#!/bin/bash\necho deploy")
+        issues = check_structure(self.root)
+        actions = apply_fixes(self.root, issues)
+        self.assertTrue((self.root / "scripts" / "deploy.sh").exists())
+        self.assertFalse((self.root / "deploy.sh").exists())
+        moved = [a for a in actions if "Moved script" in a]
+        self.assertGreater(len(moved), 0)
+
+    def test_fix_archives_bak_file(self):
+        (self.root / "config.bak").write_text("old config")
+        issues = check_structure(self.root)
+        actions = apply_fixes(self.root, issues)
+        self.assertFalse((self.root / "config.bak").exists())
+        self.assertTrue((self.root / ".archive").exists())
+        archived = [a for a in actions if "Archived root file" in a]
+        self.assertGreater(len(archived), 0)
+
+    def test_fix_script_already_in_scripts(self):
+        """If script already exists in scripts/, delete the root copy."""
+        (self.root / "lint.ps1").write_text("# root")
+        (self.root / "scripts" / "lint.ps1").write_text("# scripts")
+        issues = check_structure(self.root)
+        actions = apply_fixes(self.root, issues)
+        self.assertFalse((self.root / "lint.ps1").exists())
+        self.assertTrue((self.root / "scripts" / "lint.ps1").exists())
 
 
 if __name__ == "__main__":

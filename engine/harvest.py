@@ -874,6 +874,21 @@ class HarvestResult:
         print()
 
 
+class HarvestLLMUnavailableError(RuntimeError):
+    """Raised when --auto mode requires LLM but none is available."""
+    pass
+
+
+def _check_llm_available() -> bool:
+    """Check if any LLM backend is available for filtering."""
+    try:
+        from engine.llm_client import LLMClient
+        client = LLMClient()
+        return client.available
+    except Exception:
+        return False
+
+
 def harvest(
     since: Optional[str] = None,
     auto_write: bool = False,
@@ -894,7 +909,20 @@ def harvest(
 
     Returns:
         HarvestResult with all findings.
+
+    Raises:
+        HarvestLLMUnavailableError: If auto_write=True and no LLM backend is available.
+            In --auto mode, LLM filtering is mandatory to prevent noise from being
+            written to decisions.md. Set OPENAI_API_KEY or install copilot CLI.
     """
+    # In --auto mode, LLM filtering is MANDATORY to prevent noise (#32)
+    if auto_write and llm_filter and not _check_llm_available():
+        raise HarvestLLMUnavailableError(
+            "harvest --auto requires an LLM backend for filtering.\n"
+            "No LLM backend found. Set OPENAI_API_KEY or install the copilot CLI.\n"
+            "Dry-run mode (without --auto) still works without LLM for previewing candidates.\n"
+            "Use --no-llm-filter to explicitly bypass (not recommended for production)."
+        )
     # Allow overrides for testing
     _store = store_path or STORE_PATH
     _grain = grain_root or GRAIN_ROOT
@@ -1029,7 +1057,7 @@ def harvest(
             raw_pattern_count = len(result.bug_patterns)
             raw_people_count = len(result.people_mentioned)
 
-            # Filter decisions
+            # Filter decisions (MANDATORY in --auto mode)
             if result.decisions:
                 decision_candidates = [{"text": d} for d in result.decisions]
                 filtered = llm_filter_decisions(decision_candidates, dry_run=dry_run)
@@ -1065,7 +1093,16 @@ def harvest(
                 raw_pattern_count, len(result.bug_patterns),
                 raw_people_count, len(result.people_mentioned),
             )
+        except HarvestLLMUnavailableError:
+            raise
         except Exception as e:
+            if auto_write:
+                # In --auto mode, LLM failure is fatal — refuse to write unfiltered noise
+                raise HarvestLLMUnavailableError(
+                    f"LLM filtering failed during --auto harvest: {e}\n"
+                    "Refusing to write unfiltered candidates to decisions.md.\n"
+                    "Fix the LLM backend or use dry-run mode to preview candidates."
+                ) from e
             logger.warning("LLM filtering failed: %s — using regex-only results", e)
 
     return result
@@ -1260,6 +1297,19 @@ def main():
         else:
             print("Never harvested (run harvest.py to start)")
         return
+
+    # Early LLM availability check for --auto mode
+    if args.auto and args.llm_filter and not _check_llm_available():
+        print(
+            "ERROR: --auto mode requires an LLM backend for decision filtering.\n"
+            "No LLM backend found. Please either:\n"
+            "  1. Set OPENAI_API_KEY environment variable, or\n"
+            "  2. Install the copilot CLI\n"
+            "\n"
+            "Run without --auto for a dry-run preview of regex-only candidates.\n"
+            "Use --no-llm-filter to explicitly bypass (not recommended for production)."
+        )
+        sys.exit(1)
 
     since = args.since
     if since is None:

@@ -40,6 +40,7 @@ from engine.hygiene import (
     has_frontmatter,
     has_section,
     section_has_content,
+    update_brain_timestamp,
     DEFAULT_ROOT,
 )
 from engine.llm_client import LLMClient
@@ -171,13 +172,44 @@ def extract_code_blocks(content: str) -> tuple[str, list[str]]:
 def extract_inline_decisions(content: str) -> tuple[str, list[str]]:
     """Extract lines that look like inlined decisions from brain.md.
 
+    Matches dated and undated decision lines using broad keyword coverage:
+    - Dated: ``- [2025-01-01] decided / settled / chose / went with ...``
+    - Prefixed: ``- Decision: ...`` or ``- DECISION: ...``
+    - Keyword: ``decided to``, ``settled on``, ``going with``, ``chose``,
+      ``went with``, ``switched to``, ``adopted``, ``moved to``,
+      ``using X instead``, ``prefer X over``, ``always use``, ``never use``,
+      ``default to``
+
     Returns (cleaned_content, list_of_decision_lines).
     """
     decisions: list[str] = []
+
+    # Broad set of decision-signal keywords
+    _DECISION_VERBS = (
+        r'(?:decided|settled\s+on|going\s+with|chose|went\s+with|switched\s+to|'
+        r'adopted|moved\s+to|using\s+\S+\s+instead|prefer\s+\S+\s+over|'
+        r'always\s+use|never\s+use|default\s+to|standardized?\s+on|'
+        r'committed\s+to|locked\s+in|picked|selected|opting\s+for|'
+        r'ruled\s+out|dropped|deprecated|replaced\s+\S+\s+with)'
+    )
+
     decision_patterns = [
-        re.compile(r'^\s*[-*]\s*\[?\d{4}-\d{2}-\d{2}\]?\s+.*(?:decided|settled|going with|chose)', re.IGNORECASE),
+        # Dated: - [2025-01-01] ... <verb>
+        re.compile(
+            rf'^\s*[-*]\s*\[?\d{{4}}-\d{{2}}-\d{{2}}\]?\s+.*{_DECISION_VERBS}',
+            re.IGNORECASE,
+        ),
+        # Prefixed: - Decision: ...
         re.compile(r'^\s*[-*]\s*(?:Decision|DECISION):\s+', re.IGNORECASE),
+        # Undated keyword: - decided to ... / - went with ...
+        re.compile(
+            rf'^\s*[-*]\s+{_DECISION_VERBS}',
+            re.IGNORECASE,
+        ),
+        # Tier-tagged: - [tier:N] ...
+        re.compile(r'^\s*[-*]\s*\[tier:\d\]', re.IGNORECASE),
     ]
+
     lines = content.split("\n")
     cleaned_lines: list[str] = []
 
@@ -194,32 +226,53 @@ def extract_inline_decisions(content: str) -> tuple[str, list[str]]:
 def trim_project_descriptions(content: str) -> str:
     """Trim multi-line project descriptions to one line each.
 
-    Looks for L1 section content and shortens project entries.
+    In L1 sections, a *project header* is any top-level list item whose text
+    starts with ``**Name**``.  All continuation lines (indented text, indented
+    sub-bullets, or plain non-header text) that follow a project header are
+    dropped so each project occupies exactly one line.
     """
     lines = content.split("\n")
     result: list[str] = []
     in_l1 = False
-    prev_was_project_header = False
+    eating_continuation = False
 
     for line in lines:
         stripped = line.strip()
+
+        # Detect L1 section start
         if re.match(r'^##\s+L1\b', line, re.IGNORECASE):
             in_l1 = True
+            eating_continuation = False
             result.append(line)
-            prev_was_project_header = False
             continue
+
+        # Any other ## heading ends L1
         if re.match(r'^##\s', line) and in_l1:
             in_l1 = False
+            eating_continuation = False
 
-        if in_l1 and prev_was_project_header:
-            # Skip continuation lines of project descriptions (indented or non-header non-list)
-            if stripped and not stripped.startswith(("-", "*", "#")):
+        if in_l1:
+            is_indented = line.startswith(("  ", "\t"))
+
+            # Top-level (non-indented) project header: ``- **Name** ...``
+            if not is_indented and re.match(r'^[-*]\s+\*\*', stripped):
+                eating_continuation = True
+                result.append(line)
                 continue
 
-        if in_l1 and re.match(r'^\s*[-*]\s+\*\*', stripped):
-            prev_was_project_header = True
-        else:
-            prev_was_project_header = False
+            # Top-level (non-indented) list item that is NOT a project header
+            if not is_indented and re.match(r'^[-*]\s+', stripped):
+                eating_continuation = False
+                result.append(line)
+                continue
+
+            # While eating continuation, drop indented / plain continuation lines
+            if eating_continuation and stripped:
+                continue
+
+            # Blank line after a project entry — stop eating but keep the blank
+            if eating_continuation and not stripped:
+                eating_continuation = False
 
         result.append(line)
 
@@ -231,6 +284,79 @@ def remove_blank_line_runs(content: str) -> str:
     return re.sub(r'\n{4,}', '\n\n\n', content)
 
 
+# ── Tool Routing Headings (to extract from brain.md → domains/) ───────────
+_TOOL_ROUTING_HEADINGS = re.compile(
+    r'^##\s+(?:Tool(?:s|ing)?|Routing|Domain(?:s)?|MCP|Server(?:s)?|Extension(?:s)?|'
+    r'IDE|Editor|Plugin(?:s)?|Command(?:s)?|CLI)\b',
+    re.IGNORECASE,
+)
+
+
+def extract_tool_routing(content: str, domains_dir: Path) -> tuple[str, int]:
+    """Extract tool/domain routing sections from brain.md into domains/ files.
+
+    Looks for ``## Tools``, ``## Routing``, ``## Domains``, ``## MCP``, etc.
+    Each matched section (heading → next ``##`` heading or EOF) is written to
+    ``domains/<heading-slug>.md`` and removed from the source content.
+
+    Returns (cleaned_content, sections_extracted).
+    """
+    lines = content.split("\n")
+    result: list[str] = []
+    extracted_sections: list[tuple[str, list[str]]] = []  # (heading_text, lines)
+    current_section: list[str] | None = None
+    current_heading: str | None = None
+
+    for line in lines:
+        # Check if this line starts a tool-routing section
+        if _TOOL_ROUTING_HEADINGS.match(line):
+            # Flush any in-progress section first
+            if current_section is not None:
+                extracted_sections.append((current_heading, current_section))
+            # Start capturing the new tool-routing section
+            current_heading = line
+            current_section = [line]
+            continue
+
+        if current_section is not None:
+            # Another ## heading (non-tool) ends the captured section
+            if re.match(r'^##\s', line):
+                extracted_sections.append((current_heading, current_section))
+                current_section = None
+                current_heading = None
+                result.append(line)
+            else:
+                current_section.append(line)
+            continue
+
+        result.append(line)
+
+    # Flush any trailing section
+    if current_section is not None:
+        extracted_sections.append((current_heading, current_section))
+
+    if not extracted_sections:
+        return content, 0
+
+    domains_dir.mkdir(parents=True, exist_ok=True)
+    for heading, section_lines in extracted_sections:
+        # Derive a filename from the heading: ## Tools Setup -> tools-setup.md
+        slug = re.sub(r'^##\s+', '', heading).strip()
+        slug = re.sub(r'[^a-zA-Z0-9]+', '-', slug).strip('-').lower()
+        if not slug:
+            slug = "routing"
+        out_path = domains_dir / f"{slug}.md"
+
+        section_text = "\n".join(section_lines).strip() + "\n"
+        # Append if file already exists
+        if out_path.exists():
+            existing = out_path.read_text(encoding="utf-8", errors="replace")
+            section_text = existing.rstrip() + "\n\n" + section_text
+        out_path.write_text(section_text, encoding="utf-8")
+
+    return "\n".join(result), len(extracted_sections)
+
+
 def phase_2_brain_cleanup(root: Path, llm: LLMClient | None = None) -> dict:
     """Phase 2: Trim brain.md to L0+L1 under 40 lines. Uses LLM when available for smarter summaries."""
     print("\n-- Phase 2: Brain.md Cleanup --")
@@ -240,6 +366,7 @@ def phase_2_brain_cleanup(root: Path, llm: LLMClient | None = None) -> dict:
         "final_lines": 0,
         "code_blocks_extracted": 0,
         "decisions_extracted": 0,
+        "tool_routing_extracted": 0,
         "llm_summaries": 0,
     }
 
@@ -288,7 +415,14 @@ def phase_2_brain_cleanup(root: Path, llm: LLMClient | None = None) -> dict:
             f.write(f"\n## Extracted from brain.md ({today})\n\n{new_entries}\n")
         print(f"  Extracted {len(decisions)} decision(s) to decisions.md")
 
-    # Step 3: Trim project descriptions to one line
+    # Step 3: Extract tool/domain routing sections -> domains/
+    domains_dir = root / "domains"
+    content, routing_count = extract_tool_routing(content, domains_dir)
+    stats["tool_routing_extracted"] = routing_count
+    if routing_count:
+        print(f"  Extracted {routing_count} tool-routing section(s) to domains/")
+
+    # Step 4: Trim project descriptions to one line
     # When LLM available, use summarize for multi-line project descriptions
     if llm and llm.available:
         content, summary_count = _llm_trim_project_descriptions(content, llm)
@@ -298,7 +432,7 @@ def phase_2_brain_cleanup(root: Path, llm: LLMClient | None = None) -> dict:
     else:
         content = trim_project_descriptions(content)
 
-    # Step 4: Collapse blank line runs
+    # Step 5: Collapse blank line runs
     content = remove_blank_line_runs(content)
 
     final_lines = len(content.strip().split("\n"))
@@ -309,6 +443,7 @@ def phase_2_brain_cleanup(root: Path, llm: LLMClient | None = None) -> dict:
         return stats
 
     brain_path.write_text(content, encoding="utf-8")
+    update_brain_timestamp(root)
     print(f"  [OK] brain.md trimmed: {original_lines} -> {final_lines} lines")
     return stats
 

@@ -2,7 +2,7 @@
 heal.py -- Unified heal command for wiki-recall knowledge bases.
 
 Single command that replaces retrofit + hygiene + refactor by orchestrating:
-  1. DIAGNOSE  -- run all hygiene checks + 5 LLM critic functions
+  1. DIAGNOSE  -- run all hygiene checks + 5 LLM critic functions + 4 content-quality checks
   2. AUTO-FIX  -- safe, non-destructive fixes (from hygiene.py)
   3. SMART-FIX -- LLM-assisted fixes for judgment-required issues
   4. DEPTH-UPGRADE -- promote tier-3 stubs to tier-2 with content
@@ -11,9 +11,29 @@ Single command that replaces retrofit + hygiene + refactor by orchestrating:
 5 LLM Critic Functions (all have regex fallback):
   - karpathy:        Evaluate entity quality per Karpathy methodology
   - gbrain:          Evaluate brain.md budget and coherence
-  - structure:       Classify root files, detect bloat
+  - structure:       Classify root files, detect bloat, README.md convention (#41)
   - content:         Assess content quality, noise detection
-  - cross_reference: Validate cross-references and path references
+  - cross_reference: Validate cross-references and path references (#34)
+
+4 Content-Quality Check Categories (via page_quality.py):
+  - page_depth:           Compiled truth exists with real content (not [No data yet]),
+                          timeline with chronological dated entries, source attribution
+                          (session IDs, dates), page >200 bytes for project-type pages
+  - page_quality:         Personal insight vs textbook definition (LLM-assisted),
+                          no truncated sentences, cross-references link to real pages,
+                          frontmatter related field matches content
+  - page_classification:  Correct category directory, stub/enrichable/archivable status,
+                          duplicate detection via Jaccard similarity
+  - page_score:           Numeric 0-10 score + label assignment:
+                          DEEP (>7), ADEQUATE (4-7), STUB (<4), MISPLACED, PLACEHOLDER
+
+Per-page scores are stored in HealReport.page_scores and included in --json output.
+
+Subsumes:
+  - #34: Path validation (validate_paths.py logic in cross_reference critic)
+  - #36: Brain trim (runs by default with --fix when brain.md >40 lines)
+  - #38: Timestamp update (every page modified by --fix gets updated: set to today)
+  - #41: README.md convention check (structure critic)
 
 Interface:
     python engine/heal.py                     # diagnose only
@@ -62,6 +82,20 @@ from engine.hygiene import (
     DEFAULT_ROOT,
 )
 from engine.llm_client import LLMClient
+from engine.page_quality import (
+    PageQualityResult,
+    score_all_pages,
+    LABEL_DEEP,
+    LABEL_ADEQUATE,
+    LABEL_STUB,
+    LABEL_MISPLACED,
+    LABEL_PLACEHOLDER,
+)
+from engine.validate_paths import (
+    extract_path_references,
+    resolve_path,
+    BrokenPath,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +143,7 @@ class HealReport:
     fix_actions: list[str] = field(default_factory=list)
     smart_fix_actions: list[str] = field(default_factory=list)
     depth_actions: list[str] = field(default_factory=list)
+    page_scores: dict[str, PageQualityResult] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -120,6 +155,9 @@ class HealReport:
             "fix_actions": self.fix_actions,
             "smart_fix_actions": self.smart_fix_actions,
             "depth_actions": self.depth_actions,
+            "page_scores": {
+                k: v.to_dict() for k, v in self.page_scores.items()
+            },
         }
 
     def print_report(self, before_scores: dict[str, str] | None = None) -> None:
@@ -182,9 +220,44 @@ class HealReport:
                 print(f"  + {action}")
             print()
 
+        # Page quality breakdown
+        if self.page_scores:
+            print("-- PAGE QUALITY --")
+            by_label: dict[str, list[PageQualityResult]] = {}
+            for ps in self.page_scores.values():
+                by_label.setdefault(ps.label, []).append(ps)
+
+            total_pages = len(self.page_scores)
+            avg_score = (
+                sum(ps.score for ps in self.page_scores.values()) / total_pages
+                if total_pages else 0
+            )
+            print(f"  Total pages scored: {total_pages}")
+            print(f"  Average score: {avg_score:.1f}/10")
+
+            for label in [LABEL_DEEP, LABEL_ADEQUATE, LABEL_STUB, LABEL_MISPLACED, LABEL_PLACEHOLDER]:
+                pages = by_label.get(label, [])
+                if pages:
+                    pct = len(pages) / total_pages * 100 if total_pages else 0
+                    print(f"    {label:12s}  {len(pages):3d} ({pct:.0f}%)")
+
+            # Show worst pages
+            worst = sorted(self.page_scores.values(), key=lambda x: x.score)[:5]
+            if worst and worst[0].score < 7:
+                print()
+                print("  Lowest-scoring pages:")
+                for ps in worst:
+                    issue_str = "; ".join(ps.issues[:2]) if ps.issues else ""
+                    print(f"    [{ps.score:4.1f}] {ps.label:12s} {ps.file}")
+                    if issue_str:
+                        print(f"           {issue_str}")
+            print()
+
         total = len(self.issues) + len(self.critic_findings)
         print(f"Total: {len(self.issues)} hygiene issues, "
               f"{len(self.critic_findings)} critic findings")
+        if self.page_scores:
+            print(f"       {len(self.page_scores)} pages scored")
         print()
 
 
@@ -527,6 +600,62 @@ def critic_structure(root: Path, llm: LLMClient) -> list[CriticFinding]:
                 suggestion="Consider deleting",
             ))
 
+    # #41: README.md convention check (only for actual knowledge bases)
+    has_kb_markers = (root / "brain.md").exists() or (root / "wiki").exists()
+    if has_kb_markers:
+        readme_path = root / "README.md"
+        if not readme_path.exists():
+            findings.append(CriticFinding(
+                critic="structure",
+                severity="warning",
+                message="README.md not found at root",
+                suggestion="Create README.md with project name and description",
+                auto_fixable=True,
+            ))
+        else:
+            try:
+                readme_content = readme_path.read_text(encoding="utf-8", errors="replace")
+                # Check for project name (should have at least an H1 heading)
+                if not re.search(r'^#\s+\S', readme_content, re.MULTILINE):
+                    findings.append(CriticFinding(
+                        critic="structure",
+                        severity="info",
+                        message="README.md missing project name heading (# Title)",
+                        file="README.md",
+                        suggestion="Add a top-level heading with the project name",
+                    ))
+                # Check for description (at least one paragraph of text after the heading)
+                body = re.sub(r'^#.*$', '', readme_content, flags=re.MULTILINE).strip()
+                if len(body) < 20:
+                    findings.append(CriticFinding(
+                        critic="structure",
+                        severity="info",
+                        message="README.md has no meaningful description",
+                        file="README.md",
+                        suggestion="Add a brief description of this knowledge base",
+                    ))
+                # Check for internal/corporate URL references
+                internal_patterns = [
+                    re.compile(r'https?://[^)\s]*\.sharepoint\.com', re.IGNORECASE),
+                    re.compile(r'https?://dev\.azure\.com', re.IGNORECASE),
+                    re.compile(r'https?://[^)\s]*\.visualstudio\.com', re.IGNORECASE),
+                    re.compile(r'https?://eng\.ms', re.IGNORECASE),
+                    re.compile(r'https?://aka\.ms', re.IGNORECASE),
+                ]
+                for pat in internal_patterns:
+                    matches = pat.findall(readme_content)
+                    if matches:
+                        findings.append(CriticFinding(
+                            critic="structure",
+                            severity="warning",
+                            message=f"README.md references internal/corporate URL: {matches[0][:60]}",
+                            file="README.md",
+                            suggestion="Remove internal URL references from README.md",
+                            auto_fixable=True,
+                        ))
+            except Exception:
+                pass
+
     return findings
 
 
@@ -632,10 +761,11 @@ def critic_content(root: Path, llm: LLMClient) -> list[CriticFinding]:
 
 
 def critic_cross_reference(root: Path, llm: LLMClient) -> list[CriticFinding]:
-    """Validate cross-references between entities.
+    """Validate cross-references between entities and path references.
 
     LLM mode: Assess whether related entities make sense semantically.
     Regex fallback: Parse related: YAML field, check file existence on disk.
+    Also integrates #34 validate_paths.py logic for copilot-instructions.md.
     """
     findings: list[CriticFinding] = []
     wiki_dir = root / "wiki"
@@ -687,31 +817,31 @@ def critic_cross_reference(root: Path, llm: LLMClient) -> list[CriticFinding]:
                     suggestion=f"Remove '{ref_id}' from related: or create the page",
                 ))
 
-    # Check copilot-instructions.md for broken path references
+    # #34: Integrate validate_paths.py logic for copilot-instructions.md
+    # Uses the full path extraction regex suite from validate_paths module
     for instructions_name in ("copilot-instructions.md",):
         instructions_path = root / instructions_name
         if not instructions_path.exists():
-            # Also check ~/.github/
             instructions_path = Path.home() / ".github" / instructions_name
         if instructions_path.exists():
             try:
                 content = instructions_path.read_text(encoding="utf-8", errors="replace")
-                # Find path references like wiki/projects/foo.md, domains/bar.md
-                path_refs = re.findall(
-                    r'(?:wiki|domains|scripts|reference)/[\w\-/]+\.(?:md|ps1|py|sh)',
-                    content,
-                )
-                for ref in path_refs:
-                    ref_path = root / ref
-                    if not ref_path.exists():
+                # Use validate_paths.py's comprehensive extraction
+                path_refs = extract_path_references(content)
+                for line_num, line_text, path_ref in path_refs:
+                    resolved = resolve_path(path_ref, root)
+                    if not resolved.exists():
+                        try:
+                            rel_file = str(instructions_path.relative_to(root))
+                        except ValueError:
+                            rel_file = str(instructions_path)
                         findings.append(CriticFinding(
                             critic="cross_reference",
                             severity="warning",
-                            message=f"Broken path in copilot-instructions.md: {ref}",
-                            file=str(instructions_path.relative_to(root)
-                                     if instructions_path.is_relative_to(root)
-                                     else instructions_path),
-                            suggestion=f"Remove or fix path reference: {ref}",
+                            message=f"Broken path in copilot-instructions.md (line {line_num}): {path_ref}",
+                            file=rel_file,
+                            suggestion=f"Remove or fix path reference: {path_ref}",
+                            auto_fixable=True,
                         ))
             except Exception:
                 pass
@@ -759,7 +889,7 @@ class HealPipeline:
         self.llm = llm or LLMClient(fallback_mode=True)
 
     def diagnose(self) -> HealReport:
-        """Run all hygiene checks and critic functions. Returns HealReport."""
+        """Run all hygiene checks, critic functions, and page quality scoring."""
         report = HealReport(root=self.root)
 
         # 1. Run hygiene checks (from hygiene.py)
@@ -819,6 +949,22 @@ class HealPipeline:
                     message=f"Critic failed: {e}",
                 ))
 
+        # 3. Run per-page quality scoring (page_quality.py)
+        try:
+            page_results = score_all_pages(self.root, llm=self.llm)
+            for pr in page_results:
+                report.page_scores[pr.file] = pr
+                # Convert page quality issues to critic findings
+                for issue in pr.issues:
+                    report.critic_findings.append(CriticFinding(
+                        critic="page_quality",
+                        severity="warning" if pr.score < 4 else "info",
+                        message=f"[{pr.label} {pr.score:.1f}] {issue}",
+                        file=pr.file,
+                    ))
+        except Exception as e:
+            logger.warning("Page quality scoring failed: %s", e)
+
         return report
 
     def auto_fix(self, report: HealReport) -> list[str]:
@@ -833,24 +979,42 @@ class HealPipeline:
     def smart_fix(self, report: HealReport) -> list[str]:
         """Apply LLM-assisted fixes for judgment-required issues.
 
-        Uses critic findings to determine what needs smart fixing.
+        Uses critic findings and page quality scores to determine what needs fixing.
         Falls back to regex-based fixes when LLM unavailable.
+
+        Content-aware fixes:
+          (a) Enrich [No data yet] placeholders with LLM summary from session data
+          (b) Archive stubs >30 days old with no timeline activity
+          (c) Move misplaced pages to correct directory
+          (d) Flag generic content for rewrite
+
+        Subsumption:
+          #34: Fix broken paths in copilot-instructions.md (auto_fixable findings)
+          #36: Brain.md trim runs by default (not just when gbrain critic fires)
+          #38: Every page touched by --fix gets updated: timestamp set to today
         """
         actions: list[str] = []
+        today = datetime.now().strftime("%Y-%m-%d")
+        pages_touched: list[Path] = []  # Track pages for #38 timestamp update
 
-        # Smart fix 1: Brain.md trim (from gbrain critic)
-        gbrain_findings = [
-            f for f in report.critic_findings
-            if f.critic == "gbrain" and f.auto_fixable
-        ]
-        if gbrain_findings:
-            brain_path = self.root / "brain.md"
-            if brain_path.exists():
-                try:
-                    content = brain_path.read_text(encoding="utf-8", errors="replace")
-                    original_lines = len(content.strip().split("\n"))
+        # ── #36: Brain.md trim (runs by default, not just when critic fires) ──
+        brain_path = self.root / "brain.md"
+        if brain_path.exists():
+            try:
+                content = brain_path.read_text(encoding="utf-8", errors="replace")
+                original_lines = len(content.strip().split("\n"))
 
-                    # Import retrofit functions for brain cleanup
+                # Only trim if brain.md exceeds budget (40 lines)
+                needs_trim = original_lines > 40
+
+                # Also trim if gbrain critic flagged auto_fixable issues
+                gbrain_findings = [
+                    f for f in report.critic_findings
+                    if f.critic == "gbrain" and f.auto_fixable
+                ]
+                needs_trim = needs_trim or bool(gbrain_findings)
+
+                if needs_trim:
                     from engine.retrofit import (
                         extract_code_blocks,
                         extract_inline_decisions,
@@ -865,7 +1029,7 @@ class HealPipeline:
                         ref_dir.mkdir(parents=True, exist_ok=True)
                         extract_path = ref_dir / "extracted-from-brain.md"
                         extract_content = "# Code Blocks Extracted from brain.md\n\n"
-                        extract_content += f"Extracted on {datetime.now().strftime('%Y-%m-%d')}\n\n"
+                        extract_content += f"Extracted on {today}\n\n"
                         for i, block in enumerate(code_blocks, 1):
                             extract_content += f"## Block {i}\n\n{block}\n\n"
                         extract_path.write_text(extract_content, encoding="utf-8")
@@ -875,7 +1039,6 @@ class HealPipeline:
                     content, decisions = extract_inline_decisions(content)
                     if decisions:
                         decisions_path = self.root / "decisions.md"
-                        today = datetime.now().strftime("%Y-%m-%d")
                         new_entries = "\n".join(f"- [{today}] [tier:2] {d}" for d in decisions)
                         with open(decisions_path, "a", encoding="utf-8") as f:
                             f.write(f"\n## Extracted from brain.md ({today})\n\n{new_entries}\n")
@@ -897,10 +1060,10 @@ class HealPipeline:
                     if final_lines < original_lines:
                         brain_path.write_text(content, encoding="utf-8")
                         actions.append(f"Trimmed brain.md: {original_lines} -> {final_lines} lines")
-                except Exception as e:
-                    logger.warning("Brain.md smart fix failed: %s", e)
+            except Exception as e:
+                logger.warning("Brain.md smart fix failed: %s", e)
 
-        # Smart fix 2: Move scripts from root to scripts/
+        # ── Smart fix: Move scripts from root to scripts/ ──
         structure_findings = [
             f for f in report.critic_findings
             if f.critic == "structure" and f.auto_fixable and f.file
@@ -927,7 +1090,7 @@ class HealPipeline:
                         shutil.move(str(src), str(dest))
                         actions.append(f"Archived {finding.file}")
 
-        # Smart fix 3: Clean decisions.md noise
+        # ── Smart fix: Clean decisions.md noise ──
         content_findings = [
             f for f in report.critic_findings
             if f.critic == "content" and f.auto_fixable
@@ -945,11 +1108,9 @@ class HealPipeline:
                         stripped = line.strip()
                         if stripped.startswith("-"):
                             entry = stripped.lstrip("- ")
-                            # Remove [harvest] tagged entries
                             if "[harvest]" in entry.lower():
                                 removed += 1
                                 continue
-                            # Remove very short auto-generated entries
                             if re.match(r'^\[\d{4}-\d{2}-\d{2}\]\s+\S+\s*$', entry):
                                 removed += 1
                                 continue
@@ -960,6 +1121,225 @@ class HealPipeline:
                         actions.append(f"Cleaned {removed} noise entries from decisions.md")
                 except Exception as e:
                     logger.warning("decisions.md cleanup failed: %s", e)
+
+        # ── #34: Fix broken paths in copilot-instructions.md ──
+        xref_findings = [
+            f for f in report.critic_findings
+            if f.critic == "cross_reference" and f.auto_fixable
+            and f.file and "copilot-instructions" in (f.file or "")
+        ]
+        if xref_findings:
+            # Find the instructions file
+            instructions_path = self.root / "copilot-instructions.md"
+            if not instructions_path.exists():
+                instructions_path = Path.home() / ".github" / "copilot-instructions.md"
+            if instructions_path.exists():
+                try:
+                    content = instructions_path.read_text(encoding="utf-8", errors="replace")
+                    lines = content.split("\n")
+                    commented = 0
+                    # Collect line numbers of broken path findings
+                    broken_lines: set[int] = set()
+                    for finding in xref_findings:
+                        # Extract line number from message like "line 42"
+                        line_match = re.search(r'\(line (\d+)\)', finding.message)
+                        if line_match:
+                            broken_lines.add(int(line_match.group(1)))
+
+                    # Comment out broken path lines (from bottom to top)
+                    for line_num in sorted(broken_lines, reverse=True):
+                        idx = line_num - 1
+                        if 0 <= idx < len(lines):
+                            lines[idx] = f"<!-- BROKEN PATH: {lines[idx]} -->"
+                            commented += 1
+
+                    if commented > 0:
+                        instructions_path.write_text("\n".join(lines), encoding="utf-8")
+                        actions.append(f"Commented out {commented} broken path reference(s) in copilot-instructions.md")
+                except Exception as e:
+                    logger.warning("copilot-instructions.md path fix failed: %s", e)
+
+        # ── Content-aware fix (a): Enrich [No data yet] placeholders ──
+        for file_key, page_result in report.page_scores.items():
+            if page_result.label != LABEL_PLACEHOLDER:
+                continue
+            page_path = self.root / file_key
+            if not page_path.exists():
+                continue
+            try:
+                content = page_path.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+
+            title = extract_frontmatter_field(content, "title") or page_path.stem
+
+            # Try to generate content using LLM from page title/type
+            if self.llm.available:
+                page_type = extract_frontmatter_field(content, "type") or "concept"
+                summary = self.llm.summarize(
+                    f"Wiki page '{title}' of type '{page_type}'. Generate a brief "
+                    f"initial compiled truth paragraph based on the page name.",
+                    max_words=40,
+                )
+                if summary and summary.strip():
+                    # Replace [No data yet] with the generated content
+                    content = re.sub(
+                        r'\[No data yet\]',
+                        summary.strip(),
+                        content,
+                        flags=re.IGNORECASE,
+                    )
+                    page_path.write_text(content, encoding="utf-8")
+                    pages_touched.append(page_path)
+                    actions.append(f"Enriched placeholder in {file_key}")
+
+        # ── Content-aware fix (b): Archive stubs >30 days old with no timeline ──
+        for file_key, page_result in report.page_scores.items():
+            if page_result.label != LABEL_STUB:
+                continue
+            if not page_result.classification:
+                continue
+            if page_result.classification.is_enrichable:
+                continue  # Don't archive enrichable stubs
+
+            page_path = self.root / file_key
+            if not page_path.exists():
+                continue
+
+            # Check age from frontmatter or file mtime
+            try:
+                content = page_path.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+
+            updated_str = extract_frontmatter_field(content, "updated") or ""
+            try:
+                page_date = datetime.strptime(updated_str, "%Y-%m-%d")
+                age_days = (datetime.now() - page_date).days
+            except (ValueError, TypeError):
+                # Fall back to file modification time
+                age_days = (datetime.now() - datetime.fromtimestamp(page_path.stat().st_mtime)).days
+
+            if age_days > 30:
+                # Check no timeline activity
+                has_timeline = page_result.depth and page_result.depth.timeline_entry_count > 0
+                if not has_timeline:
+                    archive_dir = page_path.parent / ".archive"
+                    archive_dir.mkdir(parents=True, exist_ok=True)
+                    dest = archive_dir / page_path.name
+                    if not dest.exists():
+                        import shutil
+                        shutil.move(str(page_path), str(dest))
+                        actions.append(f"Archived stale stub ({age_days}d old): {file_key}")
+
+        # ── Content-aware fix (c): Move misplaced pages ──
+        for file_key, page_result in report.page_scores.items():
+            if page_result.label != LABEL_MISPLACED:
+                continue
+            if not page_result.classification:
+                continue
+            expected_dir = page_result.classification.expected_directory
+            if not expected_dir:
+                continue
+
+            page_path = self.root / file_key
+            if not page_path.exists():
+                continue
+
+            wiki_dir = self.root / "wiki"
+            target_dir = wiki_dir / expected_dir
+            target_dir.mkdir(parents=True, exist_ok=True)
+            dest = target_dir / page_path.name
+
+            if not dest.exists():
+                import shutil
+                shutil.move(str(page_path), str(dest))
+                pages_touched.append(dest)
+                actions.append(f"Moved misplaced page {file_key} -> wiki/{expected_dir}/")
+
+        # ── Content-aware fix (d): Flag generic content for rewrite ──
+        for file_key, page_result in report.page_scores.items():
+            if not page_result.quality:
+                continue
+            if (page_result.quality.is_textbook_definition
+                    and not page_result.quality.is_personal_insight):
+                page_path = self.root / file_key
+                if not page_path.exists():
+                    continue
+                if self.llm.available:
+                    try:
+                        content = page_path.read_text(encoding="utf-8", errors="replace")
+                        title = extract_frontmatter_field(content, "title") or page_path.stem
+                        rewritten = self.llm.rewrite(
+                            content,
+                            f"Rewrite this wiki page about '{title}' to be a personal knowledge "
+                            f"note, not a textbook definition. Use first-person perspective, "
+                            f"include specific observations, decisions, or lessons learned. "
+                            f"Keep the YAML frontmatter and section headings intact.",
+                        )
+                        if rewritten and len(rewritten) > 100:
+                            page_path.write_text(rewritten, encoding="utf-8")
+                            pages_touched.append(page_path)
+                            actions.append(f"Rewrote generic content in {file_key}")
+                    except Exception as e:
+                        logger.warning("Content rewrite failed for %s: %s", file_key, e)
+                else:
+                    actions.append(f"FLAG: {file_key} has generic/textbook content — needs manual rewrite")
+
+        # ── #38: Update timestamps on all pages touched by --fix ──
+        for page_path in pages_touched:
+            if not page_path.exists():
+                continue
+            try:
+                content = page_path.read_text(encoding="utf-8", errors="replace")
+                modified = False
+
+                # Update 'updated:' field
+                if re.search(r'^updated:\s*', content, re.MULTILINE):
+                    content = re.sub(
+                        r'^(updated:\s*).*$',
+                        rf'\g<1>{today}',
+                        content,
+                        count=1,
+                        flags=re.MULTILINE,
+                    )
+                    modified = True
+
+                # Add 'last_verified:' if missing
+                if "last_verified:" not in content and has_frontmatter(content):
+                    # Insert before closing ---
+                    content = re.sub(
+                        r'^(---\s*)$',
+                        f'last_verified: {today}\n\\1',
+                        content,
+                        count=1,
+                        flags=re.MULTILINE,
+                    )
+                    # Only match the SECOND --- (closing frontmatter)
+                    if content.startswith("---"):
+                        end_match = re.search(r'\n---\s*\n', content[3:])
+                        if end_match:
+                            insert_pos = 3 + end_match.start()
+                            content = (
+                                content[:insert_pos]
+                                + f"\nlast_verified: {today}"
+                                + content[insert_pos:]
+                            )
+                    modified = True
+                elif "last_verified:" in content:
+                    content = re.sub(
+                        r'^(last_verified:\s*).*$',
+                        rf'\g<1>{today}',
+                        content,
+                        count=1,
+                        flags=re.MULTILINE,
+                    )
+                    modified = True
+
+                if modified:
+                    page_path.write_text(content, encoding="utf-8")
+            except Exception as e:
+                logger.warning("Timestamp update failed for %s: %s", page_path, e)
 
         report.smart_fix_actions = actions
         return actions

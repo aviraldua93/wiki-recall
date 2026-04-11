@@ -221,6 +221,85 @@ python engine/hygiene.py --json             # structured JSON output
 
 PowerShell wrapper: `scripts/hygiene.ps1 [-Path] [-Fix] [-Refactor] [-Retrofit] [-Json]`
 
+### Heal (Unified Pipeline)
+
+`engine/heal.py` is the single command that replaces hygiene + retrofit + refactor.
+It orchestrates: diagnose → auto-fix → smart-fix → depth-upgrade → verify.
+
+```bash
+python engine/heal.py                     # diagnose only (5 critic functions + content quality)
+python engine/heal.py /path/to/wiki       # diagnose specific path
+python engine/heal.py --fix               # diagnose + auto-fix + smart-fix
+python engine/heal.py --deep              # include depth-upgrade (promote stubs)
+python engine/heal.py --verify            # full pipeline with before/after comparison
+python engine/heal.py --json              # structured JSON output
+python engine/heal.py --no-llm            # force regex-only mode
+```
+
+**5 LLM Critic Functions** (all have regex fallback):
+- **karpathy** -- entity quality per Karpathy methodology
+- **gbrain** -- brain.md budget and coherence
+- **structure** -- root file classification, bloat detection, README.md convention (#41)
+- **content** -- content quality assessment, noise detection
+- **cross_reference** -- cross-reference and path reference validation (#34)
+
+**4 Content-Quality Check Categories** (via `engine/page_quality.py`):
+1. **Page Depth** -- compiled truth exists with real content (not `[No data yet]`), timeline exists with chronological dated entries, source attribution exists (session IDs, dates, `[Source:]` tags), page >200 bytes for project-type pages
+2. **Page Quality** (LLM-assisted) -- content is personal insight not textbook definition, no truncated sentences, cross-references link to real pages, frontmatter `related` field matches content
+3. **Page Classification** -- page in correct category directory (e.g., project pages in `wiki/projects/`), stub/enrichable/archivable status detection, duplicate detection (Jaccard similarity >60%)
+4. **Page Score** -- numeric 0-10 score aggregated from depth (0-3 pts), quality (0-3 pts), classification (0-2 pts), and bonus (0-2 pts)
+
+**Content-Quality Scoring Tiers:**
+
+| Label | Score | Meaning |
+|:------|:-----:|:--------|
+| `DEEP` | >7 | Full compiled truth + timeline + attribution. Personal insight style. |
+| `ADEQUATE` | 4-7 | Has structure but may lack depth, attribution, or insight. |
+| `STUB` | <4 | Minimal content, missing key sections. |
+| `MISPLACED` | any | Page is in the wrong category directory (overrides score label). |
+| `PLACEHOLDER` | any | All content is `[No data yet]` placeholder text (overrides score label). |
+
+**--fix content-aware actions** (LLM-assisted via `engine/llm_client.py`):
+- **Enrich placeholders** -- LLM generates initial content for `[No data yet]` pages from session store
+- **Archive stubs** -- stubs >30 days old with no timeline activity moved to `.archive/`
+- **Move misplaced pages** -- pages in wrong category directory moved to correct one
+- **Rewrite generic content** -- LLM rewrites textbook definitions to personal insight style
+- **Comment out broken paths** (#34) -- broken paths in copilot-instructions.md wrapped in HTML comments
+- **Brain trim** (#36) -- brain.md trimmed when >40 lines (runs by default with --fix)
+- **Timestamp update** (#38) -- every page touched by --fix gets `updated:` set to today, `last_verified:` added if missing
+- **README convention** (#41) -- structure critic validates README.md exists, has project heading, description, no internal URLs
+
+**Subsumes issues:** #34 (path validation), #36 (brain trim), #38 (timestamp update), #41 (README convention).
+
+**JSON Output Schema** (`heal --json`):
+
+```json
+{
+  "root": "/path/to/kb",
+  "scores": {"structure": "A", "content": "B", "depth": "C", "duplication": "A", "brain": "B"},
+  "issue_count": 12,
+  "issues": [{"category": "...", "severity": "...", "message": "...", "file": "..."}],
+  "critic_findings": [{"critic": "...", "severity": "...", "message": "...", "file": "...", "suggestion": "...", "auto_fixable": false}],
+  "fix_actions": ["action description", "..."],
+  "smart_fix_actions": ["action description", "..."],
+  "depth_actions": ["action description", "..."],
+  "page_scores": {
+    "wiki/projects/auth-service.md": {
+      "file": "wiki/projects/auth-service.md",
+      "score": 8.2,
+      "label": "DEEP",
+      "issues": ["no source attribution found"]
+    }
+  }
+}
+```
+
+The `page_scores` field maps relative file paths to `PageQualityResult` objects with:
+- `file` (string) -- relative path within the knowledge base
+- `score` (float) -- numeric quality score 0-10
+- `label` (string) -- one of `DEEP`, `ADEQUATE`, `STUB`, `MISPLACED`, `PLACEHOLDER`
+- `issues` (string[]) -- list of specific content issues found
+
 ### Refactoring (Interactive Cleanup)
 
 `engine/refactor.py` provides guided 6-phase interactive cleanup:

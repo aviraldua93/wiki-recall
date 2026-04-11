@@ -131,11 +131,12 @@ The dream cycle sweeps for new entities, appends timeline updates, fixes missing
 wiki-recall heal
 ```
 
-Five LLM critic functions diagnose structure, content depth, duplication, brain budget, and path references. Auto-fixes safe issues. Smart-fixes with judgment. Upgrades format. Verifies the result. Letter grade A–F per category.
+Five LLM critic functions diagnose structure, content depth, duplication, brain budget, and path references. Four content-quality checks score every page (DEEP/ADEQUATE/STUB/MISPLACED/PLACEHOLDER). Auto-fixes safe issues. Smart-fixes with judgment. Upgrades format. Verifies the result. Letter grade A–F per category.
 
 ```bash
-wiki-recall heal --retrofit   # upgrade legacy brains to current format
-wiki-recall heal --json       # structured output for CI
+wiki-recall heal --fix            # diagnose + auto-fix + smart-fix
+wiki-recall heal --retrofit       # upgrade legacy brains to current format
+wiki-recall heal --json           # structured output for CI (includes per-page quality scores)
 ```
 
 `cargo clippy` for your knowledge base. Run it weekly.
@@ -273,8 +274,9 @@ Template (this repo) ships engine code and placeholders. `~/.grain/` holds your 
 
 ```bash
 wiki-recall heal                            # Diagnose + auto-fix everything
+wiki-recall heal --fix                      # Apply smart-fixes (enrich, archive, rewrite)
 wiki-recall heal --retrofit                 # Upgrade legacy brains
-wiki-recall heal --json                     # Structured output for CI
+wiki-recall heal --json                     # Structured output for CI (includes page_scores)
 ```
 
 ```bash
@@ -284,7 +286,7 @@ python engine/indexer.py                    # Full reindex
 python engine/indexer.py --incremental      # Incremental reindex
 ```
 
-Under the hood, `heal` orchestrates: `hygiene.py` (4-category health) → `refactor.py` (cleanup) → `retrofit.py` (format upgrade) → path validation → verification.
+Under the hood, `heal` orchestrates: `hygiene.py` (4-category health) → `page_quality.py` (content scoring) → `refactor.py` (cleanup) → `retrofit.py` (format upgrade) → path validation → verification. Per-page quality scores (DEEP/ADEQUATE/STUB/MISPLACED/PLACEHOLDER) are included in `--json` output.
 
 **Scripts:** `setup.ps1` · `harvest.ps1` · `refresh.ps1` · `compact.ps1` · `backup.ps1` · `lint.ps1` · `hygiene.ps1` · `dream.ps1`
 

@@ -78,6 +78,30 @@ Candidates:
 {candidates}
 """
 
+_CONSOLIDATION_PROMPT = """\
+You are a knowledge base editor for a personal wiki. Rewrite the "Compiled Truth"
+section for the entity below using ONLY the raw timeline entries and sidecar excerpts
+provided. The compiled truth should be:
+
+- 5-10 lines maximum
+- Current and accurate (discard outdated info superseded by newer entries)
+- Written in present tense where possible
+- Every claim attributed with [Source: session XXXXXXXX]
+
+Entity: {entity_name} (type: {entity_type})
+
+Current compiled truth:
+{current_truth}
+
+Timeline entries:
+{timeline}
+
+Raw sidecar excerpts:
+{raw_excerpts}
+
+Return ONLY the new compiled truth section content (no heading, no fences).
+"""
+
 
 # ── LLM backend detection ───────────────────────────────────────────────────
 
@@ -317,3 +341,52 @@ def _filter_category(
         return candidates
 
     return all_kept
+
+
+def consolidate_compiled_truth(
+    entity_name: str,
+    entity_type: str,
+    current_truth: str,
+    timeline: str,
+    raw_excerpts: str,
+    backend: str | None = None,
+) -> str | None:
+    """Use LLM to rewrite compiled truth from timeline and raw excerpts.
+
+    Args:
+        entity_name: Name of the entity (person or project).
+        entity_type: 'person' or 'project'.
+        current_truth: Current compiled truth section text.
+        timeline: Timeline entries text.
+        raw_excerpts: Raw sidecar excerpt text.
+        backend: Force a specific LLM backend.
+
+    Returns:
+        New compiled truth text, or None if LLM unavailable.
+    """
+    resolved_backend = backend if backend is not None else _get_backend()
+
+    if resolved_backend == "none":
+        logger.warning("No LLM backend available — skipping consolidation")
+        return None
+
+    prompt = _CONSOLIDATION_PROMPT.format(
+        entity_name=entity_name,
+        entity_type=entity_type,
+        current_truth=current_truth,
+        timeline=timeline,
+        raw_excerpts=raw_excerpts,
+    )
+
+    try:
+        response = _call_llm(prompt, resolved_backend)
+        # Strip any markdown fences
+        text = response.strip()
+        if text.startswith("```"):
+            lines = text.split("\n")
+            lines = [l for l in lines if not l.strip().startswith("```")]
+            text = "\n".join(lines).strip()
+        return text
+    except Exception as e:
+        logger.warning("Consolidation LLM call failed: %s", e)
+        return None

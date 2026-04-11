@@ -3,11 +3,14 @@
     wiki-recall setup wizard — creates your personal ~/.grain/ knowledge base.
 
 .DESCRIPTION
-    Interactive onboarding with two modes:
+    Interactive onboarding with three modes:
 
     --Quick     Form-based setup (5 min). Produces a minimal brain.
     --Interview Deep interview mode (15-30 min). Copilot CLI interviews you,
                 mines your sessions, and produces a 10x richer brain.
+    --Adopt <path>  Scan an existing brain directory, report findings, add missing
+                    pieces (RESOLVER.md, dream.ps1, format upgrades) WITHOUT
+                    overwriting existing files. Use -WhatIf for preview.
 
     If neither flag is passed, the wizard prompts you to choose.
 
@@ -15,6 +18,8 @@
       powershell -ExecutionPolicy Bypass -File scripts/setup.ps1
       powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Quick
       powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Interview
+      powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Adopt ~/.grain
+      powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Adopt ~/.grain -WhatIf
 
 .NOTES
     All data stays local in ~/.grain/. Nothing is pushed anywhere.
@@ -22,7 +27,9 @@
 
 param(
     [switch]$Interview,
-    [switch]$Quick
+    [switch]$Quick,
+    [string]$Adopt = "",
+    [switch]$WhatIf
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,6 +45,314 @@ Write-Host ""
 Write-Host "This will create your personal knowledge base at $grainDir"
 Write-Host "All data stays local. Nothing is pushed to any repo."
 Write-Host ""
+
+# --- Adopt mode: scan and upgrade existing brain ---
+if ($Adopt -ne "") {
+    $adoptPath = $Adopt
+    if (-not (Test-Path $adoptPath)) {
+        Write-Host "ERROR: Path not found: $adoptPath" -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "  wiki-recall Adopt Mode" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Scanning: $adoptPath"
+    Write-Host ""
+
+    # --- Phase 1: Scan existing structure ---
+    Write-Host "Phase 1: Scanning existing structure..." -ForegroundColor Cyan
+    $findings = @{
+        Exists = @()
+        Missing = @()
+        NeedsTier = @()
+        NeedsCompiledTruth = @()
+    }
+
+    # Check core files
+    $coreFiles = @{
+        'brain.md'      = (Join-Path $adoptPath 'brain.md')
+        'decisions.md'  = (Join-Path $adoptPath 'decisions.md')
+        'actions.md'    = (Join-Path $adoptPath 'actions.md')
+        'persona.md'    = (Join-Path $adoptPath 'persona.md')
+        'RESOLVER.md'   = (Join-Path $adoptPath 'RESOLVER.md')
+        '.gitignore'    = (Join-Path $adoptPath '.gitignore')
+    }
+
+    foreach ($file in $coreFiles.GetEnumerator()) {
+        if (Test-Path $file.Value) {
+            $findings.Exists += "✓ $($file.Key)"
+        } else {
+            $findings.Missing += "✗ $($file.Key)"
+        }
+    }
+
+    # Check directories
+    $coreDirs = @(
+        'wiki',
+        (Join-Path 'wiki' 'projects'),
+        (Join-Path 'wiki' 'people'),
+        (Join-Path 'wiki' 'patterns'),
+        (Join-Path 'wiki' 'concepts'),
+        'domains',
+        'engine',
+        'scripts',
+        'reference'
+    )
+
+    foreach ($d in $coreDirs) {
+        $fullPath = Join-Path $adoptPath $d
+        if (Test-Path $fullPath) {
+            $findings.Exists += "✓ $d/"
+        } else {
+            $findings.Missing += "✗ $d/"
+        }
+    }
+
+    # Check scripts
+    $scriptFiles = @('dream.ps1', 'maintenance.ps1', 'backup.ps1', 'lint.ps1', 'refresh.ps1', 'harvest.ps1')
+    foreach ($script in $scriptFiles) {
+        $scriptPath = Join-Path $adoptPath 'scripts' $script
+        if (Test-Path $scriptPath) {
+            $findings.Exists += "✓ scripts/$script"
+        } else {
+            $findings.Missing += "✗ scripts/$script"
+        }
+    }
+
+    # Check copilot-instructions.md
+    $copilotInstructions = Join-Path $adoptPath 'copilot-instructions.md'
+    if (-not (Test-Path $copilotInstructions)) {
+        $copilotInstructions = Join-Path $env:USERPROFILE '.copilot' 'copilot-instructions.md'
+        if (Test-Path $copilotInstructions) {
+            $findings.Exists += "✓ copilot-instructions.md (in ~/.copilot/)"
+        } else {
+            $findings.Missing += "✗ copilot-instructions.md"
+        }
+    } else {
+        $findings.Exists += "✓ copilot-instructions.md"
+    }
+
+    # --- Phase 2: Scan entity pages for format issues ---
+    Write-Host "Phase 2: Scanning entity pages for format issues..." -ForegroundColor Cyan
+    $wikiDir = Join-Path $adoptPath 'wiki'
+    if (Test-Path $wikiDir) {
+        $allPages = Get-ChildItem -Path $wikiDir -Recurse -Filter '*.md' |
+            Where-Object { $_.Name -ne 'index.md' -and $_.Name -ne 'README.md' -and $_.FullName -notlike '*\.raw\*' }
+
+        foreach ($page in $allPages) {
+            $content = Get-Content $page.FullName -Raw -ErrorAction SilentlyContinue
+            if (-not $content) { continue }
+
+            # Check for tier field in frontmatter
+            if ($content -match '(?s)^---\s*\r?\n.*?\r?\n---') {
+                $frontmatter = $Matches[0]
+                if ($frontmatter -notmatch 'tier:') {
+                    $relPath = $page.FullName.Replace($adoptPath, '').TrimStart('\', '/')
+                    $findings.NeedsTier += $relPath
+                }
+            } else {
+                # No frontmatter at all
+                $relPath = $page.FullName.Replace($adoptPath, '').TrimStart('\', '/')
+                $findings.NeedsTier += "$relPath (no frontmatter)"
+            }
+
+            # Check for compiled-truth format
+            if ($content -notmatch '## Compiled Truth') {
+                $relPath = $page.FullName.Replace($adoptPath, '').TrimStart('\', '/')
+                $findings.NeedsCompiledTruth += $relPath
+            }
+        }
+    }
+
+    # --- Report findings ---
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host "  Scan Results" -ForegroundColor Cyan
+    Write-Host "========================================" -ForegroundColor Cyan
+    Write-Host ""
+
+    Write-Host "Existing:" -ForegroundColor Green
+    foreach ($item in $findings.Exists) {
+        Write-Host "  $item" -ForegroundColor Green
+    }
+
+    if ($findings.Missing.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Missing:" -ForegroundColor Yellow
+        foreach ($item in $findings.Missing) {
+            Write-Host "  $item" -ForegroundColor Yellow
+        }
+    }
+
+    if ($findings.NeedsTier.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Pages without tier field ($($findings.NeedsTier.Count)):" -ForegroundColor Yellow
+        foreach ($item in $findings.NeedsTier | Select-Object -First 10) {
+            Write-Host "  - $item" -ForegroundColor Yellow
+        }
+        if ($findings.NeedsTier.Count -gt 10) {
+            Write-Host "  ... and $($findings.NeedsTier.Count - 10) more" -ForegroundColor Yellow
+        }
+    }
+
+    if ($findings.NeedsCompiledTruth.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Pages without compiled-truth format ($($findings.NeedsCompiledTruth.Count)):" -ForegroundColor Yellow
+        foreach ($item in $findings.NeedsCompiledTruth | Select-Object -First 10) {
+            Write-Host "  - $item" -ForegroundColor Yellow
+        }
+        if ($findings.NeedsCompiledTruth.Count -gt 10) {
+            Write-Host "  ... and $($findings.NeedsCompiledTruth.Count - 10) more" -ForegroundColor Yellow
+        }
+    }
+
+    # --- Phase 3: Add missing structural files ---
+    Write-Host ""
+    if ($WhatIf) {
+        Write-Host "WhatIf: Would add missing structural files" -ForegroundColor Cyan
+    } else {
+        Write-Host "Adding missing structural files..." -ForegroundColor Cyan
+    }
+
+    # Create missing directories
+    foreach ($d in $coreDirs) {
+        $fullPath = Join-Path $adoptPath $d
+        if (-not (Test-Path $fullPath)) {
+            if ($WhatIf) {
+                Write-Host "  WhatIf: Would create directory: $d" -ForegroundColor DarkGray
+            } else {
+                New-Item -ItemType Directory -Path $fullPath -Force | Out-Null
+                Write-Host "  Created: $d/" -ForegroundColor Green
+            }
+        }
+    }
+
+    # Copy missing structural files WITHOUT overwriting
+    $structuralFiles = @{
+        'RESOLVER.md'          = (Join-Path $templateDir 'RESOLVER.md')
+        'copilot-instructions.md' = (Join-Path $templateDir 'copilot-instructions.md')
+        '.gitignore'           = (Join-Path $templateDir 'grain-gitignore')
+    }
+
+    foreach ($sf in $structuralFiles.GetEnumerator()) {
+        $dst = Join-Path $adoptPath $sf.Key
+        $src = $sf.Value
+        if ($sf.Key -eq '.gitignore') {
+            $dst = Join-Path $adoptPath '.gitignore'
+        }
+        if (-not (Test-Path $dst)) {
+            if (Test-Path $src) {
+                if ($WhatIf) {
+                    Write-Host "  WhatIf: Would copy $($sf.Key)" -ForegroundColor DarkGray
+                } else {
+                    Copy-Item -Path $src -Destination $dst
+                    Write-Host "  Copied: $($sf.Key)" -ForegroundColor Green
+                }
+            }
+        } else {
+            Write-Host "  Skipped: $($sf.Key) (already exists)" -ForegroundColor DarkGray
+        }
+    }
+
+    # Copy scripts to adopted brain's scripts directory if missing
+    $adoptScriptsDir = Join-Path $adoptPath 'scripts'
+    if (-not (Test-Path $adoptScriptsDir)) {
+        if (-not $WhatIf) {
+            New-Item -ItemType Directory -Path $adoptScriptsDir -Force | Out-Null
+        }
+    }
+
+    $scriptsToAdopt = @('dream.ps1', 'maintenance.ps1', 'backup.ps1', 'lint.ps1', 'refresh.ps1', 'harvest.ps1', 'setup-scheduler.ps1', 'compact.ps1')
+    foreach ($script in $scriptsToAdopt) {
+        $src = Join-Path $PSScriptRoot $script
+        $dst = Join-Path $adoptScriptsDir $script
+        if (-not (Test-Path $dst)) {
+            if (Test-Path $src) {
+                if ($WhatIf) {
+                    Write-Host "  WhatIf: Would copy scripts/$script" -ForegroundColor DarkGray
+                } else {
+                    Copy-Item -Path $src -Destination $dst
+                    Write-Host "  Copied: scripts/$script" -ForegroundColor Green
+                }
+            }
+        } else {
+            Write-Host "  Skipped: scripts/$script (already exists)" -ForegroundColor DarkGray
+        }
+    }
+
+    # Copy engine files if missing
+    $adoptEngineDir = Join-Path $adoptPath 'engine'
+    $engineSrc = Join-Path $PSScriptRoot '..' 'engine'
+    if (Test-Path $engineSrc) {
+        Get-ChildItem -Path $engineSrc -Filter '*.py' | ForEach-Object {
+            $dst = Join-Path $adoptEngineDir $_.Name
+            if (-not (Test-Path $dst)) {
+                if ($WhatIf) {
+                    Write-Host "  WhatIf: Would copy engine/$($_.Name)" -ForegroundColor DarkGray
+                } else {
+                    Copy-Item -Path $_.FullName -Destination $dst
+                    Write-Host "  Copied: engine/$($_.Name)" -ForegroundColor Green
+                }
+            }
+        }
+    }
+
+    # --- Phase 4: Offer tier field upgrade ---
+    if ($findings.NeedsTier.Count -gt 0) {
+        Write-Host ""
+        if ($WhatIf) {
+            Write-Host "WhatIf: Would offer to add tier field to $($findings.NeedsTier.Count) pages" -ForegroundColor Cyan
+        } else {
+            $addTier = Read-Host "Add tier field to $($findings.NeedsTier.Count) pages without it? (Y/n)"
+            if ($addTier -ne 'n' -and $addTier -ne 'N') {
+                $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+                if ($pythonCmd) {
+                    foreach ($relPath in $findings.NeedsTier) {
+                        # Strip "(no frontmatter)" suffix if present
+                        $cleanPath = $relPath -replace '\s*\(no frontmatter\)$', ''
+                        $fullPath = Join-Path $adoptPath $cleanPath
+                        if (Test-Path $fullPath) {
+                            try {
+                                $env:GRAIN_ROOT = $adoptPath
+                                & python -c "
+import sys; sys.path.insert(0, '$($PSScriptRoot -replace '\\','/')/..')
+from engine.harvest import write_tier
+from pathlib import Path
+write_tier(Path(r'$fullPath'), 3)
+print('  Added tier:3 to $cleanPath')
+" 2>&1 | ForEach-Object { Write-Host $_ -ForegroundColor DarkGray }
+                            } catch {
+                                Write-Host "  Failed to add tier to $cleanPath`: $_" -ForegroundColor Yellow
+                            }
+                        }
+                    }
+                    Write-Host "  ✓ Tier field added to eligible pages" -ForegroundColor Green
+                } else {
+                    Write-Host "  Python not found — add tier fields manually" -ForegroundColor Yellow
+                }
+            }
+        }
+    }
+
+    # --- Done ---
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Green
+    Write-Host "  Adopt complete!" -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Your adopted brain is at: $adoptPath" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Next steps:"
+    Write-Host "  1. Review the findings above"
+    Write-Host "  2. Run 'scripts/lint.ps1' to check wiki health"
+    Write-Host "  3. Run 'python engine/dream.py --all --dry-run' for dream cycle preview"
+    Write-Host "  4. Set GRAIN_ROOT=$adoptPath to use this brain"
+    Write-Host ""
+    exit 0
+}
 
 # --- Mode selection ---
 if (-not $Interview -and -not $Quick) {

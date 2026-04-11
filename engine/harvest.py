@@ -46,6 +46,39 @@ PATTERNS_PATH = WIKI_PATH / "patterns"
 PROJECTS_PATH = WIKI_PATH / "projects"
 PEOPLE_PATH = WIKI_PATH / "people"
 LAST_HARVESTED_PATH = GRAIN_ROOT / "engine" / ".last_harvested"
+PROJECTS_RAW_PATH = PROJECTS_PATH / ".raw"
+PEOPLE_RAW_PATH = PEOPLE_PATH / ".raw"
+
+# Resolve templates from repo or embedded fallback
+def _resolve_template_dir() -> Path | None:
+    """Find the templates directory relative to this file's repo location."""
+    repo_path = Path(__file__).resolve().parent.parent / "templates"
+    if repo_path.exists():
+        return repo_path
+    grain_templates = GRAIN_ROOT / "templates"
+    if grain_templates.exists():
+        return grain_templates
+    return None
+
+
+TEMPLATE_DIR = _resolve_template_dir()
+
+
+# ── Slugify ────────────────────────────────────────────────────────────────────
+
+def slugify_name(name: str) -> str:
+    """Convert a name to a kebab-case filename slug.
+
+    Examples:
+        "Mary Jane" -> "mary-jane"
+        "O'Brien" -> "obrien"
+        "John" -> "john"
+    """
+    slug = name.lower().strip()
+    slug = re.sub(r"[''`]", "", slug)          # remove apostrophes
+    slug = re.sub(r"[^a-z0-9]+", "-", slug)    # non-alphanum -> hyphens
+    slug = slug.strip("-")
+    return slug or "unknown"
 def _resolve_backup_script() -> Path | None:
     """Resolve backup.ps1 location with multiple fallbacks.
 
@@ -287,10 +320,10 @@ def extract_people_mentions(turns: list[dict]) -> list[str]:
 
 
 def load_known_people() -> set[str]:
-    """Load known people names from wiki/people/."""
+    """Load known people names from wiki/people/ as slugified stems."""
     if not PEOPLE_PATH.exists():
         return set()
-    return {md.stem.lower() for md in PEOPLE_PATH.glob("*.md") if md.stem != "README"}
+    return {md.stem for md in PEOPLE_PATH.glob("*.md") if md.stem != "README" and not md.stem.startswith(".")}
 
 
 def extract_project_mentions(
@@ -464,6 +497,195 @@ def update_last_verified(filepath: Path):
     filepath.write_text(content, encoding="utf-8")
 
 
+# ── Embedded template fallback ───────────────────────────────────────────────
+
+_PEOPLE_TEMPLATE_FALLBACK = """\
+---
+title: "[PERSON_NAME]"
+type: person
+updated: [DATE]
+tags: []
+tier: 3
+---
+
+## Compiled Truth
+[No data yet — rewrite this section on updates with who they are, role, key context]
+
+## Working Relationship
+- Reports to: [No data yet]
+- Collaborates on: [No data yet]
+- Communication: [No data yet]
+- Review pattern: [No data yet]
+
+---
+
+## Timeline (append-only, never delete)
+"""
+
+
+def _load_people_template() -> str:
+    """Load people-template.md from templates dir, or use embedded fallback."""
+    if TEMPLATE_DIR:
+        tmpl_path = TEMPLATE_DIR / "people-template.md"
+        if tmpl_path.exists():
+            return tmpl_path.read_text(encoding="utf-8")
+    return _PEOPLE_TEMPLATE_FALLBACK
+
+
+# ── People page creation ─────────────────────────────────────────────────────
+
+def create_people_page(
+    name: str,
+    session_id: str,
+    people_path: Path | None = None,
+) -> bool:
+    """Create a new wiki/people/{slug}.md page from the people template.
+
+    Args:
+        name: The person's display name (e.g., "Sarah").
+        session_id: The session ID that first mentioned this person.
+        people_path: Override people directory path (for testing).
+
+    Returns:
+        True if page was created, False if it already existed.
+    """
+    _people = people_path or PEOPLE_PATH
+    _people.mkdir(parents=True, exist_ok=True)
+
+    slug = slugify_name(name)
+    filepath = _people / f"{slug}.md"
+    if filepath.exists():
+        return False
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    template = _load_people_template()
+    content = template.replace("[PERSON_NAME]", name.capitalize())
+    content = content.replace("[DATE]", today)
+    # Replace the placeholder timeline entry
+    content = content.replace(
+        "- [YYYY-MM-DD] What happened (session: session-id)",
+        f"- [{today}] First mentioned in session (session: {session_id[:8]})",
+    )
+
+    filepath.write_text(content, encoding="utf-8")
+    logger.info("Created people page: %s -> %s", name, filepath)
+    return True
+
+
+def append_people_timeline(
+    name: str,
+    entry: str,
+    session_id: str,
+    people_path: Path | None = None,
+) -> bool:
+    """Append a timeline entry to an existing people page.
+
+    Only appends — never rewrites compiled truth (that's dream's job).
+
+    Args:
+        name: Person's display name.
+        entry: What happened (text of the timeline entry).
+        session_id: Session ID for attribution.
+        people_path: Override people directory path.
+
+    Returns:
+        True if entry was appended, False if page doesn't exist.
+    """
+    _people = people_path or PEOPLE_PATH
+    slug = slugify_name(name)
+    filepath = _people / f"{slug}.md"
+    if not filepath.exists():
+        return False
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    timeline_line = f"- [{today}] {entry} (session: {session_id[:8]})"
+
+    content = filepath.read_text(encoding="utf-8", errors="replace")
+    # Append after the last line
+    content = content.rstrip("\n") + "\n" + timeline_line + "\n"
+    filepath.write_text(content, encoding="utf-8")
+    update_last_verified(filepath)
+    return True
+
+
+# ── Raw sidecar writing ──────────────────────────────────────────────────────
+
+def write_raw_sidecar(
+    entity_type: str,
+    entity_name: str,
+    session_id: str,
+    turns: list[dict],
+    session_meta: dict,
+    base_path: Path | None = None,
+) -> Path | None:
+    """Write raw session excerpts to .raw/ sidecar directory.
+
+    Args:
+        entity_type: "project" or "person" (used for directory: wiki/projects/.raw/ or wiki/people/.raw/).
+        entity_name: Display name of the entity.
+        session_id: Session ID.
+        turns: List of turn dicts with user_message/assistant_response.
+        session_meta: Dict with date, repository, branch for the header.
+        base_path: Override wiki base path (for testing).
+
+    Returns:
+        Path of written file, or None if no relevant content.
+    """
+    _wiki = base_path or WIKI_PATH
+    if entity_type == "project":
+        raw_dir = _wiki / "projects" / ".raw"
+    elif entity_type == "person":
+        raw_dir = _wiki / "people" / ".raw"
+    else:
+        return None
+
+    raw_dir.mkdir(parents=True, exist_ok=True)
+
+    slug = slugify_name(entity_name)
+    filename = f"{slug}-{session_id[:8]}.md"
+    filepath = raw_dir / filename
+
+    # Build content with metadata header
+    date = session_meta.get("date", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    repo = session_meta.get("repository", "unknown")
+    branch = session_meta.get("branch", "unknown")
+
+    lines = [
+        f"# Raw: {entity_name} — session {session_id[:8]}",
+        f"",
+        f"- Date: {date}",
+        f"- Repository: {repo}",
+        f"- Branch: {branch}",
+        f"- Session: {session_id}",
+        f"",
+        f"---",
+        f"",
+    ]
+
+    # Include turns that mention the entity
+    entity_lower = entity_name.lower()
+    relevant_count = 0
+    for turn in turns:
+        user_msg = turn.get("user_message") or ""
+        asst_msg = turn.get("assistant_response") or ""
+        if entity_lower in user_msg.lower() or entity_lower in asst_msg.lower():
+            relevant_count += 1
+            idx = turn.get("turn_index", "?")
+            lines.append(f"## Turn {idx}")
+            if user_msg:
+                lines.append(f"**User:** {user_msg[:2000]}")
+                lines.append("")
+            if asst_msg:
+                lines.append(f"**Assistant:** {asst_msg[:2000]}")
+                lines.append("")
+
+    if relevant_count == 0:
+        return None
+
+    filepath.write_text("\n".join(lines), encoding="utf-8")
+    return filepath
+
+
 # ── Backup ───────────────────────────────────────────────────────────────────
 
 def run_backup() -> bool:
@@ -546,7 +768,228 @@ def append_bug_patterns(patterns: list[str], session_id: str):
     update_last_verified(filepath)
 
 
-# ── Main harvest logic ───────────────────────────────────────────────────────
+# ── People page creation ─────────────────────────────────────────────────────
+
+def _resolve_people_template() -> str:
+    """Load the people-template.md content."""
+    # Try relative to this file's repo
+    repo_template = Path(__file__).resolve().parent.parent / "templates" / "people-template.md"
+    if repo_template.exists():
+        return repo_template.read_text(encoding="utf-8")
+
+    # Fallback: inline minimal template
+    return """\
+---
+title: "[PERSON_NAME]"
+type: person
+updated: [DATE]
+tags: []
+tier: 3
+---
+
+## Compiled Truth
+[No data yet — rewrite this section on updates with who they are, role, key context]
+
+## Working Relationship
+- Reports to: [No data yet]
+- Collaborates on: [No data yet]
+- Communication: [No data yet]
+- Review pattern: [No data yet]
+
+---
+
+## Timeline (append-only, never delete)
+- [YYYY-MM-DD] What happened (session: session-id)
+"""
+
+
+def create_people_page(
+    name: str,
+    people_path: Path,
+    session_id: str | None = None,
+    dry_run: bool = False,
+) -> bool:
+    """Create a new people page from template.
+
+    Args:
+        name: Person's name (capitalized).
+        people_path: Path to wiki/people/ directory.
+        session_id: Optional session ID for the initial timeline entry.
+        dry_run: If True, report but don't write.
+
+    Returns:
+        True if page was created (or would be in dry_run), False if already exists.
+    """
+    slug = name.lower().replace(" ", "-")
+    filepath = people_path / f"{slug}.md"
+
+    if filepath.exists():
+        return False
+
+    if dry_run:
+        print(f"  Would create people page: {name}")
+        return True
+
+    people_path.mkdir(parents=True, exist_ok=True)
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+    template = _resolve_people_template()
+    content = template.replace("[PERSON_NAME]", name)
+    content = content.replace("[DATE]", today)
+
+    # Replace placeholder timeline entry with initial entry
+    if session_id:
+        timeline_entry = f"- [{today}] First mentioned in session (session: {session_id[:8]})"
+    else:
+        timeline_entry = f"- [{today}] Page created by harvest.py"
+    content = content.replace(
+        "- [YYYY-MM-DD] What happened (session: session-id)",
+        timeline_entry,
+    )
+
+    filepath.write_text(content, encoding="utf-8")
+    logger.info("Created people page: %s -> %s", name, filepath)
+    return True
+
+
+def append_people_timeline(
+    name: str,
+    people_path: Path,
+    entry: str,
+    session_id: str,
+) -> bool:
+    """Append a timeline entry to an existing people page.
+
+    Does NOT rewrite compiled truth — only appends to timeline.
+
+    Args:
+        name: Person's name.
+        people_path: Path to wiki/people/ directory.
+        entry: Timeline entry text.
+        session_id: Session ID for attribution.
+
+    Returns:
+        True if entry was appended.
+    """
+    slug = name.lower().replace(" ", "-")
+    filepath = people_path / f"{slug}.md"
+
+    if not filepath.exists():
+        return False
+
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    timeline_line = f"- [{today}] {entry} (session: {session_id[:8]})"
+
+    content = filepath.read_text(encoding="utf-8", errors="replace")
+
+    # Check for duplicate timeline entry
+    if session_id[:8] in content and entry[:40] in content:
+        return False
+
+    # Find the timeline section and append
+    if "## Timeline" in content:
+        content = content.rstrip("\n") + "\n" + timeline_line + "\n"
+    else:
+        content = content.rstrip("\n") + "\n\n## Timeline (append-only, never delete)\n" + timeline_line + "\n"
+
+    filepath.write_text(content, encoding="utf-8")
+    update_last_verified(filepath)
+    return True
+
+
+# ── Raw sidecar writing ──────────────────────────────────────────────────────
+
+def write_raw_sidecar(
+    entity_name: str,
+    entity_type: str,
+    session_id: str,
+    turns: list[dict],
+    session_meta: dict,
+    grain_root: Path | None = None,
+    dry_run: bool = False,
+) -> str | None:
+    """Write raw session excerpts to .raw/ sidecar directory.
+
+    Args:
+        entity_name: Entity slug (e.g., 'auth-service' or 'sarah').
+        entity_type: 'project' or 'person'.
+        session_id: Session ID for filename.
+        turns: Relevant conversation turns.
+        session_meta: Dict with 'created_at', 'repository', 'branch'.
+        grain_root: Override grain root path.
+        dry_run: If True, report but don't write.
+
+    Returns:
+        Path of the written file, or None if dry_run.
+    """
+    _grain = grain_root or GRAIN_ROOT
+
+    if entity_type == "project":
+        raw_dir = _grain / "wiki" / "projects" / ".raw"
+    elif entity_type == "person":
+        raw_dir = _grain / "wiki" / "people" / ".raw"
+    else:
+        return None
+
+    slug = entity_name.lower().replace(" ", "-")
+    sid_prefix = session_id[:8] if session_id else "unknown"
+    filename = f"{slug}-{sid_prefix}.md"
+    filepath = raw_dir / filename
+
+    if dry_run:
+        print(f"  Would write raw sidecar: {filepath.relative_to(_grain)}")
+        return str(filepath)
+
+    raw_dir.mkdir(parents=True, exist_ok=True)
+
+    # Build raw content with metadata header
+    date_str = session_meta.get("created_at", "unknown")
+    repo = session_meta.get("repository", "unknown")
+    branch = session_meta.get("branch", "unknown")
+
+    lines = [
+        f"# Raw excerpt: {entity_name}",
+        f"",
+        f"- Session: {session_id}",
+        f"- Date: {date_str}",
+        f"- Repo: {repo}",
+        f"- Branch: {branch}",
+        f"",
+        f"---",
+        f"",
+    ]
+
+    for turn in turns:
+        user_msg = turn.get("user_message") or ""
+        assistant_msg = turn.get("assistant_response") or ""
+        if user_msg:
+            lines.append(f"**User:** {user_msg[:2000]}")
+            lines.append("")
+        if assistant_msg:
+            lines.append(f"**Assistant:** {assistant_msg[:2000]}")
+            lines.append("")
+
+    filepath.write_text("\n".join(lines), encoding="utf-8")
+    logger.info("Wrote raw sidecar: %s", filepath)
+    return str(filepath)
+
+
+def _find_relevant_turns(
+    turns: list[dict],
+    entity_name: str,
+) -> list[dict]:
+    """Find turns that mention a specific entity name.
+
+    Returns turns where user_message or assistant_response contains the name.
+    """
+    relevant = []
+    name_lower = entity_name.lower()
+    for turn in turns:
+        user_msg = (turn.get("user_message") or "").lower()
+        assistant_msg = (turn.get("assistant_response") or "").lower()
+        if name_lower in user_msg or name_lower in assistant_msg:
+            relevant.append(turn)
+    return relevant
 
 class HarvestResult:
     """Collects harvest findings for display or writing."""
@@ -557,7 +1000,12 @@ class HarvestResult:
         self.project_updates: list[tuple[str, list[str]]] = []  # (summary, projects)
         self.new_topics: list[str] = []
         self.people_mentioned: dict[str, int] = {}  # name -> session count
+        self.people_created: list[str] = []  # names of created people pages
+        self.raw_files_written: int = 0  # count of raw sidecar files written
         self.sessions_scanned: int = 0
+        # Internal tracking for write phase
+        self._people_session_ids: dict[str, str] = {}  # name -> first session_id
+        self._raw_sidecar_queue: list[dict] = []  # queued raw sidecar entries
 
     @property
     def total_findings(self) -> int:
@@ -600,7 +1048,33 @@ class HarvestResult:
         if self.people_mentioned:
             print(f"\n🧑 People Mentioned ({len(self.people_mentioned)}):")
             for name, count in sorted(self.people_mentioned.items(), key=lambda x: -x[1]):
-                print(f"  + {name} ({count} session{'s' if count > 1 else ''}) — no wiki/people/{name.lower()}.md yet")
+                slug = slugify_name(name)
+                print(f"  + {name} ({count} session{'s' if count > 1 else ''}) — no wiki/people/{slug}.md yet")
+
+        if self.people_created:
+            print(f"\n📄 People Pages Created ({len(self.people_created)}):")
+            for name in self.people_created:
+                slug = slugify_name(name)
+                print(f"  + wiki/people/{slug}.md")
+
+        if dry_run and self.people_mentioned:
+            print(f"\n📄 Would Create People Pages ({len(self.people_mentioned)}):")
+            for name in self.people_mentioned:
+                print(f"  Would create people page: {name}")
+
+        if self.raw_files_written > 0:
+            print(f"\n📦 Raw Sidecar Files: {self.raw_files_written}")
+
+        if dry_run and self._raw_sidecar_queue:
+            print(f"\n📦 Would Write Raw Sidecars ({len(self._raw_sidecar_queue)}):")
+            for entry in self._raw_sidecar_queue[:10]:
+                etype = entry["entity_type"]
+                ename = entry["entity_name"]
+                sid = entry["session_id"][:8]
+                slug = slugify_name(ename)
+                print(f"  Would write: wiki/{etype}s/.raw/{slug}-{sid}.md")
+            if len(self._raw_sidecar_queue) > 10:
+                print(f"  ... and {len(self._raw_sidecar_queue) - 10} more")
 
         if self.total_findings == 0:
             print("\n  (no new findings)")
@@ -671,7 +1145,7 @@ def harvest(
         if _wiki_path.exists():
             known_pages = {md.stem for md in _wiki_path.rglob("*.md")}
         if _people_path.exists():
-            known_people = {md.stem.lower() for md in _people_path.glob("*.md") if md.stem != "README"}
+            known_people = {md.stem for md in _people_path.glob("*.md") if md.stem != "README" and not md.stem.startswith(".")}
 
     # Connect to session store
     conn = sqlite3.connect(str(_store), timeout=10)
@@ -712,8 +1186,42 @@ def harvest(
 
             # People mentions (only names without existing people pages)
             for name in extract_people_mentions(turns):
-                if name.lower() not in known_people:
+                slug = slugify_name(name)
+                if slug not in known_people:
                     result.people_mentioned[name] = result.people_mentioned.get(name, 0) + 1
+                    # Track first session ID for this person
+                    if name not in result._people_session_ids:
+                        result._people_session_ids[name] = sid
+
+            # Queue raw sidecar files for projects mentioned in this session
+            session_meta = {
+                "created_at": sess.get("created_at", ""),
+                "repository": sess.get("repository", ""),
+                "branch": sess.get("branch", ""),
+            }
+
+            for project_name in mentioned if mentioned else []:
+                relevant = _find_relevant_turns(turns, project_name)
+                if relevant:
+                    result._raw_sidecar_queue.append({
+                        "entity_name": project_name,
+                        "entity_type": "project",
+                        "session_id": sid,
+                        "turns": relevant,
+                        "session_meta": session_meta,
+                    })
+
+            # Queue raw sidecar files for people mentioned in this session
+            for name in extract_people_mentions(turns):
+                relevant = _find_relevant_turns(turns, name)
+                if relevant:
+                    result._raw_sidecar_queue.append({
+                        "entity_name": name,
+                        "entity_type": "person",
+                        "session_id": sid,
+                        "turns": relevant,
+                        "session_meta": session_meta,
+                    })
 
     finally:
         conn.close()
@@ -771,11 +1279,22 @@ def harvest(
     return result
 
 
-def write_results(result: HarvestResult):
-    """Write harvest results to disk. Runs backup first."""
+def write_results(
+    result: HarvestResult,
+    grain_root: Optional[Path] = None,
+):
+    """Write harvest results to disk. Runs backup first.
+
+    Args:
+        result: HarvestResult with all findings.
+        grain_root: Override grain root path (for testing).
+    """
     if result.total_findings == 0:
         print("Nothing to write.")
         return
+
+    _grain = grain_root or GRAIN_ROOT
+    _people_path = _grain / "wiki" / "people" if grain_root else PEOPLE_PATH
 
     print("Running backup before writing...")
     run_backup()
@@ -793,6 +1312,113 @@ def write_results(result: HarvestResult):
         print(f"  ℹ {len(result.new_topics)} new topic(s) detected — review manually:")
         for t in result.new_topics:
             print(f"    - {t[:100]}")
+
+    # Create people pages for newly mentioned people
+    if result.people_mentioned:
+        for name in result.people_mentioned:
+            # Find the first session ID that mentioned this person
+            first_sid = result._people_session_ids.get(name)
+            created = create_people_page(
+                name=name,
+                session_id=first_sid or "unknown",
+                people_path=_people_path,
+            )
+            if created:
+                result.people_created.append(name)
+
+        if result.people_created:
+            print(f"  ✓ {len(result.people_created)} people page(s) created")
+
+    # Append timeline entries to existing people pages (tier-aware)
+    _people_sessions = getattr(result, '_people_sessions', {})
+    _session_turns = getattr(result, '_session_turns', {})
+    timeline_appended = 0
+    for name, session_ids in _people_sessions.items():
+        slug = slugify_name(name)
+        page_path = _people_path / f"{slug}.md"
+        if not page_path.exists():
+            continue
+        tier = read_tier(page_path)
+        # Tier 3 stubs only get timeline, no compiled truth rewrite
+        # Tier 1 and 2 also get timeline (compiled truth rewrite is dream's job)
+        for sid in session_ids:
+            turns = _session_turns.get(sid, [])
+            summary = ""
+            for t in turns:
+                msg = t.get("user_message") or ""
+                if name.lower() in msg.lower() and len(msg) > 20:
+                    summary = msg[:120]
+                    break
+            if summary:
+                appended = append_people_timeline(
+                    name=name,
+                    people_path=_people_path,
+                    entry=f"Mentioned: {summary}",
+                    session_id=sid,
+                )
+                if appended:
+                    timeline_appended += 1
+
+    if timeline_appended > 0:
+        print(f"  ✓ {timeline_appended} timeline entry/entries appended to existing people pages")
+
+    # Append timeline entries to existing project pages (tier-aware)
+    _projects_path = _grain / "wiki" / "projects" if grain_root else PROJECTS_PATH
+    _project_sessions = getattr(result, '_project_sessions', {})
+    project_timeline_count = 0
+    for proj_name, session_ids in _project_sessions.items():
+        slug = slugify_name(proj_name)
+        page_path = _projects_path / f"{slug}.md"
+        if not page_path.exists():
+            continue
+        tier = read_tier(page_path)
+        # All tiers get timeline entries appended
+        for sid in session_ids:
+            today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            turns = _session_turns.get(sid, [])
+            summary_text = ""
+            for t in turns:
+                msg = t.get("user_message") or ""
+                if proj_name.lower() in msg.lower() and len(msg) > 20:
+                    summary_text = msg[:120]
+                    break
+            if not summary_text:
+                summary_text = f"Session activity related to {proj_name}"
+
+            timeline_line = f"- [{today}] {summary_text} (session: {sid[:8]})"
+            content = page_path.read_text(encoding="utf-8", errors="replace")
+            # Skip if this session is already logged
+            if sid[:8] in content:
+                continue
+            if "## Timeline" in content:
+                content = content.rstrip("\n") + "\n" + timeline_line + "\n"
+            else:
+                content = content.rstrip("\n") + "\n\n## Timeline (append-only, never delete)\n" + timeline_line + "\n"
+            page_path.write_text(content, encoding="utf-8")
+            update_last_verified(page_path)
+            project_timeline_count += 1
+
+    if project_timeline_count > 0:
+        print(f"  ✓ {project_timeline_count} timeline entry/entries appended to project pages")
+
+    # Write raw sidecar files
+    _wiki_path = _grain / "wiki" if grain_root else WIKI_PATH
+    if result._raw_sidecar_queue:
+        raw_count = 0
+        for entry in result._raw_sidecar_queue:
+            path = write_raw_sidecar(
+                entity_name=entry["entity_name"],
+                entity_type=entry["entity_type"],
+                session_id=entry["session_id"],
+                turns=entry["turns"],
+                session_meta=entry["session_meta"],
+                base_path=_wiki_path,
+            )
+            if path:
+                raw_count += 1
+        result.raw_files_written = raw_count
+        if raw_count > 0:
+            print(f"  ✓ {raw_count} raw sidecar file(s) written")
 
     write_last_harvested()
     print(f"  ✓ .last_harvested updated")
@@ -861,7 +1487,7 @@ def main():
     result.display(dry_run=dry_run)
 
     if args.auto and result.total_findings > 0:
-        write_results(result)
+        write_results(result, grain_root=None)
     elif not args.auto and result.total_findings > 0:
         print("This was a dry run. Use --auto to write changes.")
 

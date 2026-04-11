@@ -219,7 +219,7 @@ python engine/hygiene.py --json             # structured JSON output
 - Adds orphan pages to the appropriate section in wiki/index.md
 - Does NOT delete, merge, or rewrite any pages
 
-PowerShell wrapper: `scripts/hygiene.ps1 [-Path] [-Fix] [-Refactor] [-Json]`
+PowerShell wrapper: `scripts/hygiene.ps1 [-Path] [-Fix] [-Refactor] [-Retrofit] [-Json]`
 
 ### Refactoring (Interactive Cleanup)
 
@@ -239,6 +239,37 @@ python engine/refactor.py /path/to/kb       # refactor specific path
 6. Final validation (re-run hygiene check)
 
 Safety: Always backs up first. Archives instead of deleting.
+
+### Retrofit (Interactive Upgrade)
+
+`engine/retrofit.py` upgrades pre-wiki-recall brains to the current format:
+
+```bash
+python engine/retrofit.py                   # retrofit ~/.grain (default)
+python engine/retrofit.py /path/to/kb       # retrofit specific path
+scripts/hygiene.ps1 -Retrofit               # PowerShell wrapper
+```
+
+**Phases:**
+1. Structure cleanup (automated, from hygiene --fix)
+2. Brain.md cleanup (trim to L0+L1 under 40 lines, no LLM)
+3. Wire RESOLVER (inline routing rules into copilot-instructions.md)
+4. Add compiled truth + timeline sections to pages missing them
+5. Clean decisions.md (remove harvest noise — [harvest] tag or very short entries)
+6. Run hygiene check + report before/after stats
+
+Safety: Always backs up first. Interactive confirmation. Archive, don't delete.
+
+### Decision Routing (3 Tiers)
+
+Decisions detected in conversation are classified into tiers:
+
+- **Tier 1 — Behavioral Rules:** "always/never/prefer" → written to copilot-instructions.md (live) + decisions.md
+- **Tier 2 — Architectural:** "decided to/going with" → decisions.md + brain.md L1
+- **Tier 3 — Historical:** project-specific/lower impact → decisions.md only
+
+Format: `- [YYYY-MM-DD] [tier:N] description`
+See `templates/RESOLVER.md` for trigger words and detection logic.
 
 ## Testing
 

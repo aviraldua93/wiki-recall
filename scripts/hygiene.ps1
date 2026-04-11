@@ -21,6 +21,7 @@ param(
     [string]$Path = (Join-Path $env:USERPROFILE ".grain"),
     [switch]$Fix,
     [switch]$Refactor,
+    [switch]$Retrofit,
     [switch]$Json
 )
 
@@ -53,6 +54,19 @@ foreach ($candidate in @("python3", "python")) {
 if (-not $python) {
     Write-Error "Python 3 not found. Install Python 3.11+ and ensure it's on PATH."
     exit 1
+}
+
+if ($Retrofit) {
+    # Run the retrofit upgrade tool
+    $retrofitScript = Join-Path $engineDir "engine" "retrofit.py"
+    if (-not (Test-Path $retrofitScript)) {
+        Write-Error "retrofit.py not found at: $retrofitScript"
+        exit 1
+    }
+
+    Write-Host "Running brain retrofit..." -ForegroundColor Cyan
+    & $python $retrofitScript $Path
+    exit $LASTEXITCODE
 }
 
 if ($Refactor) {

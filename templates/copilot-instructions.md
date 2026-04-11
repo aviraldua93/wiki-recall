@@ -56,3 +56,25 @@ When the user mentions debugging or troubleshooting a technology:
 - **Drafting anything AS me:** read `persona.md` before writing. Match my voice exactly.
 - **Person detail:** check `wiki/people/[name].md` for collaboration context
 - **Filing new info:** see `templates/RESOLVER.md` — 8 rules for where knowledge goes
+
+## Decision Write-Back (Tiered)
+
+When a decision is detected in conversation, classify and route by tier:
+
+### Tier 1 — Behavioral Rules (always loaded)
+Trigger words: "always", "never", "prefer", "default to", "every session"
+Action: Write the rule DIRECTLY into this file (copilot-instructions.md) under Work Style or Hard Gates + log to decisions.md
+Examples: "always run tests before pushing", "never commit secrets to repos"
+
+### Tier 2 — Architectural Decisions (loaded via brain.md)
+Trigger words: "decided to", "going with", "settled on", "architecture"
+Action: Append to decisions.md + update brain.md L1 top 5
+Examples: "git as storage backend", "Bun over Node for this project"
+
+### Tier 3 — Historical Decisions (on-demand reference)
+Trigger words: same as Tier 2 but project-specific or lower impact
+Action: Append to decisions.md only
+Examples: "chose Cohere reranker over custom", "using Jest not Vitest"
+
+Format for all tiers: `- [YYYY-MM-DD] [tier:N] description`
+When ambiguous, ask which tier. Tier 1 decisions become live instructions immediately.

@@ -122,17 +122,15 @@ if ($Adopt -ne "") {
         }
     }
 
-    # Check copilot-instructions.md
-    $copilotInstructions = Join-Path $adoptPath 'copilot-instructions.md'
-    if (-not (Test-Path $copilotInstructions)) {
-        $copilotInstructions = Join-Path $env:USERPROFILE '.copilot' 'copilot-instructions.md'
-        if (Test-Path $copilotInstructions) {
-            $findings.Exists += "[OK] copilot-instructions.md (in ~/.copilot/)"
-        } else {
-            $findings.Missing += "[X] copilot-instructions.md"
-        }
+    # Check copilot-instructions.md (live location is ~/.github/)
+    $githubCopilot = Join-Path $env:USERPROFILE '.github' 'copilot-instructions.md'
+    $grainCopilot = Join-Path $adoptPath 'copilot-instructions.md'
+    if (Test-Path $githubCopilot) {
+        $findings.Exists += "[OK] copilot-instructions.md (live at ~/.github/)"
+    } elseif (Test-Path $grainCopilot) {
+        $findings.Exists += "[WARN] copilot-instructions.md (in ~/.grain/ only -- dead file, needs wiring to ~/.github/)"
     } else {
-        $findings.Exists += "[OK] copilot-instructions.md"
+        $findings.Missing += "[X] copilot-instructions.md"
     }
 
     # --- Phase 2: Scan entity pages for format issues ---
@@ -233,7 +231,6 @@ if ($Adopt -ne "") {
     # Copy missing structural files WITHOUT overwriting
     $structuralFiles = @{
         'RESOLVER.md'          = (Join-Path $templateDir 'RESOLVER.md')
-        'copilot-instructions.md' = (Join-Path $templateDir 'copilot-instructions.md')
         '.gitignore'           = (Join-Path $templateDir 'grain-gitignore')
     }
 
@@ -255,6 +252,98 @@ if ($Adopt -ne "") {
         } else {
             Write-Host "  Skipped: $($sf.Key) (already exists)" -ForegroundColor DarkGray
         }
+    }
+
+    # --- Wire copilot-instructions.md to BOTH ~/.grain/ (backup) AND ~/.github/ (live) ---
+    $copilotSrc = Join-Path $templateDir 'copilot-instructions.md'
+    $copilotBackup = Join-Path $adoptPath 'copilot-instructions.md'
+    $githubDir = Join-Path $env:USERPROFILE '.github'
+    $copilotLive = Join-Path $githubDir 'copilot-instructions.md'
+
+    # RESOLVER routing rules to inline into copilot-instructions.md
+    $resolverRules = @"
+
+## Knowledge Filing (RESOLVER)
+
+When new knowledge arrives, route it:
+1. About a **PERSON** -> wiki/people/<name>.md
+2. About a **PROJECT** -> wiki/projects/<name>.md
+3. About a **BUG/FIX** -> wiki/patterns/<name>.md
+4. A **TECH CONCEPT** -> wiki/concepts/<name>.md
+5. A **DECISION** -> see Decision Write-Back tiers below
+6. A **COMMITMENT** -> actions.md
+7. A **VISION/STRATEGY** -> tag as type: strategy in frontmatter
+8. None of the above -> harvest-suggestions.md
+"@
+
+    if ($WhatIf) {
+        Write-Host "  WhatIf: Would copy copilot-instructions.md to $copilotBackup (backup)" -ForegroundColor DarkGray
+        Write-Host "  WhatIf: Would wire copilot-instructions.md to $copilotLive (live)" -ForegroundColor DarkGray
+    } else {
+        # Always save backup copy to ~/.grain/
+        if (Test-Path $copilotSrc) {
+            Copy-Item -Path $copilotSrc -Destination $copilotBackup -Force
+            Write-Host "  Copied: copilot-instructions.md (backup to $adoptPath)" -ForegroundColor Green
+        }
+
+        # Wire to ~/.github/copilot-instructions.md (live location)
+        if (-not (Test-Path $githubDir)) {
+            New-Item -ItemType Directory -Path $githubDir -Force | Out-Null
+        }
+
+        if (Test-Path $copilotLive) {
+            # MERGE: existing file -- add wiki-recall sections if not already present
+            $existingContent = Get-Content $copilotLive -Raw
+            $sectionsAdded = @()
+
+            # Check and add RESOLVER routing if missing
+            if ($existingContent -notmatch 'Knowledge Filing \(RESOLVER\)') {
+                $existingContent = $existingContent.TrimEnd() + "`n" + $resolverRules
+                $sectionsAdded += "RESOLVER routing"
+            }
+
+            # Check and add Decision Write-Back if missing
+            if ($existingContent -notmatch 'Decision Write-Back \(Tiered\)') {
+                $templateContent = Get-Content $copilotSrc -Raw
+                if ($templateContent -match '(?s)(## Decision Write-Back \(Tiered\).+?)(?=\n## |\z)') {
+                    $decisionSection = "`n`n" + $Matches[1].TrimEnd()
+                    $existingContent = $existingContent.TrimEnd() + $decisionSection
+                    $sectionsAdded += "Decision Write-Back (tiered)"
+                }
+            }
+
+            # Check and add Knowledge Base section if missing
+            if ($existingContent -notmatch '## Knowledge Base') {
+                $templateContent = Get-Content $copilotSrc -Raw
+                if ($templateContent -match '(?s)(## Knowledge Base.+?)(?=\n## )') {
+                    $kbSection = "`n`n" + $Matches[1].TrimEnd()
+                    $existingContent = $existingContent.TrimEnd() + $kbSection
+                    $sectionsAdded += "Knowledge Base"
+                }
+            }
+
+            Set-Content -Path $copilotLive -Value $existingContent -NoNewline
+            if ($sectionsAdded.Count -gt 0) {
+                Write-Host "  Merged into existing $copilotLive`:" -ForegroundColor Green
+                foreach ($s in $sectionsAdded) {
+                    Write-Host "    + $s" -ForegroundColor Green
+                }
+            } else {
+                Write-Host "  Skipped: $copilotLive (wiki-recall sections already present)" -ForegroundColor DarkGray
+            }
+        } else {
+            # Fresh copy + inline RESOLVER rules
+            if (Test-Path $copilotSrc) {
+                $templateContent = (Get-Content $copilotSrc -Raw).TrimEnd()
+                $fullContent = $templateContent + "`n" + $resolverRules
+                Set-Content -Path $copilotLive -Value $fullContent -NoNewline
+                Write-Host "  Wired: copilot-instructions.md to $copilotLive (live)" -ForegroundColor Green
+            }
+        }
+
+        Write-Host ""
+        Write-Host "  IMPORTANT: Copilot CLI reads from $copilotLive" -ForegroundColor Yellow
+        Write-Host "  The backup copy in $adoptPath is for reference only." -ForegroundColor Yellow
     }
 
     # Copy scripts to adopted brain's scripts directory if missing
@@ -345,11 +434,18 @@ print('  Added tier:3 to $cleanPath')
     Write-Host ""
     Write-Host "Your adopted brain is at: $adoptPath" -ForegroundColor Cyan
     Write-Host ""
+    Write-Host "Wiring summary:" -ForegroundColor Yellow
+    Write-Host "  - copilot-instructions.md -> $copilotLive (live, read by Copilot CLI)" -ForegroundColor Yellow
+    Write-Host "  - copilot-instructions.md -> $copilotBackup (backup copy)" -ForegroundColor Yellow
+    Write-Host "  - RESOLVER routing rules inlined into copilot-instructions.md" -ForegroundColor Yellow
+    Write-Host "  - Decision write-back (3 tiers) added to copilot-instructions.md" -ForegroundColor Yellow
+    Write-Host ""
     Write-Host "Next steps:"
     Write-Host "  1. Review the findings above"
     Write-Host "  2. Run 'scripts/lint.ps1' to check wiki health"
-    Write-Host "  3. Run 'python engine/dream.py --all --dry-run' for dream cycle preview"
-    Write-Host "  4. Set GRAIN_ROOT=$adoptPath to use this brain"
+    Write-Host "  3. Run 'python engine/hygiene.py' for deep health check"
+    Write-Host "  4. Run 'python engine/retrofit.py' for interactive brain upgrade"
+    Write-Host "  5. Set GRAIN_ROOT=$adoptPath to use this brain"
     Write-Host ""
     exit 0
 }

@@ -5,12 +5,12 @@
 **Persistent memory for Copilot CLI.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1,755_passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-2,291_passing-brightgreen)]()
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white)](https://python.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/MCP-10_tools-purple)](https://modelcontextprotocol.io)
 
-| **~550 tokens** | **1,755 tests** | **93% hybrid recall** |
+| **~550 tokens** | **2,291 tests** | **93% hybrid recall** |
 |:---:|:---:|:---:|
 | wake-up cost | all passing | search accuracy |
 
@@ -106,14 +106,13 @@ powershell -File scripts/lint.ps1             # wiki health check
 python engine/indexer.py --incremental        # reindex for search
 ```
 
-**Adopt an existing brain** — if you already have a `~/.grain/` directory (or similar) and want to upgrade it:
+**Adopt an existing brain** — already have a `~/.grain/` or similar knowledge base?
 
 ```bash
-powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Adopt C:\path\to\existing\brain
+wiki-recall init --adopt ~/.grain/
 ```
 
-Adopt mode scans the existing directory, validates its structure, adds missing pieces
-(RESOLVER.md, dream.ps1, format upgrades) WITHOUT overwriting existing content. Reports findings and offers compiled-truth format upgrades.
+Non-destructive. Scans your directory, validates structure, adds missing pieces (RESOLVER.md, dream cycle, format upgrades) without overwriting. To upgrade a pre-wiki-recall brain to current format, run `wiki-recall heal --retrofit` (see below).
 
 **Nightly enrichment** (dream cycle) — runs automatically at 2 AM if scheduled:
 
@@ -126,6 +125,23 @@ The dream cycle sweeps for new entities, appends timeline updates, fixes missing
 
 ---
 
+## One Command to Rule Them All
+
+```bash
+wiki-recall heal
+```
+
+Five LLM critic functions diagnose structure, content depth, duplication, brain budget, and path references. Auto-fixes safe issues. Smart-fixes with judgment. Upgrades format. Verifies the result. Letter grade A–F per category.
+
+```bash
+wiki-recall heal --retrofit   # upgrade legacy brains to current format
+wiki-recall heal --json       # structured output for CI
+```
+
+`cargo clippy` for your knowledge base. Run it weekly.
+
+---
+
 ## What It Auto-Captures
 
 The #1 gap in every knowledge system: it relies on you to write things down. `harvest.py` mines your session history and extracts:
@@ -134,7 +150,7 @@ The #1 gap in every knowledge system: it relies on you to write things down. `ha
 - **Bug patterns** — "fixed by", "the fix was", "workaround:"
 - **Project updates** — sessions mentioning known projects
 - **New topics** — things not yet in your wiki
-- **People mentions** — names referenced across sessions
+- **People pages** — auto-created from session mentions with compiled truth, working relationship, and timeline
 
 ```
 📋 Decisions (2):
@@ -153,7 +169,10 @@ Beyond harvest, wiki-recall ships with:
 
 - **Persona** — `persona.md` self-trains your voice. Say "that's not how I talk" and it corrects.
 - **People routing** — say a first name, Copilot resolves it from `comms.md` instantly.
-- **Staleness detection** — pages unverified >60 days get flagged. Dead docs don't stay hidden.
+- **Enrichment tiers** — entities graduate tier 3 (stub) → 2 (notable) → 1 (deep) as data accumulates.
+- **Tiered decisions** — Tier 1 behavioral → copilot-instructions.md. Tier 2 architectural → decisions.md + brain.md. Tier 3 historical → decisions.md only.
+- **Path validation** — verifies every path in copilot-instructions.md exists on disk. Root cleanup enforces a 6-file budget.
+- **Stale detection** — flags pages with outdated `last_verified` timestamps. Dead docs don't stay hidden.
 - **Auto-backup** — `backup.ps1` runs before every write. The instructions enforce it.
 - **Proactive surfacing** — mention "debugging PowerShell" and known gotchas appear without asking.
 
@@ -253,28 +272,21 @@ Template (this repo) ships engine code and placeholders. `~/.grain/` holds your 
 ### Engine Commands
 
 ```bash
-python engine/harvest.py                    # Dry-run
-python engine/harvest.py --auto             # Write changes
-python engine/harvest.py --since 2026-04-08 # Since date
-python engine/indexer.py                    # Full reindex
-python engine/indexer.py --incremental      # Incremental
+wiki-recall heal                            # Diagnose + auto-fix everything
+wiki-recall heal --retrofit                 # Upgrade legacy brains
+wiki-recall heal --json                     # Structured output for CI
 ```
-
-```python
-from engine.search import GrainSearcher
-results = GrainSearcher().hybrid_search("why did we switch auth?")
-```
-
-### Hygiene + Refactoring
 
 ```bash
-python engine/hygiene.py                    # 4-category health check
-python engine/hygiene.py --fix              # Auto-fix safe issues
-python engine/hygiene.py --json             # Structured JSON output
-python engine/refactor.py                   # Interactive 6-phase cleanup
+python engine/harvest.py                    # Dry-run harvest
+python engine/harvest.py --auto             # Write changes
+python engine/indexer.py                    # Full reindex
+python engine/indexer.py --incremental      # Incremental reindex
 ```
 
-**Scripts:** `setup.ps1` (onboarding) · `harvest.ps1` (auto-capture) · `refresh.ps1` (brain update) · `compact.ps1` (archival) · `backup.ps1` (backup) · `lint.ps1` (health check) · `hygiene.ps1` (deep hygiene)
+Under the hood, `heal` orchestrates: `hygiene.py` (4-category health) → `refactor.py` (cleanup) → `retrofit.py` (format upgrade) → path validation → verification.
+
+**Scripts:** `setup.ps1` · `harvest.ps1` · `refresh.ps1` · `compact.ps1` · `backup.ps1` · `lint.ps1` · `hygiene.ps1` · `dream.ps1`
 
 ---
 
@@ -297,16 +309,15 @@ bun run benchmark --suite token-efficiency  # One suite
 
 | Category | Tests | Pass Rate |
 |:---------|------:|:---------:|
-| TypeScript unit + E2E | 1,577 | 100% |
-| Python engine (indexer, search, MCP) | 16 | 100% |
-| Python harvest (auto-capture + people) | 162 | 100% |
-| **Total** | **1,755** | **100%** |
+| TypeScript (Vitest) | 1,727 | 100% |
+| Python (pytest) | 564 | 100% |
+| **Total** | **2,291** | **100%** |
 
 Stress-tested with: schema injection, FTS5 injection, SQL injection, concurrent CRUD, corrupt YAML, 10K-char queries, path traversal, harvest dedup, unicode, empty sessions.
 
 ```bash
-bun test                   # TypeScript (1,577 tests)
-python -m pytest tests/    # Python (178 tests)
+bun test                   # TypeScript (1,727 tests)
+python -m pytest tests/    # Python (564 tests)
 ```
 
 ---

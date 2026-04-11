@@ -375,6 +375,66 @@ def load_known_pages() -> set[str]:
 
 # ── Frontmatter helpers ──────────────────────────────────────────────────────
 
+VALID_TIERS = {1, 2, 3}
+
+
+def read_tier(filepath: Path) -> int | None:
+    """Read the tier value (1, 2, or 3) from YAML frontmatter.
+
+    Returns the tier as an int, or None if not found or invalid.
+    """
+    if not filepath.exists():
+        return None
+    content = filepath.read_text(encoding="utf-8", errors="replace")
+    if not content.startswith("---"):
+        return None
+    end = content.find("---", 3)
+    if end == -1:
+        return None
+    frontmatter = content[3:end]
+    match = re.search(r"^tier:\s*(\d+)", frontmatter, re.MULTILINE)
+    if match:
+        val = int(match.group(1))
+        return val if val in VALID_TIERS else None
+    return None
+
+
+def write_tier(filepath: Path, tier: int):
+    """Set the tier value in YAML frontmatter. Creates frontmatter if missing.
+
+    Args:
+        filepath: Path to a Markdown file with YAML frontmatter.
+        tier: Enrichment tier (1=deep, 2=notable, 3=stub).
+    """
+    if tier not in VALID_TIERS:
+        raise ValueError(f"Invalid tier {tier}, must be one of {VALID_TIERS}")
+    if not filepath.exists():
+        return
+    content = filepath.read_text(encoding="utf-8", errors="replace")
+
+    if content.startswith("---"):
+        end = content.find("---", 3)
+        if end != -1:
+            frontmatter = content[3:end]
+            body = content[end:]
+            if re.search(r"^tier:", frontmatter, re.MULTILINE):
+                frontmatter = re.sub(
+                    r"^tier:\s*\S+",
+                    f"tier: {tier}",
+                    frontmatter,
+                    flags=re.MULTILINE,
+                )
+            else:
+                frontmatter = frontmatter.rstrip("\n") + f"\ntier: {tier}\n"
+            content = "---" + frontmatter + body
+            filepath.write_text(content, encoding="utf-8")
+            return
+
+    # No frontmatter — prepend it
+    content = f"---\ntier: {tier}\n---\n\n{content}"
+    filepath.write_text(content, encoding="utf-8")
+
+
 def update_last_verified(filepath: Path):
     """Update or add last_verified in YAML frontmatter."""
     if not filepath.exists():

@@ -49,6 +49,7 @@ Write outputs to `~/.grain/` as you go.
   - Compiled Truth section with role and key context
   - Working Relationship section (reports to, collaborates on, communication, review pattern)
   - Timeline section with discovery date and session attribution
+- **Tier assignment**: Set `tier: 1` for people with 5+ sessions or detailed user-provided context. Set `tier: 2` for people with 2-4 sessions. Set `tier: 3` for people with only 1 mention (stub).
 - Create or update `~/.grain/domains/comms.md` with name-to-identity mappings
 - If no people found in sessions, ask: "Who are the key people you collaborate with?"
 

@@ -99,8 +99,27 @@ related: [entity-id]
 sources: [path/to/source.md]
 source_count: 1
 status: draft | reviewed | needs_update
+tier: 1 | 2 | 3
 ---
 ```
+
+### Enrichment Tiers
+
+The `tier` field controls how much detail an entity contains. It is used by
+`harvest.py` and `dream.ps1` to decide what to generate and how to upgrade pages.
+
+| Tier | Label | Content |
+|:----:|:------|:--------|
+| **1** | Deep | Full compiled truth + timeline + architecture/working-relationship sections. Reserved for actively-referenced entities. |
+| **2** | Notable | Compiled truth + timeline. No architecture or deep relationship detail. Good default for known projects/people. |
+| **3** | Stub | Name + description + `[No data yet]`. Placeholder created by dream sweep or harvest for newly-discovered entities. |
+
+Tier assignment rules:
+- `harvest.py` creates new entities as **tier 3** (stubs).
+- `dream.ps1` Phase 1 (entity sweep) creates stubs at **tier 3**.
+- Interview protocol Step 4 (people) creates pages at **tier 1** or **tier 2** based on mention count.
+- Manually-created entities default to **tier 2** unless the author specifies otherwise.
+- Promotion from tier 3 → 2 → 1 happens as more data accumulates (via dream consolidation or manual edits).
 
 ### Entity Body Structure
 ```markdown
@@ -136,6 +155,30 @@ Flag contradictions with:
 2. Extracts structured entities with type classification
 3. Deduplicates against existing knowledge base
 4. Persists via entity CRUD with FTS5 indexing
+5. New entities are created at **tier 3** (stub) by default
+
+### Dream Cycle (Nightly Enrichment)
+
+`scripts/dream.ps1` runs nightly (scheduled at 2 AM via `setup-scheduler.ps1`)
+and enriches the wiki in four phases:
+
+1. **Entity Sweep** — Scans recent sessions for new people/project names not in the wiki. Creates tier-3 stub pages using `people-template.md` and `project-template.md`.
+2. **Timeline Updates** — Appends dated entries to existing project and people pages from session activity.
+3. **Citation Fix** — Scans compiled truth sections for uncited claims and adds `[Source: ...]` attribution where possible.
+4. **Consolidation** — Rewrites stale compiled truth sections from newer timeline entries. Uses `.raw/` sidecar files as source material when available.
+
+### Raw Sidecars
+
+Raw session excerpts are stored alongside compiled wiki pages:
+
+- `wiki/projects/.raw/` — raw excerpts for project entities
+- `wiki/people/.raw/` — raw excerpts for people entities
+
+Naming convention: `{entity-slug}-{session-id-prefix}.md`
+(e.g., `auth-service-a1b2c3d4.md`)
+
+`harvest.py` saves raw excerpts when `--auto` is used. `dream.ps1` reads `.raw/`
+during consolidation to rewrite compiled truth. `lint.ps1` skips `.raw/` directories.
 
 ### Search (Query)
 1. FTS5 full-text search across titles, tags, types, and content

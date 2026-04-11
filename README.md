@@ -106,6 +106,24 @@ powershell -File scripts/lint.ps1             # wiki health check
 python engine/indexer.py --incremental        # reindex for search
 ```
 
+**Adopt an existing brain** — if you already have a `~/.grain/` directory (or similar) and want to upgrade it:
+
+```bash
+powershell -ExecutionPolicy Bypass -File scripts/setup.ps1 -Adopt C:\path\to\existing\brain
+```
+
+Adopt mode scans the existing directory, validates its structure, adds missing pieces
+(RESOLVER.md, dream.ps1, format upgrades) WITHOUT overwriting existing content. Reports findings and offers compiled-truth format upgrades.
+
+**Nightly enrichment** (dream cycle) — runs automatically at 2 AM if scheduled:
+
+```bash
+powershell -File scripts/dream.ps1            # manual run
+powershell -File scripts/setup-scheduler.ps1  # register 2 AM schedule
+```
+
+The dream cycle sweeps for new entities, appends timeline updates, fixes missing citations, and consolidates stale compiled truth from raw session data.
+
 ---
 
 ## What It Auto-Captures

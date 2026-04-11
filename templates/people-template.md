@@ -3,7 +3,10 @@ title: "[PERSON_NAME]"
 type: person
 updated: [DATE]
 tags: []
-tier: 1 | 2 | 3
+# tier: 1 = deep (compiled truth + working relationship + timeline)
+# tier: 2 = notable (compiled truth + timeline, no working relationship detail)
+# tier: 3 = stub (name + description only, placeholder for future enrichment)
+tier: 3
 ---
 
 ## Compiled Truth

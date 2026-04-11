@@ -3,7 +3,10 @@ title: "[PROJECT_NAME]"
 type: project
 updated: [DATE]
 tags: []
-tier: 1 | 2 | 3
+# tier: 1 = deep (compiled truth + timeline + architecture + key decisions)
+# tier: 2 = notable (compiled truth + timeline, no architecture detail)
+# tier: 3 = stub (name + description only, placeholder for future enrichment)
+tier: 3
 ---
 
 ## Compiled Truth

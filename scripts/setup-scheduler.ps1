@@ -4,11 +4,11 @@
 
 .DESCRIPTION
     Creates three scheduled tasks:
-    1. "WikiRecall Maintenance" — runs maintenance.ps1 at chosen frequency
-    2. "WikiRecall Backup" — runs backup.ps1 local, offset by 30 min
-    3. "WikiRecall Nightly" — runs maintenance.ps1 daily at 11 PM
+    1. "WikiRecall Maintenance" -- runs maintenance.ps1 at chosen frequency
+    2. "WikiRecall Backup" -- runs backup.ps1 local, offset by 30 min
+    3. "WikiRecall Nightly" -- runs maintenance.ps1 daily at 11 PM
 
-    No admin privileges required — tasks run as the current user.
+    No admin privileges required -- tasks run as the current user.
 
     Usage:
       powershell -ExecutionPolicy Bypass -File scripts/setup-scheduler.ps1 -Frequency hourly

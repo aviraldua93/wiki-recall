@@ -204,17 +204,19 @@ python engine/hygiene.py --fix              # auto-fix safe issues
 python engine/hygiene.py --json             # structured JSON output
 ```
 
-**Categories scored A–F:**
-- **Structure** — root bloat (>6 files), script duplication, empty dirs, orphan pages, construction artifacts
-- **Content** — stubs (<200 bytes), missing frontmatter, missing last_verified, stale tier-3 pages (30+ days), decisions.md noise
-- **Depth** — missing Timeline/Compiled Truth sections, person pages without working relationships, pattern pages without incidents
-- **Duplication** — content overlap >60% (Jaccard similarity), similar page names (Levenshtein distance <3)
+**Categories scored A--F:**
+- **Structure** -- root bloat (>6 files), script duplication, empty dirs, orphan pages, construction artifacts
+- **Content** -- stubs (<200 bytes), missing frontmatter, missing last_verified, stale tier-3 pages (30+ days), decisions.md noise
+- **Depth** -- missing Timeline/Compiled Truth sections, person pages without working relationships, pattern pages without incidents (graded by issue % of total pages)
+- **Duplication** -- content overlap >60% (Jaccard similarity), similar page names (Levenshtein distance <3)
+- **Brain** -- brain.md format budget (line count, token estimate, code blocks, L0/L1 section presence)
 
 **--fix mode** (safe only):
 - Deletes duplicate root scripts (keeps scripts/ copy)
 - Adds `last_verified` to pages missing it
 - Adds `[No data yet]` to empty sections
 - Archives `.mining/` and `.verification/` to `.archive/`
+- Adds orphan pages to the appropriate section in wiki/index.md
 - Does NOT delete, merge, or rewrite any pages
 
 PowerShell wrapper: `scripts/hygiene.ps1 [-Path] [-Fix] [-Refactor] [-Json]`

@@ -258,3 +258,91 @@ describe("refactor.py", () => {
     expect(content).toContain('if __name__ == "__main__"');
   });
 });
+
+// ---------------------------------------------------------------------------
+// PS1 ASCII compliance (Issue #20)
+// ---------------------------------------------------------------------------
+
+describe("PS1 ASCII compliance", () => {
+  const fs = require("fs");
+  const path = require("path");
+
+  const ps1Files = fs
+    .readdirSync(scriptsDir)
+    .filter((f: string) => f.endsWith(".ps1"))
+    .map((f: string) => join(scriptsDir, f));
+
+  test("scripts directory has PS1 files", () => {
+    expect(ps1Files.length).toBeGreaterThan(0);
+  });
+
+  for (const filePath of ps1Files) {
+    const fileName = path.basename(filePath);
+
+    test(`${fileName} contains only ASCII characters`, () => {
+      const content = readFileSync(filePath, "utf-8");
+      const nonAscii = content.match(/[^\x00-\x7F]/g);
+      if (nonAscii) {
+        const unique = [...new Set(nonAscii)];
+        const codepoints = unique
+          .map((c: string) => `U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")}`)
+          .join(", ");
+        throw new Error(
+          `${fileName} contains non-ASCII characters: ${codepoints}`,
+        );
+      }
+      expect(nonAscii).toBeNull();
+    });
+
+    test(`${fileName} has no em-dashes`, () => {
+      const content = readFileSync(filePath, "utf-8");
+      expect(content).not.toContain("\u2014");
+    });
+
+    test(`${fileName} has no smart quotes`, () => {
+      const content = readFileSync(filePath, "utf-8");
+      expect(content).not.toContain("\u2018");
+      expect(content).not.toContain("\u2019");
+      expect(content).not.toContain("\u201C");
+      expect(content).not.toContain("\u201D");
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// hygiene.py new features (Issues #21-#23)
+// ---------------------------------------------------------------------------
+
+describe("hygiene.py new features", () => {
+  const scriptPath = join(engineDir, "hygiene.py");
+
+  test("has brain health check function", () => {
+    const content = readFile(scriptPath);
+    expect(content).toContain("def check_brain_health");
+  });
+
+  test("has all five check functions", () => {
+    const content = readFile(scriptPath);
+    expect(content).toContain("def check_structure");
+    expect(content).toContain("def check_content");
+    expect(content).toContain("def check_depth");
+    expect(content).toContain("def check_duplication");
+    expect(content).toContain("def check_brain_health");
+  });
+
+  test("has depth percentage grading", () => {
+    const content = readFile(scriptPath);
+    expect(content).toContain("def compute_depth_grade");
+  });
+
+  test("has orphan fix action", () => {
+    const content = readFile(scriptPath);
+    expect(content).toContain("add_to_index");
+    expect(content).toContain("_add_orphan_to_index");
+  });
+
+  test("brain category in report print", () => {
+    const content = readFile(scriptPath);
+    expect(content).toContain('"brain"');
+  });
+});

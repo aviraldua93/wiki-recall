@@ -1,11 +1,12 @@
 """
-hygiene.py — Brain hygiene system for wiki-recall.
+hygiene.py -- Brain hygiene system for wiki-recall.
 
-Performs 4-category health checks on a knowledge base directory:
-  1. Structure — root bloat, script duplication, empty dirs, orphan pages, artifacts
-  2. Content  — stubs, missing frontmatter, missing last_verified, stale tiers, noise
-  3. Depth    — missing timeline/compiled truth, thin people/pattern pages
-  4. Duplication — content overlap (Jaccard), similar names (Levenshtein)
+Performs 5-category health checks on a knowledge base directory:
+  1. Structure -- root bloat, script duplication, empty dirs, orphan pages, artifacts
+  2. Content  -- stubs, missing frontmatter, missing last_verified, stale tiers, noise
+  3. Depth    -- missing timeline/compiled truth, thin people/pattern pages
+  4. Duplication -- content overlap (Jaccard), similar names (Levenshtein)
+  5. Brain    -- brain.md format budget (lines, tokens, code blocks, L0/L1 sections)
 
 Interface:
     python engine/hygiene.py                        # check ~/.grain
@@ -184,6 +185,28 @@ def compute_grade(errors: int, warnings: int) -> str:
     return "F"
 
 
+def compute_depth_grade(issue_count: int, total_pages: int) -> str:
+    """Compute depth grade based on issue percentage relative to total pages.
+
+    0-10% issues  -> A
+    10-30% issues -> B
+    30-60% issues -> C
+    60%+ issues   -> D/F
+    """
+    if total_pages == 0:
+        return "A"
+    pct = issue_count / total_pages
+    if pct <= 0.10:
+        return "A"
+    if pct <= 0.30:
+        return "B"
+    if pct <= 0.60:
+        return "C"
+    if pct <= 0.80:
+        return "D"
+    return "F"
+
+
 # ── Checkers ───────────────────────────────────────────────────────────────────
 
 def check_structure(root: Path) -> list[HygieneIssue]:
@@ -246,6 +269,8 @@ def check_structure(root: Path) -> list[HygieneIssue]:
                     "structure", "warning",
                     f"Orphan page not in index.md: {page_name}",
                     file=str(rel),
+                    fixable=True,
+                    fix_action="add_to_index",
                 ))
 
     # 5. Construction artifacts
@@ -485,6 +510,159 @@ def check_duplication(root: Path) -> list[HygieneIssue]:
     return issues
 
 
+def check_brain_health(root: Path) -> list[HygieneIssue]:
+    """Check brain.md against format budget constraints."""
+    issues: list[HygieneIssue] = []
+    brain_path = root / "brain.md"
+
+    if not brain_path.exists():
+        issues.append(HygieneIssue(
+            "brain", "error",
+            "brain.md not found",
+        ))
+        return issues
+
+    try:
+        content = brain_path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        issues.append(HygieneIssue(
+            "brain", "error",
+            "brain.md unreadable",
+            file="brain.md",
+        ))
+        return issues
+
+    lines = content.split('\n')
+    line_count = len(lines)
+
+    # Line count budget: 40
+    if line_count > 80:
+        issues.append(HygieneIssue(
+            "brain", "error",
+            f"brain.md: {line_count} lines, budget 40",
+            file="brain.md",
+        ))
+    elif line_count > 50:
+        issues.append(HygieneIssue(
+            "brain", "warning",
+            f"brain.md: {line_count} lines, budget 40",
+            file="brain.md",
+        ))
+
+    # Token estimate budget: 550
+    tokens = len(content) // 4
+    if tokens > 1000:
+        issues.append(HygieneIssue(
+            "brain", "error",
+            f"brain.md: ~{tokens} tokens, budget 550",
+            file="brain.md",
+        ))
+    elif tokens > 600:
+        issues.append(HygieneIssue(
+            "brain", "warning",
+            f"brain.md: ~{tokens} tokens, budget 550",
+            file="brain.md",
+        ))
+
+    # Code blocks are a violation
+    if '```' in content:
+        issues.append(HygieneIssue(
+            "brain", "error",
+            "brain.md contains code blocks -- move to reference/",
+            file="brain.md",
+        ))
+
+    # L0/L1 sections present
+    if '## L0' not in content and '## Identity' not in content:
+        issues.append(HygieneIssue(
+            "brain", "error",
+            "brain.md missing L0/Identity section",
+            file="brain.md",
+        ))
+
+    if '## L1' not in content and '## Active' not in content:
+        issues.append(HygieneIssue(
+            "brain", "error",
+            "brain.md missing L1/Active Work section",
+            file="brain.md",
+        ))
+
+    return issues
+
+
+# Index section mapping for orphan fix
+INDEX_SECTION_MAP = {
+    "people": "People",
+    "projects": "Projects",
+    "patterns": "Patterns",
+    "concepts": "Concepts",
+    "domains": "Domains",
+}
+
+
+def _determine_index_section(file_rel_path: str) -> str:
+    """Determine which index.md section an orphan page belongs to."""
+    parts = Path(file_rel_path).parts
+    # wiki/<section>/page.md -> section
+    if len(parts) >= 2:
+        section_dir = parts[1] if parts[0] == "wiki" else parts[0]
+        return INDEX_SECTION_MAP.get(section_dir, "Other")
+    return "Other"
+
+
+def _add_orphan_to_index(index_path: Path, page_name: str, section: str,
+                          page_path: Path) -> bool:
+    """Append an orphan page entry to the correct section in index.md."""
+    if not index_path.exists():
+        return False
+
+    # Try to read description from page frontmatter
+    description = ""
+    status = ""
+    if page_path.exists():
+        try:
+            page_content = page_path.read_text(encoding="utf-8", errors="replace")
+            title = extract_frontmatter_field(page_content, "title")
+            if title:
+                description = title
+            tier = extract_frontmatter_field(page_content, "tier")
+            page_type = extract_frontmatter_field(page_content, "type")
+            if tier:
+                status = f"tier-{tier}"
+            elif page_type:
+                status = page_type
+        except Exception:
+            pass
+
+    entry_line = f"| [[{page_name}]] | {status} | {description} |"
+
+    index_content = index_path.read_text(encoding="utf-8", errors="replace")
+
+    # Find the section heading and insert after the table
+    section_pattern = rf'^(#+\s+{re.escape(section)}\b.*?)$'
+    match = re.search(section_pattern, index_content, re.MULTILINE | re.IGNORECASE)
+
+    if match:
+        # Insert after last table row in this section (find next heading or EOF)
+        section_start = match.end()
+        next_heading = re.search(r'^#+\s+', index_content[section_start:], re.MULTILINE)
+        if next_heading:
+            insert_pos = section_start + next_heading.start()
+        else:
+            insert_pos = len(index_content)
+
+        # Find the last non-empty line before insert_pos
+        before = index_content[:insert_pos].rstrip()
+        after = index_content[insert_pos:]
+        new_content = before + "\n" + entry_line + "\n" + after
+    else:
+        # No matching section -- append a new section at the end
+        new_content = index_content.rstrip() + f"\n\n## {section}\n\n{entry_line}\n"
+
+    index_path.write_text(new_content, encoding="utf-8")
+    return True
+
+
 # ── Fix actions ────────────────────────────────────────────────────────────────
 
 def apply_fixes(root: Path, issues: list[HygieneIssue]) -> list[str]:
@@ -530,6 +708,14 @@ def apply_fixes(root: Path, issues: list[HygieneIssue]) -> list[str]:
                     shutil.rmtree(str(dest))
                 shutil.move(str(artifact_path), str(dest))
                 actions.append(f"Archived {issue.file} to .archive/")
+
+        elif issue.fix_action == "add_to_index" and issue.file:
+            index_path = root / "wiki" / "index.md"
+            page_path = root / issue.file
+            page_name = Path(issue.file).stem
+            section = _determine_index_section(issue.file)
+            if _add_orphan_to_index(index_path, page_name, section, page_path):
+                actions.append(f"Added orphan '{page_name}' to index.md [{section}]")
 
     # Add [No Data Yet] to empty sections in wiki pages
     wiki_dir = root / "wiki"
@@ -583,19 +769,35 @@ class HygieneReport:
         content = check_content(self.root)
         depth = check_depth(self.root)
         duplication = check_duplication(self.root)
+        brain = check_brain_health(self.root)
 
-        self.issues = structure + content + depth + duplication
+        self.issues = structure + content + depth + duplication + brain
+
+        # Count total wiki pages for depth percentage grading
+        total_pages = 0
+        wiki_dir = self.root / "wiki"
+        if wiki_dir.exists():
+            for md_file in wiki_dir.rglob("*.md"):
+                if md_file.name in ("index.md", "log.md"):
+                    continue
+                if md_file.parent.name.startswith("."):
+                    continue
+                total_pages += 1
 
         # Compute per-category scores
         for cat, cat_issues in [
             ("structure", structure),
             ("content", content),
-            ("depth", depth),
             ("duplication", duplication),
+            ("brain", brain),
         ]:
             errors = sum(1 for i in cat_issues if i.severity == "error")
             warnings = sum(1 for i in cat_issues if i.severity == "warning")
             self.scores[cat] = compute_grade(errors, warnings)
+
+        # Depth uses percentage-based grading
+        depth_issue_count = len(depth)
+        self.scores["depth"] = compute_depth_grade(depth_issue_count, total_pages)
 
     def apply_fixes(self) -> list[str]:
         """Apply safe fixes and return actions taken."""
@@ -627,7 +829,7 @@ class HygieneReport:
         print()
 
         # Issues by category
-        for cat in ("structure", "content", "depth", "duplication"):
+        for cat in ("structure", "content", "depth", "duplication", "brain"):
             cat_issues = [i for i in self.issues if i.category == cat]
             if not cat_issues:
                 continue

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    wiki-recall setup wizard — creates your personal ~/.grain/ knowledge base.
+    wiki-recall setup wizard -- creates your personal ~/.grain/ knowledge base.
 
 .DESCRIPTION
     Interactive onboarding with three modes:
@@ -83,9 +83,9 @@ if ($Adopt -ne "") {
 
     foreach ($file in $coreFiles.GetEnumerator()) {
         if (Test-Path $file.Value) {
-            $findings.Exists += "✓ $($file.Key)"
+            $findings.Exists += "[OK] $($file.Key)"
         } else {
-            $findings.Missing += "✗ $($file.Key)"
+            $findings.Missing += "[X] $($file.Key)"
         }
     }
 
@@ -105,9 +105,9 @@ if ($Adopt -ne "") {
     foreach ($d in $coreDirs) {
         $fullPath = Join-Path $adoptPath $d
         if (Test-Path $fullPath) {
-            $findings.Exists += "✓ $d/"
+            $findings.Exists += "[OK] $d/"
         } else {
-            $findings.Missing += "✗ $d/"
+            $findings.Missing += "[X] $d/"
         }
     }
 
@@ -116,9 +116,9 @@ if ($Adopt -ne "") {
     foreach ($script in $scriptFiles) {
         $scriptPath = Join-Path $adoptPath 'scripts' $script
         if (Test-Path $scriptPath) {
-            $findings.Exists += "✓ scripts/$script"
+            $findings.Exists += "[OK] scripts/$script"
         } else {
-            $findings.Missing += "✗ scripts/$script"
+            $findings.Missing += "[X] scripts/$script"
         }
     }
 
@@ -127,12 +127,12 @@ if ($Adopt -ne "") {
     if (-not (Test-Path $copilotInstructions)) {
         $copilotInstructions = Join-Path $env:USERPROFILE '.copilot' 'copilot-instructions.md'
         if (Test-Path $copilotInstructions) {
-            $findings.Exists += "✓ copilot-instructions.md (in ~/.copilot/)"
+            $findings.Exists += "[OK] copilot-instructions.md (in ~/.copilot/)"
         } else {
-            $findings.Missing += "✗ copilot-instructions.md"
+            $findings.Missing += "[X] copilot-instructions.md"
         }
     } else {
-        $findings.Exists += "✓ copilot-instructions.md"
+        $findings.Exists += "[OK] copilot-instructions.md"
     }
 
     # --- Phase 2: Scan entity pages for format issues ---
@@ -329,9 +329,9 @@ print('  Added tier:3 to $cleanPath')
                             }
                         }
                     }
-                    Write-Host "  ✓ Tier field added to eligible pages" -ForegroundColor Green
+                    Write-Host "  [OK] Tier field added to eligible pages" -ForegroundColor Green
                 } else {
-                    Write-Host "  Python not found — add tier fields manually" -ForegroundColor Yellow
+                    Write-Host "  Python not found -- add tier fields manually" -ForegroundColor Yellow
                 }
             }
         }
@@ -357,8 +357,8 @@ print('  Added tier:3 to $cleanPath')
 # --- Mode selection ---
 if (-not $Interview -and -not $Quick) {
     Write-Host "Choose setup mode:" -ForegroundColor Cyan
-    Write-Host "  1. Quick setup    (5 min)     — form-based, produces minimal brain" -ForegroundColor White
-    Write-Host "  2. Deep interview (15-30 min) — Copilot CLI interviews you, mines sessions" -ForegroundColor White
+    Write-Host "  1. Quick setup    (5 min)     -- form-based, produces minimal brain" -ForegroundColor White
+    Write-Host "  2. Deep interview (15-30 min) -- Copilot CLI interviews you, mines sessions" -ForegroundColor White
     Write-Host ""
     $modeChoice = Read-Host "Which mode? (1/2, default: 1)"
     if ($modeChoice -eq '2') {
@@ -406,7 +406,7 @@ if ($Interview) {
             if (Test-Path $src) {
                 Copy-Item -Path $src -Destination $dst
             } else {
-                Set-Content -Path $dst -Value "# $($tmpl.Key -replace '\.md$','' -replace '-',' ')`n`n(empty — will be populated during interview)`n" -Encoding UTF8
+                Set-Content -Path $dst -Value "# $($tmpl.Key -replace '\.md$','' -replace '-',' ')`n`n(empty -- will be populated during interview)`n" -Encoding UTF8
             }
         }
     }
@@ -531,25 +531,25 @@ if ([string]::IsNullOrWhiteSpace($principlesBlock)) {
 }
 
 $brainContent = @"
-# Brain — $name
+# Brain -- $name
 Last refreshed: $nowIso
 
-## L0 — Identity
+## L0 -- Identity
 - Name: $name
 - GitHub: $githubPersonal$(if ($githubWork -ne $githubPersonal) { " (personal), $githubWork (work)" } else { "" })
 - Principles:
 $principlesBlock
-## L1 — Active Work
+## L1 -- Active Work
 
 | Project | Status | Branch | Notes |
 |---------|--------|--------|-------|
-| (none yet) | — | — | Run refresh.ps1 after some sessions |
+| (none yet) | -- | -- | Run refresh.ps1 after some sessions |
 
 ### Decisions (recent)
-- (none yet — decisions are captured during sessions)
+- (none yet -- decisions are captured during sessions)
 
 ## Recently Learned
-(empty — entries appear as you work)
+(empty -- entries appear as you work)
 
 ## Routing
 - Wiki: ~/.grain/wiki/ (projects, patterns, concepts)
@@ -583,7 +583,7 @@ foreach ($tmpl in $templateFiles.GetEnumerator()) {
             Write-Host "  Copied: $($tmpl.Key) -> $dst" -ForegroundColor DarkGray
         } else {
             # Create minimal version
-            Set-Content -Path $dst -Value "# $($tmpl.Key -replace '\.md$','' -replace '-',' ')`n`n(empty — will be populated as you work)`n" -Encoding UTF8
+            Set-Content -Path $dst -Value "# $($tmpl.Key -replace '\.md$','' -replace '-',' ')`n`n(empty -- will be populated as you work)`n" -Encoding UTF8
             Write-Host "  Created: $dst (minimal)" -ForegroundColor DarkGray
         }
     } else {
@@ -738,7 +738,7 @@ if ($pythonCmd -and (Test-Path $indexerPath)) {
                     $autoHarvest = Read-Host "  Write these findings to your brain? [Y/n]"
                     if ($autoHarvest -ne 'n' -and $autoHarvest -ne 'N') {
                         & python $harvestPath --auto 2>&1 | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
-                        Write-Host "  ✓ Harvest complete!" -ForegroundColor Green
+                        Write-Host "  [OK] Harvest complete!" -ForegroundColor Green
                     }
                 } catch {
                     Write-Host "  Harvest failed (you can run it later): $_" -ForegroundColor Yellow
@@ -752,19 +752,19 @@ if ($pythonCmd -and (Test-Path $indexerPath)) {
                 Set-Content -Path $lastHarvested -Value $nowIsoHarvest -Encoding UTF8
             }
         } else {
-            Write-Host "  Skipped — run 'python engine/harvest.py' later to populate." -ForegroundColor DarkGray
+            Write-Host "  Skipped -- run 'python engine/harvest.py' later to populate." -ForegroundColor DarkGray
         }
     } else {
         Write-Host "  No session_store found (will index after first Copilot CLI sessions)" -ForegroundColor DarkGray
     }
 } else {
-    Write-Host "  Python not found — skip indexing (run 'python engine/indexer.py' later)" -ForegroundColor Yellow
+    Write-Host "  Python not found -- skip indexing (run 'python engine/indexer.py' later)" -ForegroundColor Yellow
 }
 
 # --- Step 10: Open Obsidian ---
 $obsidianConfigPath = Join-Path $env:APPDATA 'obsidian' 'obsidian.json'
 if (Test-Path $obsidianConfigPath) {
-    # Obsidian is installed — check if vault is registered
+    # Obsidian is installed -- check if vault is registered
     try {
         $obsidianConfig = Get-Content $obsidianConfigPath -Raw | ConvertFrom-Json
         $vaultPath = $grainDir -replace '\\', '/'
@@ -807,7 +807,7 @@ if (Test-Path $obsidianConfigPath) {
     }
 } else {
     Write-Host ""
-    Write-Host "  Obsidian not detected — skipping vault registration." -ForegroundColor Yellow
+    Write-Host "  Obsidian not detected -- skipping vault registration." -ForegroundColor Yellow
     Write-Host "  Install Obsidian from https://obsidian.md for visual wiki browsing." -ForegroundColor DarkGray
     Write-Host "  After installing, see docs/obsidian-setup.md for manual setup." -ForegroundColor DarkGray
 }
@@ -817,9 +817,9 @@ Write-Host ""
 $setupMaintenance = Read-Host "Set up automatic maintenance? (Y/n)"
 if ($setupMaintenance -ne 'n' -and $setupMaintenance -ne 'N') {
     Write-Host "  Frequency options:" -ForegroundColor Cyan
-    Write-Host "    1. hourly        — refresh every hour (recommended)" -ForegroundColor White
-    Write-Host "    2. every4hours   — refresh every 4 hours" -ForegroundColor White
-    Write-Host "    3. daily         — refresh once a day" -ForegroundColor White
+    Write-Host "    1. hourly        -- refresh every hour (recommended)" -ForegroundColor White
+    Write-Host "    2. every4hours   -- refresh every 4 hours" -ForegroundColor White
+    Write-Host "    3. daily         -- refresh once a day" -ForegroundColor White
     $freqChoice = Read-Host "  Frequency? (1/2/3, default: 1)"
     $freq = switch ($freqChoice) {
         '2' { 'every4hours' }
@@ -837,7 +837,7 @@ if ($setupMaintenance -ne 'n' -and $setupMaintenance -ne 'N') {
             Write-Host "  You can run it manually later: scripts/setup-scheduler.ps1 -Frequency $freq" -ForegroundColor DarkGray
         }
     } else {
-        Write-Host "  setup-scheduler.ps1 not found — skip scheduler setup" -ForegroundColor Yellow
+        Write-Host "  setup-scheduler.ps1 not found -- skip scheduler setup" -ForegroundColor Yellow
     }
 } else {
     Write-Host "  Skipping automatic maintenance (run setup-scheduler.ps1 later)" -ForegroundColor DarkGray
@@ -852,7 +852,7 @@ Write-Host ""
 Write-Host "Your knowledge base is at: $grainDir" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Next steps:"
-Write-Host "  1. Start using Copilot CLI — your sessions will be mined automatically"
+Write-Host "  1. Start using Copilot CLI -- your sessions will be mined automatically"
 Write-Host "  2. Run 'python engine/harvest.py' to extract decisions & patterns"
 Write-Host "  3. Run 'scripts/refresh.ps1' periodically to update brain.md"
 Write-Host "  4. Run 'scripts/lint.ps1' to check wiki health"

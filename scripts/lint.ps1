@@ -74,7 +74,7 @@ foreach ($p in $allPages) {
     $content = Get-Content $p.FullPath -Raw
     $hasLastVerified = $false
 
-    # Check last_verified (preferred — set by harvest.py)
+    # Check last_verified (preferred -- set by harvest.py)
     if ($content -match '(?m)^last_verified:\s*(.+)$') {
         $hasLastVerified = $true
         $dateStr = $Matches[1].Trim().Trim('"').Trim("'")
@@ -85,7 +85,7 @@ foreach ($p in $allPages) {
                 $stalePages += "$($p.Name) (${age}d unverified)"
             }
         } catch {
-            # unparseable date — flag as stale
+            # unparseable date -- flag as stale
             $stalePages += "$($p.Name) (bad last_verified date)"
         }
     }

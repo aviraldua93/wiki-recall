@@ -1,12 +1,14 @@
 """
-Comprehensive tests for hygiene.py — the brain hygiene checker.
+Comprehensive tests for hygiene.py -- the brain hygiene checker.
 
 Tests:
   - Structure checks: root bloat, duplicates, empty dirs, orphans, artifacts
   - Content checks: stubs, missing frontmatter, missing last_verified, stale tiers, noise
   - Depth checks: missing timeline, missing compiled truth, thin pages
   - Duplication checks: content overlap (Jaccard), similar names (Levenshtein)
-  - Fix mode: only safe issues, no destructive changes
+  - Brain health checks: line budget, token budget, code blocks, L0/L1 sections
+  - Fix mode: only safe issues, orphan-to-index fix, no destructive changes
+  - Depth grading: percentage-based curve
   - Score calculation (A-F grading)
   - JSON output format
   - CLI interface
@@ -31,10 +33,12 @@ from engine.hygiene import (
     HygieneIssue,
     HygieneReport,
     apply_fixes,
+    check_brain_health,
     check_content,
     check_depth,
     check_duplication,
     check_structure,
+    compute_depth_grade,
     compute_grade,
     extract_frontmatter_field,
     has_frontmatter,
@@ -44,6 +48,8 @@ from engine.hygiene import (
     main,
     parse_date_safe,
     section_has_content,
+    _determine_index_section,
+    _add_orphan_to_index,
 )
 
 
@@ -679,6 +685,7 @@ class TestHygieneReport(unittest.TestCase):
         self.assertIn("content", report.scores)
         self.assertIn("depth", report.scores)
         self.assertIn("duplication", report.scores)
+        self.assertIn("brain", report.scores)
 
     def test_report_to_dict(self):
         make_index(self.root, [])
@@ -812,6 +819,245 @@ class TestEdgeCases(unittest.TestCase):
         self.assertEqual(d["category"], "content")
         self.assertEqual(d["severity"], "warning")
         self.assertTrue(d["fixable"])
+
+
+# ======================================================================
+# Brain health checks (Issue #23)
+# ======================================================================
+
+
+class TestBrainHealth(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp())
+        self.root = make_wiki_root(self.tmpdir)
+
+    def tearDown(self):
+        shutil.rmtree(str(self.tmpdir), ignore_errors=True)
+
+    def test_missing_brain(self):
+        (self.root / "brain.md").unlink()
+        issues = check_brain_health(self.root)
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0].severity, "error")
+        self.assertIn("not found", issues[0].message)
+
+    def test_healthy_brain(self):
+        (self.root / "brain.md").write_text(
+            "# Brain\n## L0 - Identity\nI am a dev.\n## L1 - Active Work\nWorking on stuff.\n"
+        )
+        issues = check_brain_health(self.root)
+        self.assertEqual(len(issues), 0)
+
+    def test_brain_line_warning(self):
+        lines = "\n".join([f"Line {i}" for i in range(55)])
+        (self.root / "brain.md").write_text(f"# Brain\n## L0\nIdentity\n## L1\nActive\n{lines}\n")
+        issues = check_brain_health(self.root)
+        warnings = [i for i in issues if i.severity == "warning" and "lines" in i.message]
+        self.assertGreater(len(warnings), 0)
+
+    def test_brain_line_error(self):
+        lines = "\n".join([f"Line {i}" for i in range(85)])
+        (self.root / "brain.md").write_text(f"# Brain\n## L0\nIdentity\n## L1\nActive\n{lines}\n")
+        issues = check_brain_health(self.root)
+        errors = [i for i in issues if i.severity == "error" and "lines" in i.message]
+        self.assertGreater(len(errors), 0)
+
+    def test_brain_token_warning(self):
+        # ~650 tokens = ~2600 chars
+        content = "## L0\nIdentity\n## L1\nActive\n" + "x " * 1300
+        (self.root / "brain.md").write_text(content)
+        issues = check_brain_health(self.root)
+        warnings = [i for i in issues if i.severity == "warning" and "tokens" in i.message]
+        self.assertGreater(len(warnings), 0)
+
+    def test_brain_token_error(self):
+        # ~1200 tokens = ~4800 chars
+        content = "## L0\nIdentity\n## L1\nActive\n" + "x " * 2400
+        (self.root / "brain.md").write_text(content)
+        issues = check_brain_health(self.root)
+        errors = [i for i in issues if i.severity == "error" and "tokens" in i.message]
+        self.assertGreater(len(errors), 0)
+
+    def test_brain_code_blocks(self):
+        content = "## L0\nIdentity\n## L1\nActive\n```python\nprint('hi')\n```\n"
+        (self.root / "brain.md").write_text(content)
+        issues = check_brain_health(self.root)
+        code = [i for i in issues if "code blocks" in i.message]
+        self.assertGreater(len(code), 0)
+        self.assertEqual(code[0].severity, "error")
+
+    def test_brain_missing_l0(self):
+        (self.root / "brain.md").write_text("# Brain\n## L1\nActive work.\n")
+        issues = check_brain_health(self.root)
+        l0 = [i for i in issues if "L0" in i.message or "Identity" in i.message]
+        self.assertGreater(len(l0), 0)
+
+    def test_brain_missing_l1(self):
+        (self.root / "brain.md").write_text("# Brain\n## L0\nIdentity stuff.\n")
+        issues = check_brain_health(self.root)
+        l1 = [i for i in issues if "L1" in i.message or "Active" in i.message]
+        self.assertGreater(len(l1), 0)
+
+    def test_brain_identity_alias(self):
+        """## Identity is accepted as L0 alias."""
+        (self.root / "brain.md").write_text("# Brain\n## Identity\nI am dev.\n## Active\nWork.\n")
+        issues = check_brain_health(self.root)
+        section_issues = [i for i in issues if "L0" in i.message or "L1" in i.message]
+        self.assertEqual(len(section_issues), 0)
+
+    def test_brain_in_report_scores(self):
+        make_index(self.root, [])
+        report = HygieneReport(self.root)
+        report.run()
+        self.assertIn("brain", report.scores)
+
+
+# ======================================================================
+# Depth grading curve (Issue #22)
+# ======================================================================
+
+
+class TestDepthGrading(unittest.TestCase):
+    def test_zero_issues(self):
+        self.assertEqual(compute_depth_grade(0, 10), "A")
+
+    def test_ten_percent(self):
+        self.assertEqual(compute_depth_grade(1, 10), "A")
+
+    def test_twenty_percent(self):
+        self.assertEqual(compute_depth_grade(2, 10), "B")
+
+    def test_thirty_percent(self):
+        self.assertEqual(compute_depth_grade(3, 10), "B")
+
+    def test_forty_percent(self):
+        self.assertEqual(compute_depth_grade(4, 10), "C")
+
+    def test_sixty_percent(self):
+        self.assertEqual(compute_depth_grade(6, 10), "C")
+
+    def test_seventy_percent(self):
+        self.assertEqual(compute_depth_grade(7, 10), "D")
+
+    def test_ninety_percent(self):
+        self.assertEqual(compute_depth_grade(9, 10), "F")
+
+    def test_all_issues(self):
+        self.assertEqual(compute_depth_grade(10, 10), "F")
+
+    def test_zero_pages(self):
+        self.assertEqual(compute_depth_grade(0, 0), "A")
+
+    def test_depth_grade_in_report(self):
+        """Depth grade uses percentage-based curve, not absolute counts."""
+        tmpdir = Path(tempfile.mkdtemp())
+        try:
+            root = make_wiki_root(tmpdir)
+            # Create 10 pages, 2 with depth issues (20% -> B)
+            for i in range(8):
+                write_page(root, f"wiki/projects/page{i}.md", MINIMAL_FRONTMATTER)
+            # These 2 pages are missing timeline -> depth issues
+            for i in range(2):
+                write_page(root, f"wiki/projects/thin{i}.md",
+                           "---\ntitle: Thin\ntype: project\nupdated: 2025-06-01\n---\n\n## Compiled Truth\nContent.")
+            make_index(root, [f"page{i}" for i in range(8)] + [f"thin{i}" for i in range(2)])
+            report = HygieneReport(root)
+            report.run()
+            # 20% depth issues -> should be B
+            self.assertIn(report.scores["depth"], ("A", "B"))
+        finally:
+            shutil.rmtree(str(tmpdir), ignore_errors=True)
+
+
+# ======================================================================
+# Orphan fix (Issue #21)
+# ======================================================================
+
+
+class TestOrphanFix(unittest.TestCase):
+    def setUp(self):
+        self.tmpdir = Path(tempfile.mkdtemp())
+        self.root = make_wiki_root(self.tmpdir)
+
+    def tearDown(self):
+        shutil.rmtree(str(self.tmpdir), ignore_errors=True)
+
+    def test_determine_section_people(self):
+        self.assertEqual(_determine_index_section("wiki/people/alice.md"), "People")
+
+    def test_determine_section_projects(self):
+        self.assertEqual(_determine_index_section("wiki/projects/foo.md"), "Projects")
+
+    def test_determine_section_patterns(self):
+        self.assertEqual(_determine_index_section("wiki/patterns/bug.md"), "Patterns")
+
+    def test_determine_section_concepts(self):
+        self.assertEqual(_determine_index_section("wiki/concepts/auth.md"), "Concepts")
+
+    def test_determine_section_unknown(self):
+        self.assertEqual(_determine_index_section("wiki/misc/random.md"), "Other")
+
+    def test_fix_adds_orphan_to_index(self):
+        write_page(self.root, "wiki/projects/orphan-proj.md", MINIMAL_FRONTMATTER)
+        index_content = "# Wiki Index\n\n## Projects\n\n| Page | Status | Description |\n"
+        (self.root / "wiki" / "index.md").write_text(index_content, encoding="utf-8")
+
+        issues = check_structure(self.root)
+        actions = apply_fixes(self.root, issues)
+
+        idx = (self.root / "wiki" / "index.md").read_text(encoding="utf-8")
+        self.assertIn("[[orphan-proj]]", idx)
+        self.assertTrue(any("orphan" in a.lower() for a in actions))
+
+    def test_fix_adds_orphan_correct_section(self):
+        write_page(self.root, "wiki/people/new-person.md", PEOPLE_PAGE)
+        index_content = "# Wiki Index\n\n## Projects\n\n| Page |\n\n## People\n\n| Page |\n"
+        (self.root / "wiki" / "index.md").write_text(index_content, encoding="utf-8")
+
+        issues = check_structure(self.root)
+        orphans = [i for i in issues if i.fix_action == "add_to_index"]
+        actions = apply_fixes(self.root, orphans)
+
+        idx = (self.root / "wiki" / "index.md").read_text(encoding="utf-8")
+        # The entry should be in the People section
+        people_pos = idx.find("## People")
+        entry_pos = idx.find("[[new-person]]")
+        self.assertGreater(entry_pos, people_pos)
+
+    def test_fix_creates_section_if_missing(self):
+        write_page(self.root, "wiki/concepts/new-concept.md",
+                   "---\ntitle: \"Auth Patterns\"\ntype: concept\nupdated: 2025-06-01\n---\n\nContent.")
+        index_content = "# Wiki Index\n\n## Projects\n\n| Page |\n"
+        (self.root / "wiki" / "index.md").write_text(index_content, encoding="utf-8")
+
+        issues = check_structure(self.root)
+        actions = apply_fixes(self.root, issues)
+
+        idx = (self.root / "wiki" / "index.md").read_text(encoding="utf-8")
+        self.assertIn("## Concepts", idx)
+        self.assertIn("[[new-concept]]", idx)
+
+    def test_fix_includes_frontmatter_description(self):
+        write_page(self.root, "wiki/projects/cool-proj.md",
+                   '---\ntitle: "Cool Project"\ntype: project\ntier: 2\nupdated: 2025-06-01\n---\n\nContent.')
+        index_content = "# Wiki Index\n\n## Projects\n\n| Page | Status | Description |\n"
+        (self.root / "wiki" / "index.md").write_text(index_content, encoding="utf-8")
+
+        issues = check_structure(self.root)
+        actions = apply_fixes(self.root, issues)
+
+        idx = (self.root / "wiki" / "index.md").read_text(encoding="utf-8")
+        self.assertIn("Cool Project", idx)
+        self.assertIn("tier-2", idx)
+
+    def test_orphan_is_now_fixable(self):
+        write_page(self.root, "wiki/projects/orphan.md", MINIMAL_FRONTMATTER)
+        make_index(self.root, [])
+        issues = check_structure(self.root)
+        orphans = [i for i in issues if "Orphan" in i.message]
+        self.assertGreater(len(orphans), 0)
+        self.assertTrue(orphans[0].fixable)
+        self.assertEqual(orphans[0].fix_action, "add_to_index")
 
 
 if __name__ == "__main__":

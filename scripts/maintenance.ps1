@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Master maintenance script — runs all wiki-recall housekeeping in sequence.
+    Master maintenance script -- runs all wiki-recall housekeeping in sequence.
 
 .DESCRIPTION
     Executes the full maintenance pipeline:
@@ -11,7 +11,7 @@
     5. Log results to ~/.grain/logs/maintenance-YYYY-MM-DD.log
     6. Prune logs older than 30 days
 
-    Each step uses try/catch — one failure doesn't stop the rest.
+    Each step uses try/catch -- one failure doesn't stop the rest.
 
     Usage:
       powershell -ExecutionPolicy Bypass -File scripts/maintenance.ps1
@@ -72,15 +72,15 @@ try {
             & powershell -ExecutionPolicy Bypass -File $refreshScript 2>&1 | ForEach-Object {
                 Write-Verbose "  refresh: $_"
             }
-            Write-Log "Step 1: PASS — sessions harvested" 'OK'
+            Write-Log "Step 1: PASS -- sessions harvested" 'OK'
             $stepResults += @{ Step = 'refresh'; Status = 'PASS' }
         } else {
-            Write-Log "Step 1: SKIP — refresh.ps1 not found" 'WARN'
+            Write-Log "Step 1: SKIP -- refresh.ps1 not found" 'WARN'
             $stepResults += @{ Step = 'refresh'; Status = 'SKIP' }
         }
     }
 } catch {
-    Write-Log "Step 1: FAIL — $($_.Exception.Message)" 'ERROR'
+    Write-Log "Step 1: FAIL -- $($_.Exception.Message)" 'ERROR'
     $stepResults += @{ Step = 'refresh'; Status = 'FAIL'; Error = $_.Exception.Message }
     $hasFailure = $true
 }
@@ -94,15 +94,15 @@ try {
             & powershell -ExecutionPolicy Bypass -File $backupScript -Layer local 2>&1 | ForEach-Object {
                 Write-Verbose "  backup: $_"
             }
-            Write-Log "Step 2: PASS — backup completed" 'OK'
+            Write-Log "Step 2: PASS -- backup completed" 'OK'
             $stepResults += @{ Step = 'backup'; Status = 'PASS' }
         } else {
-            Write-Log "Step 2: SKIP — backup.ps1 not found" 'WARN'
+            Write-Log "Step 2: SKIP -- backup.ps1 not found" 'WARN'
             $stepResults += @{ Step = 'backup'; Status = 'SKIP' }
         }
     }
 } catch {
-    Write-Log "Step 2: FAIL — $($_.Exception.Message)" 'ERROR'
+    Write-Log "Step 2: FAIL -- $($_.Exception.Message)" 'ERROR'
     $stepResults += @{ Step = 'backup'; Status = 'FAIL'; Error = $_.Exception.Message }
     $hasFailure = $true
 }
@@ -116,15 +116,15 @@ try {
             & powershell -ExecutionPolicy Bypass -File $lintScript 2>&1 | ForEach-Object {
                 Write-Verbose "  lint: $_"
             }
-            Write-Log "Step 3: PASS — lint completed" 'OK'
+            Write-Log "Step 3: PASS -- lint completed" 'OK'
             $stepResults += @{ Step = 'lint'; Status = 'PASS' }
         } else {
-            Write-Log "Step 3: SKIP — lint.ps1 not found" 'WARN'
+            Write-Log "Step 3: SKIP -- lint.ps1 not found" 'WARN'
             $stepResults += @{ Step = 'lint'; Status = 'SKIP' }
         }
     }
 } catch {
-    Write-Log "Step 3: FAIL — $($_.Exception.Message)" 'ERROR'
+    Write-Log "Step 3: FAIL -- $($_.Exception.Message)" 'ERROR'
     $stepResults += @{ Step = 'lint'; Status = 'FAIL'; Error = $_.Exception.Message }
     $hasFailure = $true
 }
@@ -141,7 +141,7 @@ if (Test-Path $hygieneLastRun) {
             $runHygiene = $false
         }
     } catch {
-        # Can't parse — run it
+        # Can't parse -- run it
     }
 }
 
@@ -154,22 +154,22 @@ if ($runHygiene) {
                 & python $hygieneScript $grainDir 2>&1 | ForEach-Object {
                     Write-Verbose "  hygiene: $_"
                 }
-                Write-Log "Step 4: PASS — hygiene check completed" 'OK'
+                Write-Log "Step 4: PASS -- hygiene check completed" 'OK'
                 $stepResults += @{ Step = 'hygiene'; Status = 'PASS' }
                 # Record last run
                 (Get-Date).ToString('yyyy-MM-dd') | Set-Content $hygieneLastRun -Encoding UTF8
             } else {
-                Write-Log "Step 4: SKIP — hygiene.py not found" 'WARN'
+                Write-Log "Step 4: SKIP -- hygiene.py not found" 'WARN'
                 $stepResults += @{ Step = 'hygiene'; Status = 'SKIP' }
             }
         }
     } catch {
-        Write-Log "Step 4: FAIL — $($_.Exception.Message)" 'ERROR'
+        Write-Log "Step 4: FAIL -- $($_.Exception.Message)" 'ERROR'
         $stepResults += @{ Step = 'hygiene'; Status = 'FAIL'; Error = $_.Exception.Message }
         $hasFailure = $true
     }
 } else {
-    Write-Log "Step 4/6: SKIP — hygiene ran within last 7 days"
+    Write-Log "Step 4/6: SKIP -- hygiene ran within last 7 days"
     $stepResults += @{ Step = 'hygiene'; Status = 'SKIP' }
 }
 
@@ -187,22 +187,22 @@ try {
                     & powershell -ExecutionPolicy Bypass -File $compactScript 2>&1 | ForEach-Object {
                         Write-Verbose "  compact: $_"
                     }
-                    Write-Log "Step 4: PASS — brain.md compacted ($lineCount -> $(( Get-Content $brainFile).Count) lines)" 'OK'
+                    Write-Log "Step 4: PASS -- brain.md compacted ($lineCount -> $(( Get-Content $brainFile).Count) lines)" 'OK'
                 } else {
-                    Write-Log "Step 4: SKIP — compact.ps1 not found" 'WARN'
+                    Write-Log "Step 4: SKIP -- compact.ps1 not found" 'WARN'
                 }
             }
             $stepResults += @{ Step = 'compact'; Status = 'PASS' }
         } else {
-            Write-Log "Step 4: SKIP — brain.md is $lineCount lines (threshold: 80)" 'INFO'
+            Write-Log "Step 4: SKIP -- brain.md is $lineCount lines (threshold: 80)" 'INFO'
             $stepResults += @{ Step = 'compact'; Status = 'SKIP' }
         }
     } else {
-        Write-Log "Step 4: SKIP — brain.md not found" 'WARN'
+        Write-Log "Step 4: SKIP -- brain.md not found" 'WARN'
         $stepResults += @{ Step = 'compact'; Status = 'SKIP' }
     }
 } catch {
-    Write-Log "Step 4: FAIL — $($_.Exception.Message)" 'ERROR'
+    Write-Log "Step 4: FAIL -- $($_.Exception.Message)" 'ERROR'
     $stepResults += @{ Step = 'compact'; Status = 'FAIL'; Error = $_.Exception.Message }
     $hasFailure = $true
 }

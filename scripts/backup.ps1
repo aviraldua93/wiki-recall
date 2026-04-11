@@ -34,7 +34,7 @@ $ExcludeDirs = @('chromadb', '.mining', '.verification', '.obsidian', 'node_modu
 
 function Get-CoreFiles {
     if (-not (Test-Path $GrainPath)) {
-        Write-Host "  ~/.grain/ not found — nothing to back up." -ForegroundColor Yellow
+        Write-Host "  ~/.grain/ not found -- nothing to back up." -ForegroundColor Yellow
         return @()
     }
     Get-ChildItem $GrainPath -Recurse -File | Where-Object {

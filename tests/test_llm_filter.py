@@ -71,15 +71,17 @@ class TestBackendDetection:
 
     def test_copilot_cli_detected(self):
         with patch.dict("os.environ", {}, clear=True):
-            with patch("engine.llm_filter.os.environ", {}) as mock_env:
-                with patch("shutil.which", return_value="/usr/bin/copilot"):
-                    assert _get_backend() == "copilot"
+            import os
+            os.environ.pop("OPENAI_API_KEY", None)
+            with patch("shutil.which", return_value="/usr/bin/copilot"):
+                assert _get_backend() == "copilot"
 
     def test_no_backend_returns_none(self):
         with patch.dict("os.environ", {}, clear=True):
-            with patch("engine.llm_filter.os.environ", {}) as mock_env:
-                with patch("shutil.which", return_value=None):
-                    assert _get_backend() == "none"
+            import os
+            os.environ.pop("OPENAI_API_KEY", None)
+            with patch("shutil.which", return_value=None):
+                assert _get_backend() == "none"
 
     def test_openai_takes_precedence_over_copilot(self):
         with patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"}):
@@ -233,7 +235,7 @@ class TestFilterDecisions:
         ])
         # Mock LLM: items 0 and 2 are REAL
         response = _mock_llm_response(candidates, {0, 2})
-        with patch("engine.llm_filter._call_llm", return_value=response):
+        with patch("engine.llm_client.LLMClient._call", return_value=response):
             result = filter_decisions(candidates, backend="openai")
         assert len(result) == 2
         assert result[0]["text"] == "JWT tokens for the authentication layer"
@@ -245,7 +247,7 @@ class TestFilterDecisions:
             "PostgreSQL over MySQL for the data layer",
         ])
         response = _mock_llm_response(candidates, {0, 1})
-        with patch("engine.llm_filter._call_llm", return_value=response):
+        with patch("engine.llm_client.LLMClient._call", return_value=response):
             result = filter_decisions(candidates, backend="openai")
         assert len(result) == 2
 
@@ -262,7 +264,7 @@ class TestFilterPatterns:
             "retry with exponential backoff fixes timeout issue",
         ])
         response = _mock_llm_response(candidates, {0, 2})
-        with patch("engine.llm_filter._call_llm", return_value=response):
+        with patch("engine.llm_client.LLMClient._call", return_value=response):
             result = filter_patterns(candidates, backend="openai")
         assert len(result) == 2
         texts = [r["text"] for r in result]
@@ -279,7 +281,7 @@ class TestFilterPeople:
             "Sarah", "Config", "Jordan", "Template",
         ])
         response = _mock_llm_response(candidates, {0, 2})
-        with patch("engine.llm_filter._call_llm", return_value=response):
+        with patch("engine.llm_client.LLMClient._call", return_value=response):
             result = filter_people(candidates, backend="openai")
         assert len(result) == 2
         names = [r["text"] for r in result]
@@ -299,7 +301,7 @@ class TestDryRun:
             "template placeholder noise text",
         ])
         response = _mock_llm_response(candidates, {0})  # Only first is REAL
-        with patch("engine.llm_filter._call_llm", return_value=response):
+        with patch("engine.llm_client.LLMClient._call", return_value=response):
             result = filter_decisions(candidates, dry_run=True, backend="openai")
         # dry_run should return ALL candidates, not just REAL ones
         assert len(result) == 2
@@ -307,7 +309,7 @@ class TestDryRun:
     def test_dry_run_prints_filtering_info(self, capsys):
         candidates = _make_candidates(["real one", "noise one"])
         response = _mock_llm_response(candidates, {0})
-        with patch("engine.llm_filter._call_llm", return_value=response):
+        with patch("engine.llm_client.LLMClient._call", return_value=response):
             filter_decisions(candidates, dry_run=True, backend="openai")
         captured = capsys.readouterr()
         assert "LLM Filter" in captured.out
@@ -332,14 +334,14 @@ class TestFallback:
     def test_llm_call_failure_keeps_all(self):
         """If LLM call raises, fail-open: keep all candidates."""
         candidates = _make_candidates(["a real decision about design"])
-        with patch("engine.llm_filter._call_llm", side_effect=RuntimeError("API down")):
+        with patch("engine.llm_client.LLMClient._call", side_effect=RuntimeError("API down")):
             result = filter_decisions(candidates, backend="openai")
         assert len(result) == 1
 
     def test_malformed_response_keeps_all(self):
         """If LLM returns garbage, keep all candidates."""
         candidates = _make_candidates(["a real decision about design"])
-        with patch("engine.llm_filter._call_llm", return_value="NOT JSON"):
+        with patch("engine.llm_client.LLMClient._call", return_value="NOT JSON"):
             result = filter_decisions(candidates, backend="openai")
         assert len(result) == 1
 
@@ -429,7 +431,7 @@ class TestMockLLMFilter:
         def fake_llm(prompt, backend=None):
             return mock.as_json_response(candidates, "decisions")
 
-        with patch("engine.llm_filter._call_llm", side_effect=fake_llm):
+        with patch("engine.llm_client.LLMClient._call", side_effect=fake_llm):
             result = filter_decisions(candidates, backend="openai")
         assert len(result) == 1
         assert result[0]["text"] == "design choice A"
@@ -467,7 +469,7 @@ class TestMultiBatch:
                 results.append({"text": text, "verdict": "REAL", "reason": "ok"})
             return json.dumps(results)
 
-        with patch("engine.llm_filter._call_llm", side_effect=fake_llm):
+        with patch("engine.llm_client.LLMClient._call", side_effect=fake_llm):
             result = filter_decisions(candidates, backend="openai")
 
         assert call_count == 2  # 20 + 5
@@ -488,14 +490,14 @@ class TestEdgeCases:
     def test_single_candidate(self):
         candidates = _make_candidates(["only one item"])
         response = _mock_llm_response(candidates, {0})
-        with patch("engine.llm_filter._call_llm", return_value=response):
+        with patch("engine.llm_client.LLMClient._call", return_value=response):
             result = filter_decisions(candidates, backend="openai")
         assert len(result) == 1
 
     def test_unicode_candidates(self):
         candidates = _make_candidates(["décision über Architektur", "日本語のテスト"])
         response = _mock_llm_response(candidates, {0, 1})
-        with patch("engine.llm_filter._call_llm", return_value=response):
+        with patch("engine.llm_client.LLMClient._call", return_value=response):
             result = filter_decisions(candidates, backend="openai")
         assert len(result) == 2
 

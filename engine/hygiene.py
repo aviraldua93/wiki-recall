@@ -30,6 +30,8 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
+from engine.llm_client import LLMClient
+
 logger = logging.getLogger(__name__)
 
 # ── Defaults ───────────────────────────────────────────────────────────────────
@@ -665,8 +667,17 @@ def _add_orphan_to_index(index_path: Path, page_name: str, section: str,
 
 # ── Fix actions ────────────────────────────────────────────────────────────────
 
-def apply_fixes(root: Path, issues: list[HygieneIssue]) -> list[str]:
-    """Apply safe auto-fixes. Returns list of actions taken."""
+def apply_fixes(
+    root: Path,
+    issues: list[HygieneIssue],
+    llm: LLMClient | None = None,
+) -> list[str]:
+    """Apply safe auto-fixes. Returns list of actions taken.
+
+    When llm is provided and available:
+    - Classifies root files as CORE/BACKUP/MOVE/ARCHIVE
+    - Suggests enrichment tier for untiered wiki pages
+    """
     actions: list[str] = []
     today = datetime.now().strftime("%Y-%m-%d")
 
@@ -749,6 +760,78 @@ def apply_fixes(root: Path, issues: list[HygieneIssue]) -> list[str]:
             except Exception:
                 continue
 
+    # LLM-enhanced fixes (when available)
+    if llm and llm.available:
+        actions.extend(_llm_classify_root_files(root, llm))
+        actions.extend(_llm_suggest_tiers(root, llm))
+
+    return actions
+
+
+def _llm_classify_root_files(root: Path, llm: LLMClient) -> list[str]:
+    """Use LLM to classify root files as CORE/BACKUP/MOVE/ARCHIVE."""
+    actions: list[str] = []
+    if not root.exists():
+        return actions
+
+    root_files = [f.name for f in root.iterdir() if f.is_file() and not f.name.startswith(".")]
+    if len(root_files) <= ROOT_FILE_WARN_THRESHOLD:
+        return actions
+
+    results = llm.classify(
+        root_files,
+        ["CORE", "BACKUP", "MOVE", "ARCHIVE"],
+        prompt_context="Files in the root of a personal knowledge base. "
+        "CORE = essential config/docs, BACKUP = old backups, "
+        "MOVE = should be in a subdirectory, ARCHIVE = outdated artifacts.",
+    )
+    for r in results:
+        if isinstance(r, dict) and r.get("category") in ("BACKUP", "ARCHIVE"):
+            item_name = r.get("item", "")
+            confidence = r.get("confidence", 0)
+            if confidence >= 0.7:
+                actions.append(
+                    f"LLM suggests archiving root file '{item_name}' "
+                    f"(classified as {r['category']}, confidence: {confidence:.0%})"
+                )
+    return actions
+
+
+def _llm_suggest_tiers(root: Path, llm: LLMClient) -> list[str]:
+    """Use LLM to suggest enrichment tier for untiered wiki pages."""
+    actions: list[str] = []
+    wiki_dir = root / "wiki"
+    if not wiki_dir.exists():
+        return actions
+
+    untiered: list[str] = []
+    for md_file in wiki_dir.rglob("*.md"):
+        if md_file.name in ("index.md", "log.md"):
+            continue
+        if md_file.parent.name.startswith("."):
+            continue
+        try:
+            content = md_file.read_text(encoding="utf-8", errors="replace")
+            tier = extract_frontmatter_field(content, "tier")
+            if not tier:
+                untiered.append(md_file.stem)
+        except Exception:
+            continue
+
+    if not untiered:
+        return actions
+
+    results = llm.classify(
+        untiered[:20],  # limit to avoid token overload
+        ["1", "2", "3"],
+        prompt_context="Wiki page names from a personal knowledge base. "
+        "Tier 1 = actively used daily, Tier 2 = used weekly, Tier 3 = reference/archive.",
+    )
+    for r in results:
+        if isinstance(r, dict) and r.get("category"):
+            actions.append(
+                f"LLM suggests tier {r['category']} for wiki page '{r.get('item', '')}'"
+            )
     return actions
 
 
@@ -799,9 +882,9 @@ class HygieneReport:
         depth_issue_count = len(depth)
         self.scores["depth"] = compute_depth_grade(depth_issue_count, total_pages)
 
-    def apply_fixes(self) -> list[str]:
+    def apply_fixes(self, llm: LLMClient | None = None) -> list[str]:
         """Apply safe fixes and return actions taken."""
-        self.fix_actions = apply_fixes(self.root, self.issues)
+        self.fix_actions = apply_fixes(self.root, self.issues, llm=llm)
         return self.fix_actions
 
     def to_dict(self) -> dict[str, Any]:
@@ -891,7 +974,8 @@ def main(argv: list[str] | None = None) -> int:
     report.run()
 
     if args.fix:
-        report.apply_fixes()
+        llm = LLMClient()
+        report.apply_fixes(llm=llm)
 
     if args.json:
         print(json.dumps(report.to_dict(), indent=2))

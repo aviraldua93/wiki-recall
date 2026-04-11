@@ -18,6 +18,7 @@ Safety: ALWAYS backs up first. Interactive confirmation. Archive, don't delete.
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import shutil
@@ -41,6 +42,9 @@ from engine.hygiene import (
     section_has_content,
     DEFAULT_ROOT,
 )
+from engine.llm_client import LLMClient
+
+logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -227,8 +231,8 @@ def remove_blank_line_runs(content: str) -> str:
     return re.sub(r'\n{4,}', '\n\n\n', content)
 
 
-def phase_2_brain_cleanup(root: Path) -> dict:
-    """Phase 2: Trim brain.md to L0+L1 under 40 lines. No LLM, simple text processing."""
+def phase_2_brain_cleanup(root: Path, llm: LLMClient | None = None) -> dict:
+    """Phase 2: Trim brain.md to L0+L1 under 40 lines. Uses LLM when available for smarter summaries."""
     print("\n-- Phase 2: Brain.md Cleanup --")
     brain_path = root / "brain.md"
     stats = {
@@ -236,6 +240,7 @@ def phase_2_brain_cleanup(root: Path) -> dict:
         "final_lines": 0,
         "code_blocks_extracted": 0,
         "decisions_extracted": 0,
+        "llm_summaries": 0,
     }
 
     if not brain_path.exists():
@@ -284,7 +289,14 @@ def phase_2_brain_cleanup(root: Path) -> dict:
         print(f"  Extracted {len(decisions)} decision(s) to decisions.md")
 
     # Step 3: Trim project descriptions to one line
-    content = trim_project_descriptions(content)
+    # When LLM available, use summarize for multi-line project descriptions
+    if llm and llm.available:
+        content, summary_count = _llm_trim_project_descriptions(content, llm)
+        stats["llm_summaries"] = summary_count
+        if summary_count:
+            print(f"  LLM-summarized {summary_count} project description(s)")
+    else:
+        content = trim_project_descriptions(content)
 
     # Step 4: Collapse blank line runs
     content = remove_blank_line_runs(content)
@@ -299,6 +311,65 @@ def phase_2_brain_cleanup(root: Path) -> dict:
     brain_path.write_text(content, encoding="utf-8")
     print(f"  [OK] brain.md trimmed: {original_lines} -> {final_lines} lines")
     return stats
+
+
+def _llm_trim_project_descriptions(content: str, llm: LLMClient) -> tuple[str, int]:
+    """Use LLM to summarize multi-line project descriptions to 1 line each.
+
+    Returns (modified_content, count_of_summaries).
+    """
+    lines = content.split("\n")
+    result: list[str] = []
+    in_l1 = False
+    summary_count = 0
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        if re.match(r'^##\s+L1\b', line, re.IGNORECASE):
+            in_l1 = True
+            result.append(line)
+            i += 1
+            continue
+        if re.match(r'^##\s', line) and in_l1:
+            in_l1 = False
+
+        # Detect multi-line project entries in L1
+        if in_l1 and re.match(r'^\s*[-*]\s+\*\*', stripped):
+            # Collect continuation lines
+            desc_lines = [line]
+            j = i + 1
+            while j < len(lines):
+                next_stripped = lines[j].strip()
+                if not next_stripped:
+                    break
+                if next_stripped.startswith(("-", "*", "#")):
+                    break
+                desc_lines.append(lines[j])
+                j += 1
+            if len(desc_lines) > 1:
+                full_desc = " ".join(ln.strip() for ln in desc_lines)
+                summary = llm.summarize(full_desc, max_words=15)
+                if summary:
+                    # Extract the bold project name from first line
+                    name_match = re.match(r'^(\s*[-*]\s+\*\*[^*]+\*\*)', desc_lines[0])
+                    if name_match:
+                        result.append(f"{name_match.group(1)} -- {summary}")
+                    else:
+                        result.append(f"{desc_lines[0].rstrip()} -- {summary}")
+                    summary_count += 1
+                    i = j
+                    continue
+            result.append(line)
+            i += 1
+            continue
+
+        result.append(line)
+        i += 1
+
+    return "\n".join(result), summary_count
 
 
 # ── Phase 3: Wire RESOLVER ────────────────────────────────────────────────────
@@ -411,10 +482,13 @@ def add_compiled_truth_and_timeline(file_path: Path) -> bool:
     return changed
 
 
-def phase_4_compiled_truth_timeline(root: Path) -> dict:
-    """Phase 4: Add compiled truth + timeline sections to pages missing them."""
+def phase_4_compiled_truth_timeline(root: Path, llm: LLMClient | None = None) -> dict:
+    """Phase 4: Add compiled truth + timeline sections to pages missing them.
+
+    When LLM available, generates an initial compiled truth summary from page content.
+    """
     print("\n-- Phase 4: Add Compiled Truth + Timeline --")
-    stats = {"pages_updated": 0, "pages_checked": 0}
+    stats = {"pages_updated": 0, "pages_checked": 0, "llm_summaries": 0}
 
     wiki_dir = root / "wiki"
     if not wiki_dir.exists():
@@ -452,10 +526,27 @@ def phase_4_compiled_truth_timeline(root: Path) -> dict:
         try:
             if add_compiled_truth_and_timeline(p):
                 stats["pages_updated"] += 1
+
+                # If LLM available, generate a summary for the compiled truth
+                if llm and llm.available:
+                    page_content = p.read_text(encoding="utf-8", errors="replace")
+                    summary = llm.summarize(page_content, max_words=50)
+                    if summary and summary != "[No data yet]":
+                        # Replace [No data yet] in Compiled Truth with LLM summary
+                        updated = page_content.replace(
+                            "## Compiled Truth\n\n[No data yet]",
+                            f"## Compiled Truth\n\n{summary}",
+                            1,
+                        )
+                        if updated != page_content:
+                            p.write_text(updated, encoding="utf-8")
+                            stats["llm_summaries"] += 1
         except Exception as e:
             print(f"  Failed on {p.name}: {e}")
 
     print(f"  [OK] Updated {stats['pages_updated']} page(s)")
+    if stats["llm_summaries"]:
+        print(f"  LLM-generated {stats['llm_summaries']} compiled truth summary(ies)")
     return stats
 
 
@@ -484,10 +575,14 @@ def is_harvest_noise(line: str) -> bool:
     return False
 
 
-def phase_5_clean_decisions(root: Path) -> dict:
-    """Phase 5: Clean decisions.md by removing harvest noise."""
+def phase_5_clean_decisions(root: Path, llm: LLMClient | None = None) -> dict:
+    """Phase 5: Clean decisions.md by removing harvest noise.
+
+    When LLM available, uses verify() to separate real decisions from noise
+    instead of regex-only heuristics.
+    """
     print("\n-- Phase 5: Clean decisions.md --")
-    stats = {"noise_entries": 0, "total_entries": 0, "archived": 0}
+    stats = {"noise_entries": 0, "total_entries": 0, "archived": 0, "llm_verified": False}
 
     decisions_path = root / "decisions.md"
     if not decisions_path.exists():
@@ -497,17 +592,41 @@ def phase_5_clean_decisions(root: Path) -> dict:
     content = decisions_path.read_text(encoding="utf-8", errors="replace")
     lines = content.split("\n")
 
-    noise_lines: list[str] = []
-    clean_lines: list[str] = []
-
+    # Collect all decision entries
+    entry_lines: list[str] = []
+    non_entry_lines: list[str] = []
     for line in lines:
-        if line.strip().startswith("-") and is_harvest_noise(line):
-            noise_lines.append(line)
-            stats["noise_entries"] += 1
+        if line.strip().startswith("-"):
+            entry_lines.append(line)
+            stats["total_entries"] += 1
+        else:
+            non_entry_lines.append(line)
+
+    # When LLM available, use verify() for better noise detection
+    if llm and llm.available and entry_lines:
+        candidates = [{"text": ln.strip().lstrip("- ")} for ln in entry_lines]
+        verified = llm.verify(candidates, "decisions")
+        verified_texts = {v["text"] for v in verified}
+        noise_lines = [ln for ln in entry_lines if ln.strip().lstrip("- ") not in verified_texts]
+        clean_entry_lines = [ln for ln in entry_lines if ln.strip().lstrip("- ") in verified_texts]
+        stats["llm_verified"] = True
+        print("  (using LLM verification)")
+    else:
+        # Regex-only fallback
+        noise_lines = [ln for ln in entry_lines if is_harvest_noise(ln)]
+        clean_entry_lines = [ln for ln in entry_lines if not is_harvest_noise(ln)]
+
+    stats["noise_entries"] = len(noise_lines)
+
+    # Reconstruct clean_lines preserving headings and structure
+    clean_lines = []
+    entry_idx = 0
+    for line in lines:
+        if line.strip().startswith("-"):
+            if line not in noise_lines:
+                clean_lines.append(line)
         else:
             clean_lines.append(line)
-        if line.strip().startswith("-"):
-            stats["total_entries"] += 1
 
     if not noise_lines:
         print(f"  [OK] decisions.md is clean ({stats['total_entries']} entries, no noise)")
@@ -568,6 +687,13 @@ def retrofit(root: Path) -> None:
         print(f"Error: path does not exist: {root}")
         sys.exit(1)
 
+    # Initialize shared LLM client
+    llm = LLMClient()
+    if llm.available:
+        print(f"  LLM backend: {llm.backend}")
+    else:
+        print("  LLM: not available (regex-only mode)")
+
     # Collect before stats
     before_pages = count_pages(root)
     brain_path = root / "brain.md"
@@ -587,10 +713,10 @@ def retrofit(root: Path) -> None:
     # Run phases
     all_stats: dict = {}
     all_stats["phase_1"] = phase_1_structure_cleanup(root)
-    all_stats["phase_2"] = phase_2_brain_cleanup(root)
+    all_stats["phase_2"] = phase_2_brain_cleanup(root, llm=llm)
     all_stats["phase_3"] = phase_3_wire_resolver(root)
-    all_stats["phase_4"] = phase_4_compiled_truth_timeline(root)
-    all_stats["phase_5"] = phase_5_clean_decisions(root)
+    all_stats["phase_4"] = phase_4_compiled_truth_timeline(root, llm=llm)
+    all_stats["phase_5"] = phase_5_clean_decisions(root, llm=llm)
     all_stats["phase_6"] = phase_6_hygiene_report(root)
 
     # After stats

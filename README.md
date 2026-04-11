@@ -5,12 +5,12 @@
 **Persistent memory for Copilot CLI.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1,508_passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-1,755_passing-brightgreen)]()
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white)](https://python.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/MCP-10_tools-purple)](https://modelcontextprotocol.io)
 
-| **~550 tokens** | **1,508 tests** | **93% hybrid recall** |
+| **~550 tokens** | **1,755 tests** | **93% hybrid recall** |
 |:---:|:---:|:---:|
 | wake-up cost | all passing | search accuracy |
 
@@ -288,16 +288,16 @@ bun run benchmark --suite token-efficiency  # One suite
 
 | Category | Tests | Pass Rate |
 |:---------|------:|:---------:|
-| TypeScript unit + E2E | 1,383 | 100% |
+| TypeScript unit + E2E | 1,577 | 100% |
 | Python engine (indexer, search, MCP) | 16 | 100% |
-| Python harvest (auto-capture + people) | 109 | 100% |
-| **Total** | **1,508** | **100%** |
+| Python harvest (auto-capture + people) | 162 | 100% |
+| **Total** | **1,755** | **100%** |
 
 Stress-tested with: schema injection, FTS5 injection, SQL injection, concurrent CRUD, corrupt YAML, 10K-char queries, path traversal, harvest dedup, unicode, empty sessions.
 
 ```bash
-bun test                   # TypeScript (1,383 tests)
-python -m pytest tests/    # Python (125 tests)
+bun test                   # TypeScript (1,577 tests)
+python -m pytest tests/    # Python (178 tests)
 ```
 
 ---

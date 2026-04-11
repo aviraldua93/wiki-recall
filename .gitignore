@@ -23,3 +23,5 @@ __pycache__/
 engine/chromadb/
 engine/.last_indexed
 *.egg-info/
+
+*.exe

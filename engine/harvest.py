@@ -561,7 +561,6 @@ def create_people_page(
     template = _load_people_template()
     content = template.replace("[PERSON_NAME]", name.capitalize())
     content = content.replace("[DATE]", today)
-    # Replace the placeholder timeline entry
     content = content.replace(
         "- [YYYY-MM-DD] What happened (session: session-id)",
         f"- [{today}] First mentioned in session (session: {session_id[:8]})",
@@ -582,12 +581,6 @@ def append_people_timeline(
 
     Only appends — never rewrites compiled truth (that's dream's job).
 
-    Args:
-        name: Person's display name.
-        entry: What happened (text of the timeline entry).
-        session_id: Session ID for attribution.
-        people_path: Override people directory path.
-
     Returns:
         True if entry was appended, False if page doesn't exist.
     """
@@ -601,8 +594,15 @@ def append_people_timeline(
     timeline_line = f"- [{today}] {entry} (session: {session_id[:8]})"
 
     content = filepath.read_text(encoding="utf-8", errors="replace")
-    # Append after the last line
-    content = content.rstrip("\n") + "\n" + timeline_line + "\n"
+    # Dedup: skip if this session + entry already logged
+    if session_id[:8] in content and entry[:40] in content:
+        return False
+
+    if "## Timeline" in content:
+        content = content.rstrip("\n") + "\n" + timeline_line + "\n"
+    else:
+        content = content.rstrip("\n") + "\n\n## Timeline (append-only, never delete)\n" + timeline_line + "\n"
+
     filepath.write_text(content, encoding="utf-8")
     update_last_verified(filepath)
     return True
@@ -621,7 +621,7 @@ def write_raw_sidecar(
     """Write raw session excerpts to .raw/ sidecar directory.
 
     Args:
-        entity_type: "project" or "person" (used for directory: wiki/projects/.raw/ or wiki/people/.raw/).
+        entity_type: "project" or "person".
         entity_name: Display name of the entity.
         session_id: Session ID.
         turns: List of turn dicts with user_message/assistant_response.
@@ -645,8 +645,7 @@ def write_raw_sidecar(
     filename = f"{slug}-{session_id[:8]}.md"
     filepath = raw_dir / filename
 
-    # Build content with metadata header
-    date = session_meta.get("date", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    date = session_meta.get("date", session_meta.get("created_at", "unknown"))
     repo = session_meta.get("repository", "unknown")
     branch = session_meta.get("branch", "unknown")
 
@@ -662,7 +661,6 @@ def write_raw_sidecar(
         f"",
     ]
 
-    # Include turns that mention the entity
     entity_lower = entity_name.lower()
     relevant_count = 0
     for turn in turns:
@@ -766,212 +764,6 @@ def append_bug_patterns(patterns: list[str], session_id: str):
         filepath.write_text(header + block, encoding="utf-8")
 
     update_last_verified(filepath)
-
-
-# ── People page creation ─────────────────────────────────────────────────────
-
-def _resolve_people_template() -> str:
-    """Load the people-template.md content."""
-    # Try relative to this file's repo
-    repo_template = Path(__file__).resolve().parent.parent / "templates" / "people-template.md"
-    if repo_template.exists():
-        return repo_template.read_text(encoding="utf-8")
-
-    # Fallback: inline minimal template
-    return """\
----
-title: "[PERSON_NAME]"
-type: person
-updated: [DATE]
-tags: []
-tier: 3
----
-
-## Compiled Truth
-[No data yet — rewrite this section on updates with who they are, role, key context]
-
-## Working Relationship
-- Reports to: [No data yet]
-- Collaborates on: [No data yet]
-- Communication: [No data yet]
-- Review pattern: [No data yet]
-
----
-
-## Timeline (append-only, never delete)
-- [YYYY-MM-DD] What happened (session: session-id)
-"""
-
-
-def create_people_page(
-    name: str,
-    people_path: Path,
-    session_id: str | None = None,
-    dry_run: bool = False,
-) -> bool:
-    """Create a new people page from template.
-
-    Args:
-        name: Person's name (capitalized).
-        people_path: Path to wiki/people/ directory.
-        session_id: Optional session ID for the initial timeline entry.
-        dry_run: If True, report but don't write.
-
-    Returns:
-        True if page was created (or would be in dry_run), False if already exists.
-    """
-    slug = name.lower().replace(" ", "-")
-    filepath = people_path / f"{slug}.md"
-
-    if filepath.exists():
-        return False
-
-    if dry_run:
-        print(f"  Would create people page: {name}")
-        return True
-
-    people_path.mkdir(parents=True, exist_ok=True)
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
-    template = _resolve_people_template()
-    content = template.replace("[PERSON_NAME]", name)
-    content = content.replace("[DATE]", today)
-
-    # Replace placeholder timeline entry with initial entry
-    if session_id:
-        timeline_entry = f"- [{today}] First mentioned in session (session: {session_id[:8]})"
-    else:
-        timeline_entry = f"- [{today}] Page created by harvest.py"
-    content = content.replace(
-        "- [YYYY-MM-DD] What happened (session: session-id)",
-        timeline_entry,
-    )
-
-    filepath.write_text(content, encoding="utf-8")
-    logger.info("Created people page: %s -> %s", name, filepath)
-    return True
-
-
-def append_people_timeline(
-    name: str,
-    people_path: Path,
-    entry: str,
-    session_id: str,
-) -> bool:
-    """Append a timeline entry to an existing people page.
-
-    Does NOT rewrite compiled truth — only appends to timeline.
-
-    Args:
-        name: Person's name.
-        people_path: Path to wiki/people/ directory.
-        entry: Timeline entry text.
-        session_id: Session ID for attribution.
-
-    Returns:
-        True if entry was appended.
-    """
-    slug = name.lower().replace(" ", "-")
-    filepath = people_path / f"{slug}.md"
-
-    if not filepath.exists():
-        return False
-
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    timeline_line = f"- [{today}] {entry} (session: {session_id[:8]})"
-
-    content = filepath.read_text(encoding="utf-8", errors="replace")
-
-    # Check for duplicate timeline entry
-    if session_id[:8] in content and entry[:40] in content:
-        return False
-
-    # Find the timeline section and append
-    if "## Timeline" in content:
-        content = content.rstrip("\n") + "\n" + timeline_line + "\n"
-    else:
-        content = content.rstrip("\n") + "\n\n## Timeline (append-only, never delete)\n" + timeline_line + "\n"
-
-    filepath.write_text(content, encoding="utf-8")
-    update_last_verified(filepath)
-    return True
-
-
-# ── Raw sidecar writing ──────────────────────────────────────────────────────
-
-def write_raw_sidecar(
-    entity_name: str,
-    entity_type: str,
-    session_id: str,
-    turns: list[dict],
-    session_meta: dict,
-    grain_root: Path | None = None,
-    dry_run: bool = False,
-) -> str | None:
-    """Write raw session excerpts to .raw/ sidecar directory.
-
-    Args:
-        entity_name: Entity slug (e.g., 'auth-service' or 'sarah').
-        entity_type: 'project' or 'person'.
-        session_id: Session ID for filename.
-        turns: Relevant conversation turns.
-        session_meta: Dict with 'created_at', 'repository', 'branch'.
-        grain_root: Override grain root path.
-        dry_run: If True, report but don't write.
-
-    Returns:
-        Path of the written file, or None if dry_run.
-    """
-    _grain = grain_root or GRAIN_ROOT
-
-    if entity_type == "project":
-        raw_dir = _grain / "wiki" / "projects" / ".raw"
-    elif entity_type == "person":
-        raw_dir = _grain / "wiki" / "people" / ".raw"
-    else:
-        return None
-
-    slug = entity_name.lower().replace(" ", "-")
-    sid_prefix = session_id[:8] if session_id else "unknown"
-    filename = f"{slug}-{sid_prefix}.md"
-    filepath = raw_dir / filename
-
-    if dry_run:
-        print(f"  Would write raw sidecar: {filepath.relative_to(_grain)}")
-        return str(filepath)
-
-    raw_dir.mkdir(parents=True, exist_ok=True)
-
-    # Build raw content with metadata header
-    date_str = session_meta.get("created_at", "unknown")
-    repo = session_meta.get("repository", "unknown")
-    branch = session_meta.get("branch", "unknown")
-
-    lines = [
-        f"# Raw excerpt: {entity_name}",
-        f"",
-        f"- Session: {session_id}",
-        f"- Date: {date_str}",
-        f"- Repo: {repo}",
-        f"- Branch: {branch}",
-        f"",
-        f"---",
-        f"",
-    ]
-
-    for turn in turns:
-        user_msg = turn.get("user_message") or ""
-        assistant_msg = turn.get("assistant_response") or ""
-        if user_msg:
-            lines.append(f"**User:** {user_msg[:2000]}")
-            lines.append("")
-        if assistant_msg:
-            lines.append(f"**Assistant:** {assistant_msg[:2000]}")
-            lines.append("")
-
-    filepath.write_text("\n".join(lines), encoding="utf-8")
-    logger.info("Wrote raw sidecar: %s", filepath)
-    return str(filepath)
 
 
 def _find_relevant_turns(
@@ -1407,8 +1199,8 @@ def write_results(
         raw_count = 0
         for entry in result._raw_sidecar_queue:
             path = write_raw_sidecar(
-                entity_name=entry["entity_name"],
                 entity_type=entry["entity_type"],
+                entity_name=entry["entity_name"],
                 session_id=entry["session_id"],
                 turns=entry["turns"],
                 session_meta=entry["session_meta"],

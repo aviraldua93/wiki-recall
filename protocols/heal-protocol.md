@@ -210,28 +210,38 @@ Report: "Applied N quality pattern fixes"
 
 **When:** decisions.md has entries that mention specific projects or domains.
 
-### 10a. Scan decisions.md
-- Read every entry in decisions.md
-- For each entry, determine scope:
-  - Mentions a specific project name from wiki/projects/? -> project-specific
-  - Mentions a domain keyword from domains/? -> domain-specific
-  - Neither? -> universal (stays in decisions.md)
+### 10a. Scan decisions.md — per ENTRY, not per section
+- Read every individual bullet entry in decisions.md (not just section headers)
+- For EACH entry independently, determine scope by reading its content:
+  - Does it name a specific project (e.g., "DailyStack", "rag-a2a", "grain")? -> project-specific
+  - Does it reference a specific domain (e.g., "Overlake", "Cirrus", "tooling")? -> domain-specific
+  - Does it reference a specific tool context (e.g., "COORDINATOR-ONLY MODE")? -> check if a reference/ file is more appropriate
+  - Is it truly universal ("always test before push", "git as storage")? -> stays in decisions.md
+- Do NOT classify by section header alone — entries within ## Architecture or ## Work Style can be project-specific
 
 ### 10b. Show migration plan
-- Show a summary: "Found N decisions. Proposed migration:"
-  - KEEP in decisions.md (universal): X entries
-  - MOVE to project pages: Y entries (list target pages)
-  - MOVE to domain pages: Z entries (list target pages)
-- Ask: "Proceed with migration?"
+- Show every entry with its proposed destination:
+  ```
+  KEEP in decisions.md (universal): 18 entries
+  MOVE to wiki/projects/dailystack.md ## Decisions: 3 entries
+    - "DailyStack design: fun/colorful theme"
+    - "DailyStack: SQLite for local store"
+    - "DailyStack: no backend, PWA only"
+  MOVE to domains/overlake.md ## Decisions: 2 entries
+    - "Release via force-push on Overlake"
+    ...
+  ```
+- Ask: "Proceed with migration? (You can edit the plan first)"
 
 ### 10c. Migrate decisions
 - For each entry to move:
-  - Append to the target page's ## Decisions section
+  - Append to the target page's ## Decisions section (create section if missing)
   - Remove from decisions.md
 - Target: decisions.md has 15-20 universal entries max
+- If decisions.md still has 20+ entries after migration, flag remaining candidates
 
-### 10d. Scan reference/hard-gates.md
-- Same process for gates:
+### 10d. Scan reference/hard-gates.md — same per-entry classification
+- For each gate entry independently:
   - Project-specific gates -> wiki/projects/X.md ## Gates
   - Domain-specific gates -> domains/X.md ## Gates
   - Universal gates stay in reference/hard-gates.md (3-5 max)

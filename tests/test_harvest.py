@@ -646,6 +646,7 @@ class TestHarvestPipeline(unittest.TestCase):
 
 # ── LLM Mandatory Tests (additional coverage for #32) ────────────────────────
 
+@unittest.skip("LLM gate removed in #49 -- protocols architecture. Regex filtering used instead.")
 class TestLLMMandatoryInAutoMode(unittest.TestCase):
     """Additional tests for --auto requiring LLM (#32), complementing TestHarvestLLMMandatory."""
 
@@ -1160,6 +1161,7 @@ class TestPersonaTemplates(unittest.TestCase):
 
 # ── LLM Mandatory Filter Tests ──────────────────────────────────────────────
 
+@unittest.skip("LLM gate removed in #49 -- protocols architecture. Regex filtering used instead.")
 class TestHarvestLLMMandatory(unittest.TestCase):
     """Test that --auto mode requires LLM backend for filtering (#32)."""
 

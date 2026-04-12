@@ -406,6 +406,225 @@ def load_known_pages() -> set[str]:
     return pages
 
 
+# ── Checkpoint mining (#71) ──────────────────────────────────────────────────
+
+def get_checkpoints(conn: sqlite3.Connection, session_id: str) -> list[dict]:
+    """Fetch all checkpoints for a session."""
+    try:
+        cursor = conn.execute(
+            "SELECT checkpoint_number, title, overview, history, work_done, "
+            "technical_details, important_files, next_steps "
+            "FROM checkpoints WHERE session_id = ? ORDER BY checkpoint_number",
+            (session_id,),
+        )
+        cols = [d[0] for d in cursor.description]
+        return [dict(zip(cols, row)) for row in cursor.fetchall()]
+    except Exception:
+        return []
+
+
+def get_session_files(conn: sqlite3.Connection, session_id: str) -> list[dict]:
+    """Fetch all file operations for a session."""
+    try:
+        cursor = conn.execute(
+            "SELECT file_path, tool_name, turn_index FROM session_files "
+            "WHERE session_id = ? ORDER BY turn_index",
+            (session_id,),
+        )
+        cols = [d[0] for d in cursor.description]
+        return [dict(zip(cols, row)) for row in cursor.fetchall()]
+    except Exception:
+        return []
+
+
+def get_session_refs(conn: sqlite3.Connection, session_id: str) -> list[dict]:
+    """Fetch all refs (PRs, issues, commits) for a session."""
+    try:
+        cursor = conn.execute(
+            "SELECT ref_type, ref_value, turn_index FROM session_refs "
+            "WHERE session_id = ? ORDER BY turn_index",
+            (session_id,),
+        )
+        cols = [d[0] for d in cursor.description]
+        return [dict(zip(cols, row)) for row in cursor.fetchall()]
+    except Exception:
+        return []
+
+
+def extract_from_checkpoints(checkpoints: list[dict]) -> dict:
+    """Extract decisions, patterns, and project updates from checkpoint data.
+
+    Returns dict with keys: decisions, patterns, project_updates.
+    Uses regex extraction on the rich checkpoint fields.
+    """
+    decisions: list[str] = []
+    patterns: list[str] = []
+    project_updates: list[str] = []
+
+    decision_triggers = re.compile(
+        r"(decided to|going with|settled on|chose|switched to|"
+        r"architecture:|design decision|convention:)",
+        re.I,
+    )
+    pattern_triggers = re.compile(
+        r"(bug:|fix:|workaround:|gotcha:|pattern:|issue:|"
+        r"root cause|the fix was|solved by)",
+        re.I,
+    )
+
+    for cp in checkpoints:
+        # Mine the richest fields: work_done, technical_details, overview
+        for field in ("work_done", "technical_details", "overview", "history"):
+            text = cp.get(field, "") or ""
+            if not text:
+                continue
+            for line in text.split("\n"):
+                stripped = line.strip().lstrip("- ")
+                if not stripped or len(stripped) < 15:
+                    continue
+                if decision_triggers.search(stripped):
+                    decisions.append(stripped)
+                if pattern_triggers.search(stripped):
+                    patterns.append(stripped)
+
+        # Extract project updates from overview + title
+        title = cp.get("title", "") or ""
+        overview = cp.get("overview", "") or ""
+        if title and len(title) > 10:
+            project_updates.append(title)
+        if overview and len(overview) > 30:
+            project_updates.append(overview[:200])
+
+    return {
+        "decisions": decisions,
+        "patterns": patterns,
+        "project_updates": project_updates,
+    }
+
+
+# ── New project detection (#72) ──────────────────────────────────────────────
+
+def detect_new_projects(
+    session_repo: str,
+    session_files: list[dict],
+    known_projects: list[str],
+) -> list[dict]:
+    """Detect new projects from repository name and file paths.
+
+    Returns list of dicts: [{name, source, evidence_count}]
+    """
+    known_lower = {p.lower() for p in known_projects}
+    candidates: dict[str, dict] = {}
+
+    # Method 1: Extract repo name from sessions.repository
+    if session_repo:
+        repo_name = session_repo.split("/")[-1] if "/" in session_repo else session_repo
+        # Clean common prefixes/suffixes
+        repo_name = repo_name.strip()
+        if repo_name and repo_name.lower() not in known_lower:
+            candidates[repo_name.lower()] = {
+                "name": repo_name,
+                "source": "repository",
+                "evidence_count": 1,
+            }
+
+    # Method 2: Extract project roots from file paths
+    for sf in session_files:
+        fp = sf.get("file_path", "")
+        if not fp:
+            continue
+        # Normalize path separators
+        fp = fp.replace("\\", "/")
+        parts = fp.split("/")
+        # Look for common project root patterns
+        for i, part in enumerate(parts):
+            if part.lower() in ("src", "lib", "engine", "scripts", "tests", "docs"):
+                # The directory before src/lib/etc is likely the project root
+                if i > 0:
+                    proj = parts[i - 1]
+                    if proj.lower() not in known_lower and len(proj) > 2:
+                        key = proj.lower()
+                        if key in candidates:
+                            candidates[key]["evidence_count"] += 1
+                        else:
+                            candidates[key] = {
+                                "name": proj,
+                                "source": "file_path",
+                                "evidence_count": 1,
+                            }
+                break
+
+    return list(candidates.values())
+
+
+def create_project_page(
+    name: str,
+    repo: str,
+    session_files: list[dict],
+    session_refs: list[dict],
+    session_date: str,
+    session_summary: str,
+    grain_root: Path | None = None,
+) -> Path | None:
+    """Create a new project page from template with pre-filled data.
+
+    Returns the created file path, or None if creation failed.
+    """
+    _grain = grain_root or GRAIN_ROOT
+    _projects = _grain / "wiki" / "projects"
+    _projects.mkdir(parents=True, exist_ok=True)
+
+    slug = slugify_name(name)
+    page_path = _projects / f"{slug}.md"
+    if page_path.exists():
+        return None  # Already exists
+
+    template_dir = _resolve_template_dir()
+    template_content = ""
+    if template_dir:
+        template_file = template_dir / "project-template.md"
+        if template_file.exists():
+            template_content = template_file.read_text(encoding="utf-8", errors="replace")
+
+    if not template_content:
+        template_content = (
+            "---\ntitle: \"[PROJECT_NAME]\"\ntype: project\n"
+            "updated: [DATE]\ntier: 3\n---\n\n"
+            "## Compiled Truth\n[Auto-generated -- needs review]\n\n"
+            "## Decisions\n\n## Gates\n\n## Patterns\n\n---\n\n"
+            "## Timeline (append-only, never delete)\n"
+        )
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    content = template_content.replace("[PROJECT_NAME]", name)
+    content = content.replace("[DATE]", today)
+
+    # Add timeline entry
+    timeline_entry = f"- [{today}] Project detected by harvest (auto-generated)"
+    if session_summary:
+        timeline_entry += f" -- {session_summary[:100]}"
+
+    # Add repo info to compiled truth if available
+    if repo:
+        content = content.replace(
+            "[Auto-generated -- needs review]",
+            f"Repository: {repo}. Auto-generated from session data -- needs review.",
+        )
+        content = content.replace(
+            "[No data yet -- rewrite this section on every update, max 5-10 lines summarizing current state]",
+            f"Repository: {repo}. Auto-generated from session data -- needs review.",
+        )
+
+    # Append timeline
+    if "## Timeline" in content:
+        content = content.rstrip() + f"\n{timeline_entry}\n"
+    else:
+        content += f"\n## Timeline\n{timeline_entry}\n"
+
+    page_path.write_text(content, encoding="utf-8")
+    return page_path
+
+
 # ── Frontmatter helpers ──────────────────────────────────────────────────────
 
 VALID_TIERS = {1, 2, 3}
@@ -880,13 +1099,12 @@ class HarvestLLMUnavailableError(RuntimeError):
 
 
 def _check_llm_available() -> bool:
-    """Check if any LLM backend is available for filtering."""
-    try:
-        from engine.llm_client import LLMClient
-        client = LLMClient()
-        return client.available
-    except Exception:
-        return False
+    """Check if any LLM backend is available for filtering.
+
+    Always returns False since #49 (protocols architecture).
+    Regex filtering is used instead.
+    """
+    return False
 
 
 def harvest(
@@ -915,14 +1133,8 @@ def harvest(
             In --auto mode, LLM filtering is mandatory to prevent noise from being
             written to decisions.md. Set OPENAI_API_KEY or install copilot CLI.
     """
-    # In --auto mode, LLM filtering is MANDATORY to prevent noise (#32)
-    if auto_write and llm_filter and not _check_llm_available():
-        raise HarvestLLMUnavailableError(
-            "harvest --auto requires an LLM backend for filtering.\n"
-            "No LLM backend found. Set OPENAI_API_KEY or install the copilot CLI.\n"
-            "Dry-run mode (without --auto) still works without LLM for previewing candidates.\n"
-            "Use --no-llm-filter to explicitly bypass (not recommended for production)."
-        )
+    # LLM filtering removed in #49 (protocols architecture).
+    # Regex filtering is used instead. --auto works without LLM.
     # Allow overrides for testing
     _store = store_path or STORE_PATH
     _grain = grain_root or GRAIN_ROOT
@@ -977,29 +1189,73 @@ def harvest(
         for sess in sessions:
             sid = sess["id"]
             summary = sess.get("summary") or ""
+            repo = sess.get("repository") or ""
             turns = get_turns(conn, sid)
             if not turns:
                 continue
 
-            # Extract decisions
+            # Extract decisions from turns (regex)
             for d in extract_decisions(turns):
                 if d.lower().strip() not in existing_decisions:
                     result.decisions.append(d)
                     existing_decisions.add(d.lower().strip())
 
-            # Extract bug patterns
+            # Extract bug patterns from turns (regex)
             for p in extract_bug_patterns(turns):
                 short = p[:80].lower().strip()
                 if short not in existing_patterns:
                     result.bug_patterns.append((p, sid))
                     existing_patterns.add(short)
 
-            # Project mentions
+            # --- #71: Mine checkpoints for richer extraction ---
+            checkpoints = get_checkpoints(conn, sid)
+            if checkpoints:
+                cp_extracted = extract_from_checkpoints(checkpoints)
+                for d in cp_extracted["decisions"]:
+                    if d.lower().strip() not in existing_decisions:
+                        result.decisions.append(d)
+                        existing_decisions.add(d.lower().strip())
+                for p in cp_extracted["patterns"]:
+                    short = p[:80].lower().strip()
+                    if short not in existing_patterns:
+                        result.bug_patterns.append((p, sid))
+                        existing_patterns.add(short)
+
+            # --- #71: Mine session_files for project detection ---
+            sess_files = get_session_files(conn, sid)
+
+            # --- #71: Mine session_refs for PR/issue linking ---
+            sess_refs = get_session_refs(conn, sid)
+
+            # Project mentions (existing)
             mentioned = extract_project_mentions(summary, known_projects)
             if mentioned:
                 result.project_updates.append((summary, mentioned))
 
-            # New topics
+            # --- #72: Detect new projects from repo + file paths ---
+            new_projects = detect_new_projects(repo, sess_files, known_projects)
+            for np in new_projects:
+                if np["name"].lower() not in {t.lower() for t in result.new_topics}:
+                    evidence = f"{np['name']} (source: {np['source']}, evidence: {np['evidence_count']} signals)"
+                    result.new_topics.append(evidence)
+                    # Auto-create page in --auto mode
+                    if auto_write:
+                        created = create_project_page(
+                            name=np["name"],
+                            repo=repo,
+                            session_files=sess_files,
+                            session_refs=sess_refs,
+                            session_date=sess.get("created_at", ""),
+                            session_summary=summary,
+                            grain_root=grain_root,
+                        )
+                        if created:
+                            known_projects.append(np["name"])
+                            result.project_updates.append(
+                                (f"Auto-created project page: {created.name}", [np["name"]])
+                            )
+
+            # New topics (legacy fallback)
             new_topic = detect_new_topics(summary, known_pages)
             if new_topic and new_topic not in result.new_topics:
                 result.new_topics.append(new_topic)

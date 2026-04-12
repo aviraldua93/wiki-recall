@@ -145,9 +145,51 @@ Report: "Fixed N cross-reference issues"
   - Keep the richer/more-current version
   - Archive the other to `.archive/`
   - Update any references to point to the kept version
-- Report: "Resolved N duplicates"
+- For pages with >30% session ID overlap in the same domain:
+  - Read both pages, identify which has richer content
+  - Merge the thinner page as a section into the richer page
+  - Archive the merged page
+- Report: "Resolved N duplicates, merged M overlapping pages"
 
-## Step 9: Verify
+## Step 9: Quality Patterns
+
+**When:** diagnosis reports quality pattern issues.
+
+### 9a. Merge TL;DR into Compiled Truth
+- For each page with both `## TL;DR` and `## Compiled Truth`:
+  - Keep Compiled Truth (it IS the TL;DR)
+  - Remove the TL;DR section entirely
+  - Ensure Compiled Truth is 3-5 lines max
+
+### 9b. Merge stub pages into parents
+- For each page flagged as <200 bytes or <3 timeline entries:
+  - Find the parent page by matching domain or topic
+  - Move the stub's content as a section in the parent page
+  - Archive the stub
+  - Update any cross-references
+
+### 9c. Separate prospects from real contacts
+- For each people page flagged as uncontacted:
+  - If the person is NOT in `domains/comms.md` Quick Resolve table:
+    - Move to `wiki/people/prospects/` (create dir if needed)
+  - If the person IS a real collaborator but mislabeled:
+    - Add them to `domains/comms.md` and keep the page
+
+### 9d. Enforce timeline minimum
+- For each page with <3 real timeline entries:
+  - Check session history for additional events
+  - Add any found events as timeline entries
+  - If still <3 entries: consider merging into parent page
+
+### 9e. Add content_updated tracking
+- For each page missing `content_updated` in frontmatter:
+  - Add `content_updated: YYYY-MM-DD` (today's date for new content, or best guess for existing)
+  - Note: `content_updated` tracks when content actually changed
+  - `last_verified` tracks when the page was last reviewed (can be bulk-stamped)
+
+Report: "Applied N quality pattern fixes"
+
+## Step 10: Verify
 
 - Run: `python ~/.grain/engine/hygiene.py --json`
 - Show before/after comparison:
@@ -166,7 +208,7 @@ brain        | ?      | ?
 - If any category is still C or worse, mention what needs user input to fix
 - Report: "Heal complete. Improved N categories. M issues remain (need user input)."
 
-## Step 10: Update Log
+## Step 11: Update Log
 
 - Append a heal entry to `~/.grain/wiki/log.md`:
 ```

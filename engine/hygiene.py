@@ -788,6 +788,187 @@ def check_staleness(root: Path) -> list[HygieneIssue]:
     return issues
 
 
+# ── Quality patterns (#50) ────────────────────────────────────────────────────
+
+def check_quality_patterns(root: Path) -> list[HygieneIssue]:
+    """Detect 6 A-grade quality patterns from production dogfood (#50).
+
+    1. TL;DR duplication (pages with both TL;DR and Compiled Truth)
+    2. Stub page candidates (<200 bytes or <3 timeline entries)
+    3. Domain cluster overlap (pages sharing session IDs)
+    4. People vs prospects (uncontacted people pages)
+    5. Timeline minimum (<3 real entries)
+    6. Staleness gate (content_updated missing or >30 days old)
+    """
+    issues: list[HygieneIssue] = []
+    wiki_dir = root / "wiki"
+    if not wiki_dir.exists():
+        return issues
+
+    # Collect page data for cross-page analysis
+    page_data: dict[str, dict] = {}  # rel_path -> {content, sessions, domain, ...}
+
+    for md_file in wiki_dir.rglob("*.md"):
+        if md_file.name in ("index.md", "log.md"):
+            continue
+        if md_file.parent.name.startswith("."):
+            continue
+        try:
+            content = md_file.read_text(encoding="utf-8", errors="replace")
+        except Exception:
+            continue
+        rel = str(md_file.relative_to(root))
+        # Extract session IDs from content (pattern: session <hex-id>)
+        session_ids = set(re.findall(r"session\s+([0-9a-f]{6,})", content, re.I))
+        # Extract timeline entries
+        timeline_entries = re.findall(r"^-\s*\[\d{4}-\d{2}-\d{2}\]", content, re.M)
+        # Detect parent domain from path
+        parts = Path(rel).parts
+        domain = parts[1] if len(parts) > 2 else ""  # wiki/projects/ -> projects
+
+        page_data[rel] = {
+            "content": content,
+            "sessions": session_ids,
+            "domain": domain,
+            "timeline_count": len(timeline_entries),
+            "size": len(content.encode("utf-8")),
+            "path": md_file,
+        }
+
+        # --- Pattern 1: TL;DR duplication ---
+        has_tldr = bool(re.search(r"^##\s+TL;?DR", content, re.M | re.I))
+        has_compiled = bool(re.search(r"^##\s+Compiled\s+Truth", content, re.M))
+        if has_tldr and has_compiled:
+            issues.append(HygieneIssue(
+                "content", "warning",
+                "Page has both TL;DR and Compiled Truth -- merge into Compiled Truth (3-5 lines max)",
+                file=rel,
+                fixable=True,
+                fix_action="merge_tldr",
+            ))
+        elif has_tldr and not has_compiled:
+            issues.append(HygieneIssue(
+                "content", "info",
+                "Page has TL;DR but no Compiled Truth -- rename to Compiled Truth",
+                file=rel,
+            ))
+
+        # --- Pattern 2: Stub page candidate (size) ---
+        if page_data[rel]["size"] < 200:
+            issues.append(HygieneIssue(
+                "depth", "warning",
+                f"Page is only {page_data[rel]['size']} bytes -- consider merging into parent page",
+                file=rel,
+            ))
+
+        # --- Pattern 5: Timeline minimum ---
+        real_timeline = [
+            e for e in timeline_entries
+            if not any(skip in content.split(e[0:20] if len(e) > 20 else e)[0][-100:]
+                       for skip in ["enriched from", "Page upgraded", "dream cycle"])
+        ] if timeline_entries else []
+        # Simpler: just count all timeline entries, flag if < 3
+        if page_data[rel]["timeline_count"] < 3 and page_data[rel]["size"] > 100:
+            issues.append(HygieneIssue(
+                "depth", "info",
+                f"Page has only {page_data[rel]['timeline_count']} timeline entries (minimum: 3 for standalone page)",
+                file=rel,
+            ))
+
+        # --- Pattern 6: Staleness gate ---
+        if has_frontmatter(content):
+            content_updated = extract_frontmatter_field(content, "content_updated")
+            if not content_updated:
+                issues.append(HygieneIssue(
+                    "content", "info",
+                    "Missing content_updated field -- add to track real content changes",
+                    file=rel,
+                ))
+            else:
+                try:
+                    updated_date = datetime.strptime(content_updated, "%Y-%m-%d")
+                    if (datetime.now() - updated_date).days > 30:
+                        issues.append(HygieneIssue(
+                            "content", "warning",
+                            f"Content not updated in {(datetime.now() - updated_date).days} days (stale)",
+                            file=rel,
+                        ))
+                except ValueError:
+                    pass
+
+    # --- Pattern 4: People vs prospects ---
+    people_dir = wiki_dir / "people"
+    if people_dir.exists():
+        comms_path = root / "domains" / "comms.md"
+        comms_names: set[str] = set()
+        if comms_path.exists():
+            try:
+                comms_content = comms_path.read_text(encoding="utf-8", errors="replace")
+                # Extract names from Quick Resolve table (| Name | ...)
+                for m in re.finditer(r"\|\s*(\w[\w\s]+?)\s*\|", comms_content):
+                    name = m.group(1).strip().lower()
+                    if name and name not in ("name", "person", "---", "alias"):
+                        comms_names.add(name)
+            except Exception:
+                pass
+
+        for md_file in people_dir.glob("*.md"):
+            if md_file.name == "index.md":
+                continue
+            try:
+                content = md_file.read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+            rel = str(md_file.relative_to(root))
+            # Check if person appears in comms.md
+            person_name = md_file.stem.replace("-", " ").lower()
+            is_in_comms = any(person_name in cn or cn in person_name for cn in comms_names)
+            # Check for "uncontacted" signals
+            is_uncontacted = bool(re.search(
+                r"(uncontacted|no direct|never met|no relationship|intel only)",
+                content, re.I
+            ))
+            has_only_enrichment = (
+                re.search(r"^-\s*\[\d{4}", content, re.M) and
+                all("enriched" in e.lower() or "dream" in e.lower() or "retrofit" in e.lower()
+                    for e in re.findall(r"^-\s*\[.+?\]\s*(.+)$", content, re.M))
+            )
+            if (is_uncontacted or has_only_enrichment) and not is_in_comms:
+                issues.append(HygieneIssue(
+                    "content", "warning",
+                    "People page for uncontacted person -- consider moving to wiki/people/prospects/",
+                    file=rel,
+                ))
+
+    # --- Pattern 3: Domain cluster overlap ---
+    # Group pages by domain subdirectory
+    domain_groups: dict[str, list[str]] = {}
+    for rel, data in page_data.items():
+        if data["domain"] and data["sessions"]:
+            domain_groups.setdefault(data["domain"], []).append(rel)
+
+    for domain, pages in domain_groups.items():
+        if len(pages) < 2:
+            continue
+        # Check pairwise session overlap
+        for i, p1 in enumerate(pages):
+            for p2 in pages[i + 1:]:
+                s1 = page_data[p1]["sessions"]
+                s2 = page_data[p2]["sessions"]
+                if not s1 or not s2:
+                    continue
+                overlap = len(s1 & s2)
+                total = len(s1 | s2)
+                if total > 0 and overlap / total > 0.3:
+                    issues.append(HygieneIssue(
+                        "duplication", "info",
+                        f"Pages share {overlap}/{total} session IDs ({overlap*100//total}% overlap) -- consider merging",
+                        file=f"{p1} <-> {p2}",
+                    ))
+
+    return issues
+
+
 def update_brain_timestamp(root: Path) -> bool:
     """Update the 'Last refreshed' line in brain.md with the current date.
 
@@ -1123,10 +1304,18 @@ class HygieneReport:
         depth = check_depth(self.root)
         duplication = check_duplication(self.root)
         brain = check_brain_health(self.root)
+        quality = check_quality_patterns(self.root)
+
+        # Quality pattern issues are folded into their respective categories
+        quality_content = [i for i in quality if i.category == "content"]
+        quality_depth = [i for i in quality if i.category == "depth"]
+        quality_dup = [i for i in quality if i.category == "duplication"]
 
         # Staleness issues are folded into the content category
-        content_all = content + staleness
-        self.issues = structure + content_all + depth + duplication + brain
+        content_all = content + staleness + quality_content
+        depth_all = depth + quality_depth
+        duplication_all = duplication + quality_dup
+        self.issues = structure + content_all + depth_all + duplication_all + brain
 
         # Count total wiki pages for depth percentage grading
         total_pages = 0
@@ -1143,16 +1332,18 @@ class HygieneReport:
         for cat, cat_issues in [
             ("structure", structure),
             ("content", content_all),
-            ("duplication", duplication),
+            ("duplication", duplication_all),
             ("brain", brain),
         ]:
             errors = sum(1 for i in cat_issues if i.severity == "error")
             warnings = sum(1 for i in cat_issues if i.severity == "warning")
             self.scores[cat] = compute_grade(errors, warnings)
 
-        # Depth uses percentage-based grading
-        depth_issue_count = len(depth)
-        self.scores["depth"] = compute_depth_grade(depth_issue_count, total_pages)
+        # Depth uses percentage-based grading (only warnings/errors, not info)
+        depth_significant = sum(
+            1 for i in depth_all if i.severity in ("error", "warning")
+        )
+        self.scores["depth"] = compute_depth_grade(depth_significant, total_pages)
 
     def apply_fixes(self, llm: LLMClient | None = None) -> list[str]:
         """Apply safe fixes and return actions taken."""

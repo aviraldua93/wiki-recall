@@ -11,7 +11,7 @@ Read `~/.grain/brain.md` before doing anything. It has identity, active work, an
 Brain: ~/.grain/brain.md (L0+L1, loaded every session)
 Wiki: ~/.grain/wiki/ (L2, on-demand)
 Engine: ~/.grain/engine/ (L3, semantic search)
-Persona: ~/.grain/persona.md (read when drafting AS me)
+Persona: ~/.grain/persona.md (voice, tone, writing style -- read when drafting AS me)
 People: ~/.grain/wiki/people/ (per-person collaboration context)
 Protocols: ~/.grain/protocols/ (step-by-step guides for heal/interview/retrofit/dream)
 

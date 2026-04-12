@@ -1122,42 +1122,16 @@ class HealPipeline:
                 except Exception as e:
                     logger.warning("decisions.md cleanup failed: %s", e)
 
-        # ── #34: Fix broken paths in copilot-instructions.md ──
+        # ── #34: Report broken paths in copilot-instructions.md ──
+        # NEVER write to copilot-instructions.md (#62). Report only.
         xref_findings = [
             f for f in report.critic_findings
             if f.critic == "cross_reference" and f.auto_fixable
             and f.file and "copilot-instructions" in (f.file or "")
         ]
         if xref_findings:
-            # Find the instructions file
-            instructions_path = self.root / "copilot-instructions.md"
-            if not instructions_path.exists():
-                instructions_path = Path.home() / ".github" / "copilot-instructions.md"
-            if instructions_path.exists():
-                try:
-                    content = instructions_path.read_text(encoding="utf-8", errors="replace")
-                    lines = content.split("\n")
-                    commented = 0
-                    # Collect line numbers of broken path findings
-                    broken_lines: set[int] = set()
-                    for finding in xref_findings:
-                        # Extract line number from message like "line 42"
-                        line_match = re.search(r'\(line (\d+)\)', finding.message)
-                        if line_match:
-                            broken_lines.add(int(line_match.group(1)))
-
-                    # Comment out broken path lines (from bottom to top)
-                    for line_num in sorted(broken_lines, reverse=True):
-                        idx = line_num - 1
-                        if 0 <= idx < len(lines):
-                            lines[idx] = f"<!-- BROKEN PATH: {lines[idx]} -->"
-                            commented += 1
-
-                    if commented > 0:
-                        instructions_path.write_text("\n".join(lines), encoding="utf-8")
-                        actions.append(f"Commented out {commented} broken path reference(s) in copilot-instructions.md")
-                except Exception as e:
-                    logger.warning("copilot-instructions.md path fix failed: %s", e)
+            for finding in xref_findings:
+                actions.append(f"[REPORT] Broken path in copilot-instructions.md: {finding.message}")
 
         # ── Content-aware fix (a): Enrich [No data yet] placeholders ──
         for file_key, page_result in report.page_scores.items():

@@ -256,22 +256,23 @@ class TestFixBrokenPaths(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.tmpdir)
 
-    def test_fix_comments_out_broken_line(self):
-        self.instructions_path.write_text(
-            "line1\nBad: ~/.grain/missing.md\nline3\n",
-            encoding="utf-8",
-        )
+    def test_fix_reports_broken_paths_without_modifying_file(self):
+        """fix_broken_paths reports but NEVER writes to copilot-instructions.md (#62)."""
+        original = "line1\nBad: ~/.grain/missing.md\nline3\n"
+        self.instructions_path.write_text(original, encoding="utf-8")
         bp = BrokenPath(
             line_number=2,
             line_text="Bad: ~/.grain/missing.md",
             referenced_path="missing.md",
             resolved_path=self.tmpdir / "missing.md",
         )
-        fixed = fix_broken_paths(self.instructions_path, [bp], interactive=False)
-        self.assertEqual(fixed, 1)
+        count = fix_broken_paths(self.instructions_path, [bp], interactive=False)
+        self.assertEqual(count, 1)
 
+        # File must NOT be modified (#62)
         content = self.instructions_path.read_text(encoding="utf-8")
-        self.assertIn("<!-- BROKEN PATH:", content)
+        self.assertEqual(content, original)
+        self.assertNotIn("<!-- BROKEN PATH:", content)
         self.assertIn("line1", content)
         self.assertIn("line3", content)
 

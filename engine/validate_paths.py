@@ -166,51 +166,19 @@ def fix_broken_paths(
     broken_paths: list[BrokenPath],
     interactive: bool = True,
 ) -> int:
-    """Remove or comment out lines with broken path references.
-
-    Args:
-        instructions_path: Path to copilot-instructions.md.
-        broken_paths: List of BrokenPath objects to fix.
-        interactive: If True, ask for confirmation before each removal.
+    """Report broken paths. NEVER writes to copilot-instructions.md (#62).
 
     Returns:
-        Number of lines modified.
+        Number of broken paths found (for reporting only).
     """
-    if not broken_paths or not instructions_path.exists():
+    if not broken_paths:
         return 0
 
-    content = instructions_path.read_text(encoding="utf-8", errors="replace")
-    lines = content.split("\n")
-    modified_count = 0
-
-    # Group broken paths by line number
-    broken_by_line: dict[int, list[BrokenPath]] = {}
+    print(f"\n  Found {len(broken_paths)} broken path(s) in copilot-instructions.md:")
     for bp in broken_paths:
-        broken_by_line.setdefault(bp.line_number, []).append(bp)
-
-    # Process from bottom to top to preserve line numbers
-    for line_num in sorted(broken_by_line.keys(), reverse=True):
-        bps = broken_by_line[line_num]
-        idx = line_num - 1  # 0-based
-        if idx < 0 or idx >= len(lines):
-            continue
-
-        paths_str = ", ".join(bp.referenced_path for bp in bps)
-        if interactive:
-            print(f"\nLine {line_num}: {lines[idx].strip()}")
-            print(f"  Broken path(s): {paths_str}")
-            response = input("  Remove this line? [y/N] ").strip().lower()
-            if response != "y":
-                continue
-
-        # Comment out the line instead of deleting (safer)
-        lines[idx] = f"<!-- BROKEN PATH: {lines[idx]} -->"
-        modified_count += 1
-
-    if modified_count > 0:
-        instructions_path.write_text("\n".join(lines), encoding="utf-8")
-
-    return modified_count
+        print(f"    Line {bp.line_number}: {bp.referenced_path}")
+    print("  NOTE: copilot-instructions.md is read-only. Fix paths manually.")
+    return len(broken_paths)
 
 
 def report_broken_paths(broken_paths: list[BrokenPath]) -> str:

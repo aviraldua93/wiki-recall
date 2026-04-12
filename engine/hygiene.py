@@ -33,6 +33,11 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
+# Add project root so we can import engine modules when run directly
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 from engine.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)

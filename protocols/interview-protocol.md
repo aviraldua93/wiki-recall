@@ -70,7 +70,7 @@ Missing prerequisites should be skipped, not errors. The interview works without
 - Ask: "What's your name?"
 - Ask: "What GitHub identities do you use?" (personal, work EMU, etc.)
 - Ask: "Any core principles that guide your work? (e.g., ship fast, test everything)"
-- Write L0 section to `~/.grain/brain.md`
+- Write Identity section to `~/.grain/brain.md`
 - This should take less than 1 minute
 
 ## Step 3: Domains (show data, ask for corrections, produce FULL domain pages)
@@ -231,8 +231,8 @@ Create `~/.grain/persona.md` using `templates/persona.md` and fill ALL sections:
 ## Step 8: Generate brain.md
 
 - Compile everything into `~/.grain/brain.md`:
-  - L0: Identity (name, GitHub handles, principles)
-  - L1: Active work (top projects from session mining, with status)
+  - Identity (name, GitHub handles, principles)
+  - Active work (top projects from session mining, with status)
   - Routing table (domains, wiki paths, key files)
 - Verify brain.md is under 550 tokens
 - If over 550 tokens, compact automatically by trimming verbose entries

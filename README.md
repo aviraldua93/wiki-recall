@@ -62,33 +62,29 @@ Reviewed by 9 domain experts. Validated with 18 simulation tests.
 
 ## How It Works
 
-You open your terminal. `copilot-instructions.md` tells Copilot to read `brain.md`. That's **L0 + L1** — your identity and active work. ~550 tokens. Loaded every session. Your AI knows who you are, what you're working on, and what's blocked.
+You open your terminal. `copilot-instructions.md` tells Copilot to read `brain.md`. Your identity and active work. ~300 tokens. Loaded every session. Your AI knows who you are, what you're working on, and what's blocked.
 
 You ask: *"how does our retry handler work?"*
 
-Architecture question. Routing sends it to the wiki. **L2** loads the project page on demand. The answer is already compiled: *"Exponential backoff, max 3 retries, jitter, then dead-letter queue."* No search needed. The wiki understood it.
+Architecture question. Routing sends it to the wiki. The project page loads on demand. The answer is already compiled: *"Exponential backoff, max 3 retries, jitter, then dead-letter queue."* No search needed. The wiki understood it.
 
 You ask: *"what did we discuss about rate limiting last month?"*
 
-The wiki doesn't have that — never compiled. **L3** kicks in: ChromaDB semantic search over your full session history. It finds the exact conversation from months ago. The solution you forgot existed.
-
-**L4** is the safety net. Raw session replay by ID. You almost never need it.
+The wiki doesn't have that -- never compiled. Session history search finds the exact conversation from months ago. The solution you forgot existed.
 
 ```
-Question → L0+L1 (already loaded) → L2 wiki → L3 search → L4 replay
+Question -> brain (always loaded) -> wiki (on demand) -> session history (fallback)
 ```
 
 | Layer | What | When |
 |:------|:-----|:-----|
-| **L0** | Identity — who you are | Always loaded |
-| **L1** | Active work — projects, blockers, decisions | Always loaded |
-| **L2** | Compiled wiki — entities with citations | On demand |
-| **L3** | Semantic search — ChromaDB over sessions | When wiki has gaps |
-| **L4** | Raw sessions — full replay | Last resort |
+| **Brain** | Identity + active work | Always loaded |
+| **Wiki** | Compiled knowledge with citations | On demand |
+| **Sessions** | Full session history search | When wiki has gaps |
 
 The write-back loop makes this compound. You decide: *"Let's use WebSockets instead of polling."* Copilot asks: *"Save this decision?"* You say yes. Written to `decisions.md`. Next month, it's there. Knowledge accumulates instead of resetting.
 
-Karpathy's wiki understands but can't recall. MemPalace recalls but doesn't understand. wiki-recall does both.
+Karpathy's wiki understands but can't recall. wiki-recall does both.
 
 ---
 

@@ -51,8 +51,8 @@ brain        | ?     | N
 
 - Read `~/.grain/brain.md` in full
 - Trim to under 40 lines while preserving:
-  - L0: Identity (name, GitHub identities, auth mapping) — 5 lines max
-  - L1: Active work (current sprint/focus, 1-liner per project) — 10 lines max
+  - Identity (name, GitHub identities, auth mapping) -- 5 lines max
+  - Active work (current sprint/focus, 1-liner per project) -- 10 lines max
   - Routing rules (domain routing, comms routing, protocol triggers) — 10 lines max
 - Move everything else to the correct location:
   - Project details → `wiki/projects/{name}.md`

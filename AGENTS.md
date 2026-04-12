@@ -227,7 +227,7 @@ python engine/hygiene.py --json             # structured JSON output
 - **Content** -- stubs (<200 bytes), missing frontmatter, missing last_verified, stale tier-3 pages (30+ days), decisions.md noise
 - **Depth** -- missing Timeline/Compiled Truth sections, person pages without working relationships, pattern pages without incidents (graded by issue % of total pages)
 - **Duplication** -- content overlap >60% (Jaccard similarity), similar page names (Levenshtein distance <3)
-- **Brain** -- brain.md format budget (line count, token estimate, code blocks, L0/L1 section presence)
+- **Brain** -- brain.md format budget (line count, token estimate, code blocks, Identity/Active Work section presence)
 
 **--fix mode** (safe only):
 - Deletes duplicate root scripts (keeps scripts/ copy)
@@ -352,7 +352,7 @@ scripts/hygiene.ps1 -Retrofit               # PowerShell wrapper
 
 **Phases:**
 1. Structure cleanup (automated, from hygiene --fix)
-2. Brain.md cleanup (trim to L0+L1 under 40 lines, no LLM)
+2. Brain.md cleanup (trim to Identity+Active Work under 40 lines, no LLM)
 3. Wire RESOLVER (inline routing rules into copilot-instructions.md)
 4. Add compiled truth + timeline sections to pages missing them
 5. Clean decisions.md (remove harvest noise — [harvest] tag or very short entries)
@@ -372,7 +372,7 @@ Decisions and gates live at the **narrowest scope** where they apply:
 
 When a decision/gate is detected, ask: "Global, domain, or project scope?"
 - Tier 1 (behavioral): "always/never" -> scope file + copilot-instructions.md
-- Tier 2 (architectural): "decided to" -> scope file + brain.md L1
+- Tier 2 (architectural): "decided to" -> scope file + brain.md
 - Tier 3 (historical): project-specific -> scope file only
 
 Format: `- [YYYY-MM-DD] [tier:N] description`

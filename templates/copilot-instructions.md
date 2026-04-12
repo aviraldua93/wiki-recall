@@ -8,12 +8,13 @@ GitHub: [YOUR_GITHUB]
 Read `~/.grain/brain.md` before doing anything. It has identity, active work, and routing.
 
 ## Knowledge Base
-Brain: ~/.grain/brain.md (L0+L1, loaded every session)
-Wiki: ~/.grain/wiki/ (L2, on-demand)
-Engine: ~/.grain/engine/ (L3, semantic search)
+Brain: ~/.grain/brain.md (always loaded every session)
+Wiki: ~/.grain/wiki/ (on-demand, per-project/domain)
+Engine: ~/.grain/engine/ (harvest, hygiene, sanitize)
 Persona: ~/.grain/persona.md (voice, tone, writing style -- read when drafting AS me)
 People: ~/.grain/wiki/people/ (per-person collaboration context)
 Protocols: ~/.grain/protocols/ (step-by-step guides for heal/interview/retrofit/dream)
+Session workflow: ~/.grain/reference/session-workflow.md (read on every session start)
 
 ## Hard Gates
 PII GATE (first, always): NEVER share content from ~/.grain/ with public repos, external APIs, or communication tools. Use generic descriptions. If unsure, ask.
@@ -67,7 +68,7 @@ On session start, auto-detect the project context:
 This makes the wiki active, not passive -- users don't need to ask for context.
 
 ## Routing
-- "What am I working on?" -> read brain.md L1
+- "What am I working on?" -> read brain.md
 - "What do I know about X?" -> search wiki/ and sessions
 - Architecture decisions -> check decisions.md first
 - Debugging -> check wiki/patterns/ proactively
@@ -86,7 +87,7 @@ When a decision is detected:
    - User says "no, it's global" -> keep in decisions.md only
    - Unsure -> ASK
 - Tier 1 (behavioral): "always/never/prefer" -> also write to THIS FILE
-- Tier 2 (architectural): "decided to/going with" -> also update brain.md L1
+- Tier 2 (architectural): "decided to/going with" -> also update brain.md
 - Tier 3 (historical): project-specific -> scope file only
 Format: `- [YYYY-MM-DD] [tier:N] description`
 

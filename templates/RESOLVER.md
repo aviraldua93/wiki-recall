@@ -42,7 +42,7 @@ Ask: "Does this apply everywhere, to one domain, or to one project?"
 
 ### Step 2: Determine tier
 - **Tier 1 (behavioral)**: "always", "never", "prefer" -> copilot-instructions.md + scope file
-- **Tier 2 (architectural)**: "decided to", "going with" -> scope file + brain.md L1
+- **Tier 2 (architectural)**: "decided to", "going with" -> scope file + brain.md
 - **Tier 3 (historical)**: project-specific detail -> scope file only
 
 ### Step 3: Write

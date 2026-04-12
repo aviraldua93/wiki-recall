@@ -536,14 +536,20 @@ if ($Interview) {
         }
     }
 
-    # Copy interview protocol
-    $protocolSrc = Join-Path $PSScriptRoot 'interview-protocol.md'
-    $protocolDst = Join-Path $grainDir 'interview-protocol.md'
-    if (Test-Path $protocolSrc) {
-        Copy-Item -Path $protocolSrc -Destination $protocolDst -Force
-        Write-Host "  Copied: interview-protocol.md" -ForegroundColor Green
+    # Copy protocols directory
+    $protocolSrcDir = Join-Path $PSScriptRoot '..' 'protocols'
+    $protocolDstDir = Join-Path $grainDir 'protocols'
+    if (Test-Path $protocolSrcDir) {
+        if (-not (Test-Path $protocolDstDir)) {
+            New-Item -ItemType Directory -Path $protocolDstDir -Force | Out-Null
+        }
+        $protocolFiles = Get-ChildItem -Path $protocolSrcDir -Filter '*.md'
+        foreach ($pf in $protocolFiles) {
+            Copy-Item -Path $pf.FullName -Destination (Join-Path $protocolDstDir $pf.Name) -Force
+        }
+        Write-Host "  Copied: protocols/ ($($protocolFiles.Count) protocol files)" -ForegroundColor Green
     } else {
-        Write-Host "  Warning: interview-protocol.md not found in scripts/" -ForegroundColor Yellow
+        Write-Host "  Warning: protocols/ directory not found" -ForegroundColor Yellow
     }
 
     # Copy .obsidian config
@@ -601,7 +607,7 @@ if ($Interview) {
     Write-Host ""
     Write-Host "Run this in your terminal:" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host '  copilot -p "Read ~/.grain/interview-protocol.md and follow it step by step to set up my knowledge base."' -ForegroundColor White
+    Write-Host '  copilot -p "Read ~/.grain/protocols/interview-protocol.md and follow it step by step to set up my knowledge base."' -ForegroundColor White
     Write-Host ""
     Write-Host "The interview takes 15-30 minutes. Copilot will mine your sessions,"
     Write-Host "ask about your work domains, people, decisions, and writing style."

@@ -619,6 +619,7 @@ class TestPageQualityCheckRegexFallback(unittest.TestCase):
         self.assertLess(result.score_contribution, 2.0)
 
 
+@unittest.skip("LLM removed in #49 -- protocols architecture. Quality judgment done by LLM session via protocols.")
 class TestPageQualityCheckWithLLM(unittest.TestCase):
     """Quality check with mocked LLM responses."""
 
@@ -860,6 +861,7 @@ class TestPageClassificationCheckDuplicates(unittest.TestCase):
         self.assertEqual(len(result.duplicate_of), 0)
 
 
+@unittest.skip("LLM removed in #49 -- protocols architecture. Classification judgment done by LLM session via protocols.")
 class TestPageClassificationCheckWithLLM(unittest.TestCase):
     """Classification check with mocked LLM for type inference."""
 
@@ -1025,6 +1027,7 @@ class TestComputePageScoreLabels(unittest.TestCase):
         self.assertGreater(len(result.issues), 0)
 
 
+@unittest.skip("LLM removed in #49 -- protocols architecture. Scoring judgment done by LLM session via protocols.")
 class TestComputePageScoreWithLLM(unittest.TestCase):
     """Score computation with mocked LLM."""
 
@@ -1161,6 +1164,7 @@ class TestFixPlaceholderEnrichment(unittest.TestCase):
         self.assertIn("## Timeline", content)
         self.assertGreater(len(actions), 0)
 
+    @unittest.skip("LLM removed in #49 -- protocols architecture")
     def test_depth_upgrade_with_llm_writes_real_content(self):
         """When LLM is available, depth_upgrade should generate real compiled truth."""
         from engine.heal import HealPipeline

@@ -462,6 +462,7 @@ class TestCriticCrossReferenceFallback(unittest.TestCase):
 # ══════════════════════════════════════════════════════════════════════════════
 
 
+@unittest.skip("LLM removed in #49 -- protocols architecture")
 class TestCriticKarpathyWithLLM(unittest.TestCase):
     """Test critic_karpathy with a mocked LLM backend."""
 
@@ -496,6 +497,7 @@ class TestCriticKarpathyWithLLM(unittest.TestCase):
         self.assertIsInstance(findings, list)
 
 
+@unittest.skip("LLM removed in #49 -- protocols architecture")
 class TestCriticGbrainWithLLM(unittest.TestCase):
     """Test critic_gbrain with a mocked LLM backend."""
 
@@ -519,6 +521,7 @@ class TestCriticGbrainWithLLM(unittest.TestCase):
         self.assertGreater(len(llm_findings), 0)
 
 
+@unittest.skip("LLM removed in #49 -- protocols architecture")
 class TestCriticStructureWithLLM(unittest.TestCase):
     """Test critic_structure with a mocked LLM backend."""
 
@@ -759,6 +762,7 @@ class TestHealPipelineDepthUpgrade(unittest.TestCase):
         actions = pipeline.depth_upgrade(report)
         self.assertEqual(len(actions), 0)
 
+    @unittest.skip("LLM removed in #49 -- protocols architecture")
     def test_depth_upgrade_with_llm(self):
         """When LLM is available, depth_upgrade should use LLM for compiled truth."""
         write_page(self.root, "wiki/concepts/llm-stub.md", STUB_FRONTMATTER)

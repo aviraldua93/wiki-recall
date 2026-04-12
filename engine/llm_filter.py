@@ -41,8 +41,8 @@ def _get_client(backend: str | None = None) -> LLMClient:
 
 
 def _get_backend() -> str:
-    """Detect available LLM backend. Delegates to LLMClient."""
-    return LLMClient._detect_backend()
+    """Always returns 'none' -- protocols architecture (#49)."""
+    return "none"
 
 
 # ── Public filter functions ──────────────────────────────────────────────────
@@ -140,15 +140,9 @@ def consolidate_compiled_truth(
     )
 
 
-# ── Legacy compatibility re-exports ─────────────────────────────────────────
-# These were imported by tests; keep them accessible via llm_client module.
-
-from engine.llm_client import (  # noqa: F401, E402
-    _apply_verdicts,
-    _batch_items as _batch_candidates,
-    _format_candidate_list,
-    BATCH_SIZE as _BATCH_SIZE,
-)
+# ── Legacy compatibility (removed in #49) ────────────────────────────────────
+# These helpers were removed from llm_client.py when LLM subprocess calls
+# were eliminated. Python scripts do plumbing only now.
 
 
 def _parse_llm_response(raw: str) -> list[dict]:

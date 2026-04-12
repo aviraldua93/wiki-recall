@@ -236,16 +236,19 @@ python engine/heal.py --json              # structured JSON output
 python engine/heal.py --no-llm            # force regex-only mode
 ```
 
-**5 LLM Critic Functions** (all have regex fallback):
-- **karpathy** -- entity quality per Karpathy methodology
-- **gbrain** -- brain.md budget and coherence
-- **structure** -- root file classification, bloat detection, README.md convention (#41)
-- **content** -- content quality assessment, noise detection
-- **cross_reference** -- cross-reference and path reference validation (#34)
+**5 Diagnostic Check Categories** (regex-only, via `engine/hygiene.py`):
+- **structure** -- required files, root file count, directory structure
+- **content** -- compiled truth completeness, source attribution, staleness
+- **depth** -- page depth scoring (lines, sections, frontmatter)
+- **duplication** -- Jaccard similarity detection across pages
+- **brain** -- brain.md budget, line count, token estimate
+
+LLM judgment (content quality, classification, enrichment) is done by
+the user's Copilot session via `protocols/heal-protocol.md`.
 
 **4 Content-Quality Check Categories** (via `engine/page_quality.py`):
 1. **Page Depth** -- compiled truth exists with real content (not `[No data yet]`), timeline exists with chronological dated entries, source attribution exists (session IDs, dates, `[Source:]` tags), page >200 bytes for project-type pages
-2. **Page Quality** (LLM-assisted) -- content is personal insight not textbook definition, no truncated sentences, cross-references link to real pages, frontmatter `related` field matches content
+2. **Page Quality** -- content is personal insight not textbook definition, no truncated sentences, cross-references link to real pages, frontmatter `related` field matches content
 3. **Page Classification** -- page in correct category directory (e.g., project pages in `wiki/projects/`), stub/enrichable/archivable status detection, duplicate detection (Jaccard similarity >60%)
 4. **Page Score** -- numeric 0-10 score aggregated from depth (0-3 pts), quality (0-3 pts), classification (0-2 pts), and bonus (0-2 pts)
 
@@ -259,11 +262,11 @@ python engine/heal.py --no-llm            # force regex-only mode
 | `MISPLACED` | any | Page is in the wrong category directory (overrides score label). |
 | `PLACEHOLDER` | any | All content is `[No data yet]` placeholder text (overrides score label). |
 
-**--fix content-aware actions** (LLM-assisted via `engine/llm_client.py`):
-- **Enrich placeholders** -- LLM generates initial content for `[No data yet]` pages from session store
+**--fix content-aware actions** (via `protocols/heal-protocol.md`):
+- **Enrich placeholders** -- LLM session fills `[No data yet]` pages from session context
 - **Archive stubs** -- stubs >30 days old with no timeline activity moved to `.archive/`
 - **Move misplaced pages** -- pages in wrong category directory moved to correct one
-- **Rewrite generic content** -- LLM rewrites textbook definitions to personal insight style
+- **Rewrite generic content** -- LLM session rewrites textbook definitions to personal insight style
 - **Comment out broken paths** (#34) -- broken paths in copilot-instructions.md wrapped in HTML comments
 - **Brain trim** (#36) -- brain.md trimmed when >40 lines (runs by default with --fix)
 - **Timestamp update** (#38) -- every page touched by --fix gets `updated:` set to today, `last_verified:` added if missing
@@ -398,26 +401,40 @@ When working with a user's wiki-recall knowledge base, do these WITHOUT being as
 
 **No staging.** When the user confirms, write directly. The conversation is the review process.
 
-## LLM Integration Pattern
+## Architecture: Protocols, Not Scripts (#49)
 
-All features that need LLM judgment use `engine/llm_client.py`:
+Python scripts do **plumbing only** (diagnosis, backup, file moves, counting).
+LLM judgment is done by the **user's Copilot session** via markdown protocols.
 
-```python
-from engine.llm_client import LLMClient
-
-client = LLMClient()
-if client.available:
-    verified = client.verify(candidates, "decisions")
-    summary = client.summarize(long_text, max_words=50)
-else:
-    verified = candidates  # fallback: pass all through
+```
+protocols/
+  heal-protocol.md        -- 'heal my brain' -> step-by-step for the LLM session
+  interview-protocol.md   -- set up a new brain from scratch
+  retrofit-protocol.md    -- upgrade pre-wiki-recall brains
+  dream-protocol.md       -- nightly enrichment cycle
 ```
 
-**Rules:**
-- Python does plumbing (find candidates, structural checks)
-- LLM does judgment (classify, verify, summarize, rewrite)
-- ALWAYS provide fallback when LLM unavailable
-- Structured prompts with expected JSON output
-- Batch items to minimize API calls (BATCH_SIZE = 20)
+**The split:**
 
-**Backend priority:** OpenAI API → Copilot CLI → graceful degradation (regex-only)
+| Layer     | Tool                        | What it does                                        |
+|-----------|:----------------------------|:----------------------------------------------------|
+| DIAGNOSIS | Python scripts (hygiene.py) | Count lines, find orphans, detect broken paths       |
+| JUDGMENT  | The LLM session itself      | Trim brain, write compiled truth, classify, enrich   |
+| PLUMBING  | Python scripts (backup, mv) | Backup, archive, move files safely                   |
+
+**How it works:**
+1. User says "heal my brain"
+2. Copilot reads `protocols/heal-protocol.md`
+3. Protocol says: run `python engine/hygiene.py --json` for DIAGNOSIS
+4. Copilot reads the diagnosis, applies JUDGMENT fixes directly
+5. Protocol says: run hygiene again to VERIFY
+
+**Zero subprocess LLM calls.** `engine/llm_client.py` is a stub -- all methods
+return empty/fallback responses. The class exists for API compatibility only.
+
+### Adding a New Feature
+
+1. If it needs diagnosis: add regex checks to `engine/hygiene.py`
+2. If it needs judgment: add steps to the relevant protocol `.md`
+3. If it needs plumbing: add Python functions (no LLM calls)
+4. Never spawn `copilot -p` subprocesses from Python

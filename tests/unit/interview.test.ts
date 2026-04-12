@@ -16,7 +16,7 @@ import { join } from "path";
 // ---------------------------------------------------------------------------
 
 const ROOT = join(import.meta.dir, "..", "..");
-const PROTOCOL_PATH = join(ROOT, "scripts", "interview-protocol.md");
+const PROTOCOL_PATH = join(ROOT, "protocols", "interview-protocol.md");
 const SETUP_PATH = join(ROOT, "scripts", "setup.ps1");
 const README_PATH = join(ROOT, "README.md");
 

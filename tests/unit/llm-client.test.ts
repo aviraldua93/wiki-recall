@@ -36,52 +36,26 @@ describe("llm_client.py syntax and structure", () => {
     expect(source).toContain("def __init__(self, fallback_mode");
   });
 
-  test("has _detect_backend static method", () => {
-    expect(source).toContain("def _detect_backend");
+  test("available is always False (protocols architecture)", () => {
+    expect(source).toContain("return False");
+    expect(source).toContain("protocols");
   });
 
-  test("has ask method", () => {
-    expect(source).toContain("def ask(self, prompt");
+  test("no subprocess imports (zero subprocess LLM calls)", () => {
+    expect(source).not.toContain("import subprocess");
+    expect(source).not.toContain("subprocess.run");
   });
 
-  test("has classify method", () => {
-    expect(source).toContain("def classify(");
+  test("no _call_copilot method (removed in #49)", () => {
+    expect(source).not.toContain("def _call_copilot");
   });
 
-  test("has summarize method", () => {
-    expect(source).toContain("def summarize(self, text");
+  test("no _call_openai method (removed in #49)", () => {
+    expect(source).not.toContain("def _call_openai");
   });
 
-  test("has verify method", () => {
-    expect(source).toContain("def verify(");
-  });
-
-  test("has rewrite method", () => {
-    expect(source).toContain("def rewrite(self, text");
-  });
-
-  test("has available property", () => {
-    expect(source).toContain("def available(self)");
-  });
-
-  test("has consolidate_truth method", () => {
-    expect(source).toContain("def consolidate_truth(");
-  });
-
-  test("has BATCH_SIZE constant", () => {
-    expect(source).toContain("BATCH_SIZE = ");
-  });
-
-  test("has _batch_items helper", () => {
-    expect(source).toContain("def _batch_items(");
-  });
-
-  test("has _format_candidate_list helper", () => {
-    expect(source).toContain("def _format_candidate_list(");
-  });
-
-  test("has _apply_verdicts helper", () => {
-    expect(source).toContain("def _apply_verdicts(");
+  test("references issue #49", () => {
+    expect(source).toContain("#49");
   });
 
   test("no syntax errors in import lines", () => {
@@ -132,48 +106,28 @@ describe("no PII or corporate references", () => {
   }
 });
 
-describe("CONTRIBUTING.md LLM Integration Pattern", () => {
+describe("CONTRIBUTING.md protocols architecture", () => {
   const content = readFile("CONTRIBUTING.md");
 
-  test("has LLM Integration Pattern section", () => {
-    expect(content).toContain("## LLM Integration Pattern");
+  test("has protocols architecture section", () => {
+    expect(content).toContain("Protocols, Not Scripts");
   });
 
-  test("has code example with LLMClient import", () => {
-    expect(content).toContain("from engine.llm_client import LLMClient");
+  test("references AGENTS.md for details", () => {
+    expect(content).toContain("AGENTS.md");
   });
 
-  test("mentions fallback behavior", () => {
-    expect(content.toLowerCase()).toContain("fallback");
+  test("documents adding a new feature", () => {
+    expect(content).toContain("Adding a New Feature");
   });
 
-  test("mentions backend priority", () => {
-    expect(content).toContain("OPENAI_API_KEY");
-    expect(content.toLowerCase()).toContain("copilot");
+  test("prohibits subprocess LLM calls", () => {
+    expect(content).toContain("Never spawn");
+    expect(content).toContain("copilot -p");
   });
 
-  test("mentions batch size", () => {
-    expect(content).toContain("BATCH_SIZE");
-  });
-
-  test("mentions verify method", () => {
-    expect(content).toContain("verify(");
-  });
-
-  test("mentions summarize method", () => {
-    expect(content).toContain("summarize(");
-  });
-
-  test("mentions classify method", () => {
-    expect(content).toContain("classify(");
-  });
-
-  test("documents adding LLM to new features", () => {
-    expect(content).toContain("Adding LLM to a New Feature");
-  });
-
-  test("mentions client.available guard", () => {
-    expect(content).toContain("client.available");
+  test("references protocols directory", () => {
+    expect(content).toContain("protocols/");
   });
 });
 

@@ -20,7 +20,7 @@ import { join } from "path";
 const ROOT = join(import.meta.dir, "..", "..");
 const TEMPLATES = join(ROOT, "templates");
 const AGENTS_PATH = join(ROOT, "AGENTS.md");
-const PROTOCOL_PATH = join(ROOT, "scripts", "interview-protocol.md");
+const PROTOCOL_PATH = join(ROOT, "protocols", "interview-protocol.md");
 
 const templateFiles = {
   brain: join(TEMPLATES, "brain.md"),

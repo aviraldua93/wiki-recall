@@ -131,12 +131,11 @@ The dream cycle sweeps for new entities, appends timeline updates, fixes missing
 wiki-recall heal
 ```
 
-Five LLM critic functions diagnose structure, content depth, duplication, brain budget, and path references. Four content-quality checks score every page (DEEP/ADEQUATE/STUB/MISPLACED/PLACEHOLDER). Auto-fixes safe issues. Smart-fixes with judgment. Upgrades format. Verifies the result. Letter grade A–F per category.
+Five diagnostic checks find issues across structure, content, depth, duplication, and brain budget. Your Copilot session reads the protocol, interprets the diagnosis, and fixes what needs judgment. Python does plumbing. The LLM session does thinking. Zero subprocesses. Zero timeouts. Letter grade A-F per category.
 
 ```bash
-wiki-recall heal --fix            # diagnose + auto-fix + smart-fix
-wiki-recall heal --retrofit       # upgrade legacy brains to current format
-wiki-recall heal --json           # structured output for CI (includes per-page quality scores)
+python engine/hygiene.py --json   # diagnosis (plumbing)
+# Then: "heal my brain"          # Copilot reads protocols/heal-protocol.md
 ```
 
 `cargo clippy` for your knowledge base. Run it weekly.
@@ -164,7 +163,7 @@ The #1 gap in every knowledge system: it relies on you to write things down. `ha
 ```
 
 Dry-run by default. Deduplicates. Backs up before writing. Zero manual effort.
-Candidates are verified by LLM to filter noise — precision >90%.
+Candidates are filtered by regex heuristics to reduce noise.
 
 Beyond harvest, wiki-recall ships with:
 
@@ -286,7 +285,7 @@ python engine/indexer.py                    # Full reindex
 python engine/indexer.py --incremental      # Incremental reindex
 ```
 
-Under the hood, `heal` orchestrates: `hygiene.py` (4-category health) → `page_quality.py` (content scoring) → `refactor.py` (cleanup) → `retrofit.py` (format upgrade) → path validation → verification. Per-page quality scores (DEEP/ADEQUATE/STUB/MISPLACED/PLACEHOLDER) are included in `--json` output.
+Under the hood, `heal` follows a markdown protocol: `protocols/heal-protocol.md` guides the LLM session through diagnosis (`hygiene.py` --json) -> judgment fixes -> verification. Python does plumbing. The LLM session does thinking. Per-page quality scores (DEEP/ADEQUATE/STUB/MISPLACED/PLACEHOLDER) inform which pages need attention.
 
 **Scripts:** `setup.ps1` · `harvest.ps1` · `refresh.ps1` · `compact.ps1` · `backup.ps1` · `lint.ps1` · `hygiene.ps1` · `dream.ps1`
 

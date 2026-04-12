@@ -141,6 +141,7 @@ class LLMClient:
         """Send a prompt to the LLM. Returns response text.
 
         Returns empty string when LLM unavailable (caller handles as 'skip LLM').
+        After a timeout, disables LLM for remaining calls to avoid cascading waits.
         """
         if not self.available:
             return ""
@@ -149,6 +150,12 @@ class LLMClient:
             return response.strip()
         except Exception as e:
             logger.warning("LLM ask failed: %s", e)
+            if "timed out" in str(e).lower():
+                logger.warning(
+                    "LLM unavailable -- falling back to regex-only mode"
+                )
+                self.fallback_mode = True
+                self.backend = "none"
             return ""
 
     def classify(
@@ -190,6 +197,13 @@ class LLMClient:
                     all_results.extend(parsed)
             except Exception as e:
                 logger.warning("LLM classify batch failed: %s", e)
+                if "timed out" in str(e).lower():
+                    logger.warning(
+                        "LLM unavailable -- falling back to regex-only mode"
+                    )
+                    self.fallback_mode = True
+                    self.backend = "none"
+                    break
 
         return all_results
 
@@ -245,6 +259,14 @@ class LLMClient:
                     "LLM verify failed for %s batch: %s -- keeping all", category, e
                 )
                 all_kept.extend(batch)
+                if "timed out" in str(e).lower():
+                    logger.warning(
+                        "LLM unavailable -- falling back to regex-only mode"
+                    )
+                    self.fallback_mode = True
+                    self.backend = "none"
+                    # Keep remaining un-verified batches
+                    break
 
         if dry_run:
             noise = len(all_removed)

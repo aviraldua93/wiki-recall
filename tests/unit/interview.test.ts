@@ -63,6 +63,8 @@ describe("interview protocol steps", () => {
     "Step 7",
     "Step 8",
     "Step 9",
+    "Step 10",
+    "Step 11",
   ];
 
   for (const step of expectedSteps) {
@@ -71,9 +73,9 @@ describe("interview protocol steps", () => {
     });
   }
 
-  test("protocol has exactly 9 step headings", () => {
+  test("protocol has exactly 11 step headings", () => {
     const stepHeadings = protocol.match(/^## Step \d+/gm) || [];
-    expect(stepHeadings.length).toBe(9);
+    expect(stepHeadings.length).toBe(11);
   });
 });
 
@@ -104,7 +106,7 @@ describe("interview protocol step content", () => {
 
   test("Step 5 covers writing style", () => {
     expect(protocol).toContain("persona.md");
-    expect(protocol).toContain("voice");
+    expect(protocol.toLowerCase()).toContain("voice");
   });
 
   test("Step 6 covers decisions", () => {

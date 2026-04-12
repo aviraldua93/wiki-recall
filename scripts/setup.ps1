@@ -469,6 +469,9 @@ if ($Interview) {
     Write-Host "Setting up directory structure for interview mode..." -ForegroundColor Green
 
     # Create the same directory structure as quick mode
+    # NOTE: .archive/ is created here so the interview cleanup step (Step 11)
+    # can move interview-protocol.md to .archive/interview-protocol-completed.md
+    # when the interview finishes. See interview-protocol.md cleanup step.
     $dirs = @(
         $grainDir,
         (Join-Path $grainDir 'wiki'),
@@ -478,7 +481,9 @@ if ($Interview) {
         (Join-Path $grainDir 'wiki' 'people'),
         (Join-Path $grainDir 'domains'),
         (Join-Path $grainDir 'reference'),
-        (Join-Path $grainDir 'engine')
+        (Join-Path $grainDir 'engine'),
+        (Join-Path $grainDir 'scripts'),
+        (Join-Path $grainDir '.archive')
     )
 
     foreach ($d in $dirs) {
@@ -555,6 +560,38 @@ if ($Interview) {
         if (Test-Path $gitignoreSrc) {
             Copy-Item -Path $gitignoreSrc -Destination $gitignoreDst
         }
+    }
+
+    # --- #43: Wire copilot-instructions.md as fallback for interview mode ---
+    # The interview protocol (Step 10) will generate a richer version, but we
+    # pre-copy the template so there's always a working copilot-instructions.md
+    # even if the interview is interrupted or skipped partway through.
+    $copilotSrc = Join-Path $templateDir 'copilot-instructions.md'
+    $copilotGrain = Join-Path $grainDir 'copilot-instructions.md'
+    $githubDir = Join-Path $env:USERPROFILE '.github'
+    $copilotLive = Join-Path $githubDir 'copilot-instructions.md'
+
+    if (Test-Path $copilotSrc) {
+        # Copy template to ~/.grain/ (backup copy, placeholders left for interview to fill)
+        if (-not (Test-Path $copilotGrain)) {
+            Copy-Item -Path $copilotSrc -Destination $copilotGrain
+            Write-Host "  Copied: copilot-instructions.md (to ~/.grain/, placeholders for interview)" -ForegroundColor Green
+        }
+
+        # Create ~/.github/ and wire copilot-instructions.md there (live location)
+        if (-not (Test-Path $githubDir)) {
+            New-Item -ItemType Directory -Path $githubDir -Force | Out-Null
+            Write-Host "  Created: ~/.github/" -ForegroundColor DarkGray
+        }
+        if (-not (Test-Path $copilotLive)) {
+            Copy-Item -Path $copilotSrc -Destination $copilotLive
+            Write-Host "  Wired: copilot-instructions.md to $copilotLive (live fallback)" -ForegroundColor Green
+            Write-Host "  NOTE: [YOUR_NAME] and [YOUR_GITHUB] placeholders will be filled by the interview" -ForegroundColor Yellow
+        } else {
+            Write-Host "  Skipped: $copilotLive (already exists)" -ForegroundColor DarkGray
+        }
+    } else {
+        Write-Host "  Warning: copilot-instructions.md template not found" -ForegroundColor Yellow
     }
 
     Write-Host ""

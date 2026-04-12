@@ -54,6 +54,7 @@ describe("interview file existence", () => {
 
 describe("interview protocol steps", () => {
   const expectedSteps = [
+    "Step 0",
     "Step 1",
     "Step 2",
     "Step 3",
@@ -73,9 +74,9 @@ describe("interview protocol steps", () => {
     });
   }
 
-  test("protocol has exactly 11 step headings", () => {
+  test("protocol has exactly 12 step headings", () => {
     const stepHeadings = protocol.match(/^## Step \d+/gm) || [];
-    expect(stepHeadings.length).toBe(11);
+    expect(stepHeadings.length).toBe(12);
   });
 });
 

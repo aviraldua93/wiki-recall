@@ -8,11 +8,12 @@ Follow these steps IN ORDER. This runs unattended -- no user prompts.
 
 Before starting, verify:
 - `~/.grain/` directory exists with `brain.md` and `wiki/`. If not: skip silently.
-- Python is available. If not: log "Python not found, skipping dream cycle" and exit.
+- Python is available. If not: skip session mining steps (Steps 2-3), proceed to manual enrichment.
 - `~/.grain/engine/indexer.py` and `~/.grain/engine/harvest.py` exist. If not: skip session mining steps.
 - `~/.copilot/session-store.db` exists. If not: skip session mining (no sessions to process).
 
 Dream cycle is best-effort -- missing components are skipped, not errors.
+If Python is unavailable, only consolidation and tier review steps run (manual scanning).
 
 ## Step 1: Backup
 

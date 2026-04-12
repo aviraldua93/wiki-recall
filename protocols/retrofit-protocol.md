@@ -7,10 +7,10 @@ This brain was created manually or by an older system. Follow these steps IN ORD
 
 Before starting, verify:
 - `~/.grain/` directory exists with at least `brain.md`. If not: "Use interview protocol instead."
-- Python is available: `python --version`. If not: "Python 3.10+ required for hygiene checks."
+- Python is available: `python --version`. If not: skip Step 8 (hygiene check) -- do manual review instead.
 - Writable: try creating a test file in `~/.grain/`. If permission denied, stop.
 
-If any prerequisite fails, stop and tell the user what to fix.
+If Python is unavailable, the retrofit still works -- just skip automated hygiene and review files manually.
 
 ## Step 1: Backup
 

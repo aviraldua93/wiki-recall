@@ -286,8 +286,10 @@ describe("1.3 [No data yet] enrichment prompts", () => {
     expect(content.brain).toContain("[No data yet");
   });
 
-  test("actions.md uses [No data yet]", () => {
-    expect(content.actions).toContain("[No data yet]");
+  test("actions.md has structured format", () => {
+    expect(content.actions).toContain("## Pending");
+    expect(content.actions).toContain("## Waiting On");
+    expect(content.actions).toContain("## Done");
   });
 
   test("decisions.md uses [No data yet]", () => {

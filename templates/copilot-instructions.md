@@ -1,80 +1,68 @@
-# Global Copilot Instructions — [YOUR_NAME]
+# Global Copilot Instructions -- [YOUR_NAME]
 
 ## Identity
 Name: [YOUR_NAME]
 GitHub: [YOUR_GITHUB]
 
+## Brain (read FIRST, every session)
+Read `~/.grain/brain.md` before doing anything. It has identity, active work, and routing.
+
 ## Knowledge Base
 Brain: ~/.grain/brain.md (L0+L1, loaded every session)
 Wiki: ~/.grain/wiki/ (L2, on-demand)
 Engine: ~/.grain/engine/ (L3, semantic search)
-Persona: ~/.grain/persona.md — voice, tone, writing style (read when drafting messages, emails, PRs, or any communication AS me)
-People: ~/.grain/wiki/people/ — per-person pages (role, projects, collaboration style)
+Persona: ~/.grain/persona.md (read when drafting AS me)
+People: ~/.grain/wiki/people/ (per-person collaboration context)
+Protocols: ~/.grain/protocols/ (step-by-step guides for heal/interview/retrofit/dream)
 
 ## Hard Gates
-PII GATE (first, always): NEVER share content from ~/.grain/ (names, emails, handles, team/project names, colleague info) with:
-- Public repos, issues, or PRs
-- External APIs or web searches
-- Email, Teams, or any communication tool
-When writing public content, use generic descriptions. If unsure → ask first.
+PII GATE (first, always): NEVER share content from ~/.grain/ with public repos, external APIs, or communication tools. Use generic descriptions. If unsure, ask.
 
 - NO SHIP BELOW 95% CONFIDENCE: lint, test, diff review before any push
 - NO ASSUMED LIMITATIONS: try it, install tools, only then report failure
 - DOMAIN EXPERT FEEDBACK = BLOCKER: investigate what they mean first
+- NEVER EDIT ~/.grain/ FILES PROGRAMMATICALLY without backup first
+- NEVER git push ~/.grain/ to public repos
 
 ## Auto-Backup
 Before writing to any ~/.grain/ file, silently run `scripts/backup.ps1` first.
-This ensures a timestamped backup exists before every change.
+
+## Session Continuity
+- "what was I doing?" / "continue" -> read brain.md + check session history
+- "what do I know about X?" -> check wiki/ + search sessions
+- Session start: check actions.md for overdue items, mention them
 
 ## Work Style
 - Concise in routine responses (<100 words)
 - Thorough in complex tasks (explain approach, then implement)
 - Proactive feedback: suggest saving decisions and actions without being asked
-- Multi-agent: use docs-as-bus, max 3 deliverables per agent
 
-## Proactive Loop
-After completing significant work, ask:
-- "Should I save this decision to decisions.md?"
-- "Any action items to track in actions.md?"
-- "Should I update the wiki with what we learned?"
+## Proactive Loop (session end, >5 turns)
+Ask: "Should I save anything to the knowledge base?" Then specifically:
+- Decisions made -> "Save to decisions.md?"
+- Commitments detected -> "Add to actions.md?"
+- New knowledge -> "Update the wiki?"
+- Patterns/bugs found -> "Add to wiki/patterns/?"
 
 ## Proactive Pattern Surfacing
-When the user mentions debugging or troubleshooting a technology:
-- Check wiki/patterns/ for matching files (e.g., "PowerShell issue" → patterns/powershell-gotchas.md)
-- If a matching pattern page exists, proactively surface it: "I found known patterns for this — here's what we've seen before."
-- Match on: technology name, error keywords, tool names, framework names
-- Do NOT wait for the user to ask "any known fixes?" — surface patterns immediately.
+When debugging/troubleshooting: check wiki/patterns/ immediately for matching files.
+If found, surface them without being asked.
 
 ## Routing
-- "What am I working on?" → read brain.md L1
-- "What do I know about X?" → grain_search or grain_recall
-- Architecture decisions → check decisions.md first
-- New project context → check domains/ files
-- Debugging/troubleshooting → check wiki/patterns/ proactively
-- **New knowledge arrives:** follow RESOLVER.md filing rules to decide where it goes
-- **Comms routing:** when I mention a person's name → read `domains/comms.md` FIRST to resolve, then search Teams/email
-- **Drafting anything AS me:** read `persona.md` before writing. Match my voice exactly.
-- **Person detail:** check `wiki/people/[name].md` for collaboration context
-- **Filing new info:** see `templates/RESOLVER.md` — 8 rules for where knowledge goes
+- "What am I working on?" -> read brain.md L1
+- "What do I know about X?" -> search wiki/ and sessions
+- Architecture decisions -> check decisions.md first
+- Debugging -> check wiki/patterns/ proactively
+- New knowledge -> follow RESOLVER.md filing rules
+- Comms routing -> read `domains/comms.md` FIRST to resolve names
+- Drafting AS me -> read `persona.md` before writing
+- Person detail -> check `wiki/people/[name].md`
+- "heal my brain" -> read `protocols/heal-protocol.md`
+- "retrofit" -> read `protocols/retrofit-protocol.md`
 
 ## Decision Write-Back (Tiered)
-
-When a decision is detected in conversation, classify and route by tier:
-
-### Tier 1 — Behavioral Rules (always loaded)
-Trigger words: "always", "never", "prefer", "default to", "every session"
-Action: Write the rule DIRECTLY into this file (copilot-instructions.md) under Work Style or Hard Gates + log to decisions.md
-Examples: "always run tests before pushing", "never commit secrets to repos"
-
-### Tier 2 — Architectural Decisions (loaded via brain.md)
-Trigger words: "decided to", "going with", "settled on", "architecture"
-Action: Append to decisions.md + update brain.md L1 top 5
-Examples: "git as storage backend", "Bun over Node for this project"
-
-### Tier 3 — Historical Decisions (on-demand reference)
-Trigger words: same as Tier 2 but project-specific or lower impact
-Action: Append to decisions.md only
-Examples: "chose Cohere reranker over custom", "using Jest not Vitest"
-
-Format for all tiers: `- [YYYY-MM-DD] [tier:N] description`
-When ambiguous, ask which tier. Tier 1 decisions become live instructions immediately.
+See `templates/RESOLVER.md` for the full routing decision tree.
+- Tier 1 (behavioral): write to THIS FILE + decisions.md
+- Tier 2 (architectural): decisions.md + brain.md L1
+- Tier 3 (historical): decisions.md only
+Format: `- [YYYY-MM-DD] [tier:N] description`

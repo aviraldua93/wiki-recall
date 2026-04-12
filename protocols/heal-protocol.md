@@ -8,10 +8,17 @@ Follow these steps IN ORDER. Show progress after each step. Be thorough but effi
 Before starting, verify:
 - `~/.grain/` directory exists. If not: "Run setup.ps1 first."
 - `~/.grain/brain.md` exists. If not: "No brain found. Run the interview protocol first."
-- Python is available: `python --version`. If not: "Python 3.10+ required."
-- `~/.grain/engine/hygiene.py` exists. If not: "Engine not installed. Run setup.ps1."
+- Python is available: `python --version`. If not: switch to MANUAL MODE (see below).
+- `~/.grain/engine/hygiene.py` exists. If not: switch to MANUAL MODE (see below).
 
-If any prerequisite fails, stop and tell the user what to fix.
+### Manual Mode (no Python)
+If Python or hygiene.py is unavailable, skip Step 2 (automated diagnosis) and instead:
+- Read brain.md and count lines manually
+- List files at root and count them
+- Scan wiki pages for missing Compiled Truth sections
+- Check frontmatter for missing dates
+- Then proceed to Step 3+ using your own judgment instead of hygiene JSON output.
+Report: "Running in manual mode (Python unavailable)."
 
 ## Step 1: Backup
 

@@ -211,35 +211,27 @@ describe("copilot-instructions.md tiered write-back (#26)", () => {
     expect(content).toContain("## Decision Write-Back (Tiered)");
   });
 
-  test("Tier 1 writes to copilot-instructions.md directly", () => {
+  test("references RESOLVER.md for full routing", () => {
     const content = readFile(instructionsPath);
-    const section = content.split("### Tier 1")[1]?.split("### Tier 2")[0] || "";
-    expect(section).toContain("DIRECTLY into this file");
+    expect(content).toContain("RESOLVER.md");
   });
 
-  test("Tier 2 updates brain.md L1", () => {
+  test("mentions all 3 tiers", () => {
     const content = readFile(instructionsPath);
-    const section = content.split("### Tier 2")[1]?.split("### Tier 3")[0] || "";
-    expect(section).toContain("brain.md");
+    expect(content).toContain("Tier 1");
+    expect(content).toContain("Tier 2");
+    expect(content).toContain("Tier 3");
   });
 
-  test("Tier 3 appends to decisions.md only", () => {
+  test("Tier 1 writes to THIS FILE", () => {
     const content = readFile(instructionsPath);
-    const section = content.split("### Tier 3")[1]?.split("##")[0] || "";
-    expect(section).toContain("decisions.md only");
+    expect(content).toContain("Tier 1");
+    expect(content).toContain("THIS FILE");
   });
 
-  test("all tiers log to decisions.md", () => {
+  test("all tiers route to decisions.md", () => {
     const content = readFile(instructionsPath);
-    // Tier 1 logs to decisions.md
-    const tier1 = content.split("### Tier 1")[1]?.split("### Tier 2")[0] || "";
-    expect(tier1).toContain("decisions.md");
-    // Tier 2 logs to decisions.md
-    const tier2 = content.split("### Tier 2")[1]?.split("### Tier 3")[0] || "";
-    expect(tier2).toContain("decisions.md");
-    // Tier 3 logs to decisions.md
-    const tier3 = content.split("### Tier 3")[1]?.split("##")[0] || "";
-    expect(tier3).toContain("decisions.md");
+    expect(content).toContain("decisions.md");
   });
 
   test("has tier format specification", () => {

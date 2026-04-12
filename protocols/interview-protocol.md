@@ -14,6 +14,14 @@ Before starting, verify:
 
 Missing prerequisites should be skipped, not errors. The interview works without sessions or Python.
 
+## Step 0: Backup Existing Brain
+
+- If `~/.grain/brain.md` already exists (partial brain from a previous attempt):
+  - Run: `powershell -File ~/.grain/backup.ps1 onedrive` if backup.ps1 exists
+  - Otherwise: copy `~/.grain/` to `~/.grain-backup-YYYY-MM-DD/`
+  - Report: "Backed up existing brain before starting fresh."
+- If `~/.grain/` doesn't exist: skip this step.
+
 ## Step 1: Mine Sessions & Create Wiki Pages (automatic)
 
 ### 1a. Index sessions

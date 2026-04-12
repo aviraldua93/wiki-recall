@@ -61,17 +61,18 @@ If found, surface them without being asked.
 - "retrofit" -> read `protocols/retrofit-protocol.md`
 
 ## Decision Write-Back (scoped + tiered)
-Decisions live at the narrowest scope. See `templates/RESOLVER.md` for full rules.
-When a decision is detected, ask: "Global, domain, or project scope?"
-- **Global** -> decisions.md + (Tier 1: also THIS FILE)
-- **Domain** -> domains/X.md ## Decisions
-- **Project** -> wiki/projects/X.md ## Decisions
-- Tier 1 (behavioral): "always/never/prefer" -> scope file + THIS FILE
-- Tier 2 (architectural): "decided to/going with" -> scope file + brain.md L1
+When a decision is detected:
+1. Save to decisions.md first (audit log)
+2. Then ASK: "This seems related to [project/domain] -- should I add it there too?"
+   - User says yes -> also add to project/domain page's ## Decisions
+   - User says "no, it's global" -> keep in decisions.md only
+   - Unsure -> ASK
+- Tier 1 (behavioral): "always/never/prefer" -> also write to THIS FILE
+- Tier 2 (architectural): "decided to/going with" -> also update brain.md L1
 - Tier 3 (historical): project-specific -> scope file only
 Format: `- [YYYY-MM-DD] [tier:N] description`
 
-Gates follow the same model:
-- **Global** -> reference/hard-gates.md
-- **Domain** -> domains/X.md ## Gates
-- **Project** -> wiki/projects/X.md ## Gates
+Gates and patterns follow the same "save then ASK scope" model:
+- Gates: reference/hard-gates.md (global) | domains/X.md ## Gates | wiki/projects/X.md ## Gates
+- Patterns: wiki/patterns/ (global) | domains/X.md ## Patterns | wiki/projects/X.md ## Patterns
+Always ASK: "Does this apply everywhere, to one domain, or to one project?"

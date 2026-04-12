@@ -2,7 +2,7 @@
 # Archives old "Recently Learned" entries, resets to lean state, updates timestamp
 
 $ErrorActionPreference = 'Stop'
-$grainDir = Join-Path $env:USERPROFILE '.grain'
+$grainDir = Join-Path $HOME '.grain'
 $brainFile = Join-Path $grainDir 'brain.md'
 $archiveFile = Join-Path $grainDir 'brain-archive.md'
 $now = Get-Date
@@ -110,7 +110,7 @@ if ($recentlyLearnedStart -eq -1) {
 # --- 3. Try to refresh Active Work from session_store if sqlite3 available ---
 $sqlite3 = Get-Command sqlite3 -ErrorAction SilentlyContinue
 if ($sqlite3) {
-    $sessionDb = Join-Path $env:USERPROFILE '.copilot' 'session-store' 'session_store.db'
+    $sessionDb = Join-Path $HOME '.copilot' 'session-store' 'session_store.db'
     if (Test-Path $sessionDb) {
         Write-Host "Querying session_store for active work summary..."
         try {

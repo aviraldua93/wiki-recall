@@ -25,8 +25,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$GrainPath = Join-Path $env:USERPROFILE '.grain'
-$BackupBase = Join-Path $env:USERPROFILE 'wiki-recall-backup'
+$GrainPath = Join-Path $HOME '.grain'
+$BackupBase = Join-Path $HOME 'wiki-recall-backup'
 $Timestamp = (Get-Date).ToString('yyyy-MM-dd')
 
 # Exclude rebuildable dirs

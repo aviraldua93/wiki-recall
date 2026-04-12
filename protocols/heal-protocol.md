@@ -3,6 +3,16 @@
 You are healing a user's personal knowledge base (`~/.grain/`).
 Follow these steps IN ORDER. Show progress after each step. Be thorough but efficient.
 
+## Prerequisites
+
+Before starting, verify:
+- `~/.grain/` directory exists. If not: "Run setup.ps1 first."
+- `~/.grain/brain.md` exists. If not: "No brain found. Run the interview protocol first."
+- Python is available: `python --version`. If not: "Python 3.10+ required."
+- `~/.grain/engine/hygiene.py` exists. If not: "Engine not installed. Run setup.ps1."
+
+If any prerequisite fails, stop and tell the user what to fix.
+
 ## Step 1: Backup
 
 - Run: `powershell -File ~/.grain/backup.ps1 onedrive`

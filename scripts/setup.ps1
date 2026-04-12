@@ -34,7 +34,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$grainDir = Join-Path $env:USERPROFILE '.grain'
+$grainDir = Join-Path $HOME '.grain'
 $templateDir = Join-Path $PSScriptRoot '..' 'templates'
 
 Write-Host ""
@@ -123,7 +123,7 @@ if ($Adopt -ne "") {
     }
 
     # Check copilot-instructions.md (live location is ~/.github/)
-    $githubCopilot = Join-Path $env:USERPROFILE '.github' 'copilot-instructions.md'
+    $githubCopilot = Join-Path $HOME '.github' 'copilot-instructions.md'
     $grainCopilot = Join-Path $adoptPath 'copilot-instructions.md'
     if (Test-Path $githubCopilot) {
         $findings.Exists += "[OK] copilot-instructions.md (live at ~/.github/)"
@@ -257,7 +257,7 @@ if ($Adopt -ne "") {
     # --- Wire copilot-instructions.md to BOTH ~/.grain/ (backup) AND ~/.github/ (live) ---
     $copilotSrc = Join-Path $templateDir 'copilot-instructions.md'
     $copilotBackup = Join-Path $adoptPath 'copilot-instructions.md'
-    $githubDir = Join-Path $env:USERPROFILE '.github'
+    $githubDir = Join-Path $HOME '.github'
     $copilotLive = Join-Path $githubDir 'copilot-instructions.md'
 
     # RESOLVER routing rules to inline into copilot-instructions.md
@@ -574,7 +574,7 @@ if ($Interview) {
     # even if the interview is interrupted or skipped partway through.
     $copilotSrc = Join-Path $templateDir 'copilot-instructions.md'
     $copilotGrain = Join-Path $grainDir 'copilot-instructions.md'
-    $githubDir = Join-Path $env:USERPROFILE '.github'
+    $githubDir = Join-Path $HOME '.github'
     $copilotLive = Join-Path $githubDir 'copilot-instructions.md'
 
     if (Test-Path $copilotSrc) {
@@ -773,8 +773,8 @@ if (Test-Path $repoRefDir) {
 }
 
 # --- Step 7: Generate copilot-instructions.md ---
-$instructionsPath = Join-Path $env:USERPROFILE '.copilot' 'copilot-instructions.md'
-$copilotDir = Join-Path $env:USERPROFILE '.copilot'
+$instructionsPath = Join-Path $HOME '.github' 'copilot-instructions.md'
+$copilotDir = Join-Path $HOME '.github'
 if (-not (Test-Path $copilotDir)) {
     New-Item -ItemType Directory -Path $copilotDir -Force | Out-Null
 }
@@ -849,7 +849,7 @@ $indexerPath = Join-Path $engineDir 'indexer.py'
 $harvestPath = Join-Path $engineDir 'harvest.py'
 $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
 if ($pythonCmd -and (Test-Path $indexerPath)) {
-    $sessionDb = Join-Path $env:USERPROFILE '.copilot' 'session-store.db'
+    $sessionDb = Join-Path $HOME '.copilot' 'session-store.db'
     if (Test-Path $sessionDb) {
         # Count sessions to give user context
         $sessionCount = 0

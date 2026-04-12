@@ -18,7 +18,7 @@
 #>
 
 param(
-    [string]$Path = (Join-Path $env:USERPROFILE ".grain"),
+    [string]$Path = (Join-Path $HOME ".grain"),
     [switch]$Fix,
     [switch]$Refactor,
     [switch]$Retrofit,

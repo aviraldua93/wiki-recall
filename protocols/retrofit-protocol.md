@@ -3,6 +3,15 @@
 You are upgrading a pre-wiki-recall brain (`~/.grain/`) to the wiki-recall format.
 This brain was created manually or by an older system. Follow these steps IN ORDER.
 
+## Prerequisites
+
+Before starting, verify:
+- `~/.grain/` directory exists with at least `brain.md`. If not: "Use interview protocol instead."
+- Python is available: `python --version`. If not: "Python 3.10+ required for hygiene checks."
+- Writable: try creating a test file in `~/.grain/`. If permission denied, stop.
+
+If any prerequisite fails, stop and tell the user what to fix.
+
 ## Step 1: Backup
 
 - Run: `powershell -File ~/.grain/backup.ps1 onedrive`

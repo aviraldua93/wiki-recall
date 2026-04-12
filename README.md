@@ -43,6 +43,23 @@ Reviewed by 9 domain experts. Validated with 18 simulation tests.
 
 ---
 
+## Why wiki-recall
+
+| | wiki-recall | Second Brain (Obsidian) | MemPalace | GBrain (Garry Tan) | Plain RAG |
+|:---|:---|:---|:---|:---|:---|
+| **Setup** | 15-min interview | Manual vault curation | Manual palace building | Manual brain writing | Dump everything |
+| **Maintenance** | Automated (dream cycle) | Manual daily notes | Manual | Manual | None (and it shows) |
+| **Token cost** | 550/query (hybrid routing) | N/A (not LLM-native) | Varies | Varies | 13,000+ (dump everything) |
+| **Recall** | 93% (hybrid) | Depends on your notes | Depends on your palace | Depends on your brain | 45% (noise) |
+| **LLM-native** | Yes (protocols + routing) | No (file sync) | No (memory technique) | Partially | Yes (but noisy) |
+| **Learns from sessions** | Yes (harvest + dream) | No | No | No | Stores but doesn't learn |
+
+**Before wiki-recall:** *"Explain the auth system, the retry handler, and why we chose Postgres over Mongo. Also who reviewed the last PR?"* Every. Single. Session.
+
+**After wiki-recall:** Copilot already knows. brain.md loaded. Wiki compiled. Session history indexed. You just ask.
+
+---
+
 ## How It Works
 
 You open your terminal. `copilot-instructions.md` tells Copilot to read `brain.md`. That's **L0 + L1** — your identity and active work. ~550 tokens. Loaded every session. Your AI knows who you are, what you're working on, and what's blocked.

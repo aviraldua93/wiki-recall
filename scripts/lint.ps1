@@ -2,7 +2,14 @@
 # Checks: orphans, missing refs, stale pages, frontmatter, brain age, decisions size, index coverage
 
 $ErrorActionPreference = 'SilentlyContinue'
-$grainDir = Join-Path $env:USERPROFILE '.grain'
+$grainDir = Join-Path $HOME '.grain'
+
+# --- Pre-check: grain directory exists ---
+if (-not (Test-Path $grainDir)) {
+    Write-Host "Error: ~/.grain/ does not exist. Run setup.ps1 first." -ForegroundColor Red
+    exit 1
+}
+
 $wikiDir = Join-Path $grainDir 'wiki'
 $indexFile = Join-Path $wikiDir 'index.md'
 $brainFile = Join-Path $grainDir 'brain.md'
@@ -193,3 +200,15 @@ Write-Host "decisions.md: $decisionCount entries ($decisionStatus)"
 $pct = if ($totalPages -gt 0) { [math]::Round(($coveredCount / $totalPages) * 100) } else { 0 }
 Write-Host "Index coverage: $coveredCount/$totalPages ($pct%)"
 Write-Host ""
+
+# --- Exit code: 1 if issues found, 0 if clean ---
+$issueCount = $orphans.Count + $missingRefs.Count + $stalePages.Count + $noFrontmatter.Count
+if ($brainStatus -match 'STALE|WARN') { $issueCount++ }
+if ($decisionStatus -match 'LARGE') { $issueCount++ }
+if ($issueCount -gt 0) {
+    Write-Host "$issueCount issue(s) found." -ForegroundColor Yellow
+    exit 1
+} else {
+    Write-Host "Wiki is healthy." -ForegroundColor Green
+    exit 0
+}

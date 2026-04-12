@@ -27,7 +27,7 @@ param()
 
 $ErrorActionPreference = 'Continue'
 
-$grainDir = Join-Path $env:USERPROFILE '.grain'
+$grainDir = Join-Path $HOME '.grain'
 $scriptsDir = $PSScriptRoot
 $logDir = Join-Path $grainDir 'logs'
 $today = (Get-Date).ToString('yyyy-MM-dd')
@@ -137,7 +137,7 @@ if (Test-Path $hygieneLastRun) {
     $lastRunDate = Get-Content $hygieneLastRun -Raw
     try {
         $lastRun = [DateTime]::Parse($lastRunDate.Trim())
-        if (($now - $lastRun).Days -lt 7) {
+        if (((Get-Date) - $lastRun).Days -lt 7) {
             $runHygiene = $false
         }
     } catch {
@@ -187,22 +187,22 @@ try {
                     & powershell -ExecutionPolicy Bypass -File $compactScript 2>&1 | ForEach-Object {
                         Write-Verbose "  compact: $_"
                     }
-                    Write-Log "Step 4: PASS -- brain.md compacted ($lineCount -> $(( Get-Content $brainFile).Count) lines)" 'OK'
+                    Write-Log "Step 5: PASS -- brain.md compacted ($lineCount -> $(( Get-Content $brainFile).Count) lines)" 'OK'
                 } else {
-                    Write-Log "Step 4: SKIP -- compact.ps1 not found" 'WARN'
+                    Write-Log "Step 5: SKIP -- compact.ps1 not found" 'WARN'
                 }
             }
             $stepResults += @{ Step = 'compact'; Status = 'PASS' }
         } else {
-            Write-Log "Step 4: SKIP -- brain.md is $lineCount lines (threshold: 80)" 'INFO'
+            Write-Log "Step 5: SKIP -- brain.md is $lineCount lines (threshold: 80)" 'INFO'
             $stepResults += @{ Step = 'compact'; Status = 'SKIP' }
         }
     } else {
-        Write-Log "Step 4: SKIP -- brain.md not found" 'WARN'
+        Write-Log "Step 5: SKIP -- brain.md not found" 'WARN'
         $stepResults += @{ Step = 'compact'; Status = 'SKIP' }
     }
 } catch {
-    Write-Log "Step 4: FAIL -- $($_.Exception.Message)" 'ERROR'
+    Write-Log "Step 5: FAIL -- $($_.Exception.Message)" 'ERROR'
     $stepResults += @{ Step = 'compact'; Status = 'FAIL'; Error = $_.Exception.Message }
     $hasFailure = $true
 }

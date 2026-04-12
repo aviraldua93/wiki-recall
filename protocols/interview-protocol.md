@@ -4,6 +4,16 @@ You are helping a user set up their personal knowledge base (`~/.grain/`).
 Follow these steps IN ORDER. Ask one question at a time. Be conversational, not robotic.
 Write outputs to `~/.grain/` as you go.
 
+## Prerequisites
+
+Before starting, verify:
+- `~/.grain/` directory exists. If not: create it with `mkdir -p ~/.grain/`.
+- Write permissions: try creating `~/.grain/.test` and deleting it. If fails: "Cannot write to ~/.grain/."
+- Python is available for session mining. If not: skip Step 1 (session mining) and proceed to Step 2.
+- If `~/.copilot/session-store.db` doesn't exist: skip Step 1a/1b and say "No sessions found -- building from scratch."
+
+Missing prerequisites should be skipped, not errors. The interview works without sessions or Python.
+
 ## Step 1: Mine Sessions & Create Wiki Pages (automatic)
 
 ### 1a. Index sessions

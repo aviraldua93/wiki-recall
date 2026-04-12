@@ -2,7 +2,17 @@
 
 You are running a nightly enrichment cycle on a user's knowledge base (`~/.grain/`).
 The dream cycle deepens existing knowledge without user interaction.
-Follow these steps IN ORDER. This runs unattended — no user prompts.
+Follow these steps IN ORDER. This runs unattended -- no user prompts.
+
+## Prerequisites
+
+Before starting, verify:
+- `~/.grain/` directory exists with `brain.md` and `wiki/`. If not: skip silently.
+- Python is available. If not: log "Python not found, skipping dream cycle" and exit.
+- `~/.grain/engine/indexer.py` and `~/.grain/engine/harvest.py` exist. If not: skip session mining steps.
+- `~/.copilot/session-store.db` exists. If not: skip session mining (no sessions to process).
+
+Dream cycle is best-effort -- missing components are skipped, not errors.
 
 ## Step 1: Backup
 

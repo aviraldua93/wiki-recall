@@ -16,8 +16,8 @@
     LOCAL ONLY. Never push brain.md to any repo.
 #>
 
-$brainPath = Join-Path $env:USERPROFILE ".grain\brain.md"
-$dbPath = Join-Path $env:USERPROFILE ".copilot\session-store.db"
+$brainPath = Join-Path $HOME ".grain\brain.md"
+$dbPath = Join-Path $HOME ".copilot\session-store.db"
 
 if (-not (Test-Path $dbPath)) {
     Write-Host "Session store not found at $dbPath" -ForegroundColor Red
@@ -29,7 +29,7 @@ $sqlite = Get-Command sqlite3 -ErrorAction SilentlyContinue
 if (-not $sqlite) {
     $candidates = @(
         "C:\ProgramData\chocolatey\bin\sqlite3.exe",
-        "$env:USERPROFILE\scoop\shims\sqlite3.exe",
+        "$HOME\scoop\shims\sqlite3.exe",
         "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\*\sqlite3.exe"
     )
     foreach ($c in $candidates) {
@@ -105,7 +105,7 @@ if ($files) {
         if ($parts.Count -ge 2) {
             $file = $parts[0].Trim()
             $count = $parts[1].Trim()
-            $short = $file -replace [regex]::Escape($env:USERPROFILE), '~'
+            $short = $file -replace [regex]::Escape($HOME), '~'
             $activeWork += "- $short ($count sessions)"
         }
     }

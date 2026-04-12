@@ -28,6 +28,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -793,6 +794,61 @@ def check_staleness(root: Path) -> list[HygieneIssue]:
     return issues
 
 
+# ── Scheduled task validation (#63) ───────────────────────────────────────────
+
+def check_scheduled_tasks(root: Path) -> list[HygieneIssue]:
+    """Check that Windows scheduled tasks point to existing script paths.
+
+    Skips silently on non-Windows or if no tasks are registered.
+    """
+    issues: list[HygieneIssue] = []
+
+    if sys.platform != "win32":
+        return issues
+
+    task_prefix = "WikiRecall"
+    task_names = [
+        f"{task_prefix} Maintenance",
+        f"{task_prefix} Backup",
+        f"{task_prefix} Nightly",
+    ]
+
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             f"Get-ScheduledTask -TaskName '{task_prefix}*' -ErrorAction SilentlyContinue | "
+             "ForEach-Object { $action = $_.Actions[0]; "
+             "$_.TaskName + '|' + $action.Execute + ' ' + $action.Arguments }"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if result.returncode != 0 or not result.stdout.strip():
+            return issues  # No tasks registered -- that's fine
+
+        for line in result.stdout.strip().split("\n"):
+            line = line.strip()
+            if not line or "|" not in line:
+                continue
+            task_name, cmd = line.split("|", 1)
+
+            # Extract the -File path from the arguments
+            file_match = re.search(r'-File\s+"?([^"]+)"?', cmd)
+            if not file_match:
+                continue
+            script_path = Path(file_match.group(1).strip())
+            if not script_path.exists():
+                issues.append(HygieneIssue(
+                    "structure", "warning",
+                    f"Scheduled task '{task_name.strip()}' points to missing file: {script_path}",
+                    file=str(script_path),
+                    fixable=True,
+                    fix_action="reregister_task",
+                ))
+    except Exception:
+        pass  # Task Scheduler not available -- skip silently
+
+    return issues
+
+
 # ── Quality patterns (#50) ────────────────────────────────────────────────────
 
 def check_quality_patterns(root: Path) -> list[HygieneIssue]:
@@ -1310,6 +1366,7 @@ class HygieneReport:
         duplication = check_duplication(self.root)
         brain = check_brain_health(self.root)
         quality = check_quality_patterns(self.root)
+        tasks = check_scheduled_tasks(self.root)
 
         # Quality pattern issues are folded into their respective categories
         quality_content = [i for i in quality if i.category == "content"]
@@ -1320,7 +1377,7 @@ class HygieneReport:
         content_all = content + staleness + quality_content
         depth_all = depth + quality_depth
         duplication_all = duplication + quality_dup
-        self.issues = structure + content_all + depth_all + duplication_all + brain
+        self.issues = structure + content_all + depth_all + duplication_all + brain + tasks
 
         # Count total wiki pages for depth percentage grading
         total_pages = 0

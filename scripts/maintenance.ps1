@@ -25,7 +25,7 @@
 [CmdletBinding(SupportsShouldProcess)]
 param()
 
-$ErrorActionPreference = 'Continue'
+$ErrorActionPreference = 'Stop'
 
 $grainDir = Join-Path $HOME '.grain'
 $scriptsDir = $PSScriptRoot

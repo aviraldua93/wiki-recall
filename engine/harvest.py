@@ -1179,10 +1179,25 @@ def harvest(
         if _people_path.exists():
             known_people = {md.stem for md in _people_path.glob("*.md") if md.stem != "README" and not md.stem.startswith(".")}
 
-    # Connect to session store
-    conn = sqlite3.connect(str(_store), timeout=10)
+    # Connect to session store with retry (#81)
+    max_retries = 3
+    conn = None
+    for attempt in range(max_retries):
+        try:
+            conn = sqlite3.connect(str(_store), timeout=30)
+            conn.execute("PRAGMA journal_mode=WAL")
+            break
+        except sqlite3.OperationalError as e:
+            if attempt < max_retries - 1:
+                import time
+                time.sleep(2 ** attempt)  # exponential backoff
+            else:
+                print(f"Failed to connect to session store after {max_retries} attempts: {e}")
+                return result
+    if conn is None:
+        return result
+
     try:
-        conn.execute("PRAGMA journal_mode=WAL")
         sessions = get_human_sessions(conn, since)
         result.sessions_scanned = len(sessions)
 
@@ -1591,4 +1606,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if sys.version_info < (3, 9):
+        print("Error: Python 3.9+ required. Found:", sys.version, file=sys.stderr)
+        sys.exit(1)
     main()

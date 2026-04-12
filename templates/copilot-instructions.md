@@ -57,6 +57,15 @@ Ask: "Should I save anything to the knowledge base?" Then specifically:
 When debugging/troubleshooting: check wiki/patterns/ immediately for matching files.
 If found, surface them without being asked.
 
+## Proactive Context Injection
+On session start, auto-detect the project context:
+1. Check the current working directory and git remote
+2. Match against wiki/projects/ pages (by repo name or parent_domain)
+3. If a matching project page exists: silently load its Compiled Truth + Decisions
+4. If the project belongs to a domain: also load the domain page
+5. Surface briefly: "Loaded context for [project] ([domain])."
+This makes the wiki active, not passive -- users don't need to ask for context.
+
 ## Routing
 - "What am I working on?" -> read brain.md L1
 - "What do I know about X?" -> search wiki/ and sessions

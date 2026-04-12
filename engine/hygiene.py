@@ -1463,6 +1463,68 @@ class HygieneReport:
         print(f"Total: {total} issues ({fixable} auto-fixable)")
         print()
 
+# ── Stats (#86) ───────────────────────────────────────────────────────────────
+
+def _print_wiki_stats(root: Path) -> None:
+    """Print wiki usage statistics."""
+    wiki_dir = root / "wiki"
+    domains_dir = root / "domains"
+
+    # Count pages by category
+    categories: dict[str, int] = {}
+    tier_counts: dict[int, int] = {1: 0, 2: 0, 3: 0}
+    total_pages = 0
+    total_bytes = 0
+    pages_with_compiled_truth = 0
+    pages_with_timeline = 0
+    stale_count = 0
+
+    if wiki_dir.exists():
+        for md in wiki_dir.rglob("*.md"):
+            if md.name in ("index.md", "log.md") or md.parent.name.startswith("."):
+                continue
+            total_pages += 1
+            cat = md.parent.name if md.parent != wiki_dir else "root"
+            categories[cat] = categories.get(cat, 0) + 1
+            try:
+                content = md.read_text(encoding="utf-8", errors="replace")
+                total_bytes += len(content.encode("utf-8"))
+                if re.search(r"^## Compiled Truth", content, re.M):
+                    pages_with_compiled_truth += 1
+                if re.search(r"^## Timeline", content, re.M):
+                    pages_with_timeline += 1
+                tier_str = extract_frontmatter_field(content, "tier")
+                if tier_str and tier_str.isdigit():
+                    tier_counts[int(tier_str)] = tier_counts.get(int(tier_str), 0) + 1
+                # Check staleness
+                lv = extract_frontmatter_field(content, "last_verified")
+                if lv:
+                    try:
+                        d = datetime.strptime(lv, "%Y-%m-%d")
+                        if (datetime.now() - d).days > 30:
+                            stale_count += 1
+                    except ValueError:
+                        pass
+            except Exception:
+                pass
+
+    domain_count = 0
+    if domains_dir.exists():
+        domain_count = len(list(domains_dir.glob("*.md")))
+
+    print()
+    print("Wiki Statistics")
+    print("=" * 40)
+    print(f"Total pages: {total_pages} ({total_bytes / 1024:.0f} KB)")
+    print(f"Domains: {domain_count}")
+    for cat, count in sorted(categories.items(), key=lambda x: -x[1]):
+        print(f"  {cat}: {count}")
+    print(f"Tiers: deep={tier_counts.get(1,0)}, notable={tier_counts.get(2,0)}, stub={tier_counts.get(3,0)}")
+    print(f"With Compiled Truth: {pages_with_compiled_truth}/{total_pages}")
+    print(f"With Timeline: {pages_with_timeline}/{total_pages}")
+    print(f"Stale (>30 days): {stale_count}")
+    print()
+
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
 
@@ -1487,6 +1549,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Output structured JSON instead of human-readable text",
     )
+    parser.add_argument(
+        "--stats",
+        action="store_true",
+        help="Show wiki usage statistics (page counts, coverage, freshness)",
+    )
 
     args = parser.parse_args(argv)
     root = Path(args.path)
@@ -1494,6 +1561,10 @@ def main(argv: list[str] | None = None) -> int:
     if not root.exists():
         print(f"Error: path does not exist: {root}", file=sys.stderr)
         return 1
+
+    if args.stats:
+        _print_wiki_stats(root)
+        return 0
 
     report = HygieneReport(root)
     report.run()
@@ -1513,4 +1584,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    if sys.version_info < (3, 9):
+        print("Error: Python 3.9+ required. Found:", sys.version, file=sys.stderr)
+        sys.exit(1)
     sys.exit(main())

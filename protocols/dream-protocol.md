@@ -80,7 +80,29 @@ For each stale page:
 
 Report: "Consolidated N pages"
 
-## Step 6: Enrichment Tier Review
+## Step 6: Knowledge Synthesis (#83, #87)
+
+Extract reusable knowledge from recent session checkpoints that wasn't captured by harvest.
+
+### 6a. Scan recent checkpoints for storable knowledge
+- For each checkpoint with `technical_details` or `work_done` content:
+  - Look for: architecture patterns, tool behaviors, process discoveries, integration lessons
+  - These are things that would help future sessions in the same project/domain
+
+### 6b. Create or update concept/pattern pages
+- For each discovered piece of knowledge:
+  - If it matches an existing wiki page: append to that page's Timeline
+  - If it's a new concept: create wiki/concepts/<name>.md (tier 3)
+  - If it's a new pattern: add to the scoped ## Patterns section (project or domain)
+  - Source attribution: `observed: session <id>, dream cycle synthesis`
+
+### 6c. Dedup against existing knowledge
+- Before creating: check wiki/ for existing pages with similar content
+- Merge into existing pages rather than creating duplicates
+
+Report: "Synthesized N new knowledge items from M checkpoints"
+
+## Step 7: Enrichment Tier Review
 
 Check if any pages should be promoted or demoted.
 
@@ -94,7 +116,7 @@ Check if any pages should be promoted or demoted.
 
 Report: "Promoted N pages, demoted M pages"
 
-## Step 7: Index Rebuild
+## Step 8: Index Rebuild
 
 - Rebuild `wiki/index.md`:
   - List all wiki pages grouped by subdirectory (projects/, patterns/, concepts/, people/)
@@ -104,7 +126,7 @@ Report: "Promoted N pages, demoted M pages"
 
 Report: "Index rebuilt with N pages"
 
-## Step 8: Verify
+## Step 9: Verify
 
 - Run: `python ~/.grain/engine/hygiene.py --json`
 - Report grades and any new issues

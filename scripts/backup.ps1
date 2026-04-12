@@ -96,6 +96,25 @@ function Backup-Local {
         Copy-Item $f.FullName $target
     }
 
+    # Verify backup integrity (#84)
+    $verified = 0
+    $failed = 0
+    foreach ($f in $coreFiles) {
+        $rel = $f.FullName.Substring($GrainPath.Length + 1)
+        $target = Join-Path $dest $rel
+        if (Test-Path $target) {
+            $srcSize = $f.Length
+            $dstSize = (Get-Item $target).Length
+            if ($srcSize -eq $dstSize) { $verified++ } else { $failed++; Write-Host "  Size mismatch: $rel" -ForegroundColor Red }
+        } else {
+            $failed++
+            Write-Host "  Missing: $rel" -ForegroundColor Red
+        }
+    }
+    if ($failed -gt 0) {
+        Write-Host "  WARNING: $failed file(s) failed verification!" -ForegroundColor Red
+    }
+
     # Keep last 7 backups, delete older
     $backups = Get-ChildItem $BackupBase -Directory | Sort-Object Name
     if ($backups.Count -gt 7) {

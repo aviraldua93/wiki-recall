@@ -88,10 +88,10 @@ $maintenanceAction = New-ScheduledTaskAction `
 
 $maintenanceTrigger = switch ($Frequency) {
     'hourly' {
-        New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Hours 1)
+        New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration ([System.TimeSpan]::MaxValue)
     }
     'every4hours' {
-        New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Hours 4)
+        New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Hours 4) -RepetitionDuration ([System.TimeSpan]::MaxValue)
     }
     'daily' {
         New-ScheduledTaskTrigger -Daily -At '08:00'
@@ -117,10 +117,10 @@ $backupAction = New-ScheduledTaskAction `
 
 $backupTrigger = switch ($Frequency) {
     'hourly' {
-        New-ScheduledTaskTrigger -Once -At ((Get-Date).Date.AddMinutes(30)) -RepetitionInterval (New-TimeSpan -Hours 1)
+        New-ScheduledTaskTrigger -Once -At ((Get-Date).Date.AddMinutes(30)) -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration ([System.TimeSpan]::MaxValue)
     }
     'every4hours' {
-        New-ScheduledTaskTrigger -Once -At ((Get-Date).Date.AddMinutes(30)) -RepetitionInterval (New-TimeSpan -Hours 4)
+        New-ScheduledTaskTrigger -Once -At ((Get-Date).Date.AddMinutes(30)) -RepetitionInterval (New-TimeSpan -Hours 4) -RepetitionDuration ([System.TimeSpan]::MaxValue)
     }
     'daily' {
         New-ScheduledTaskTrigger -Daily -At '08:30'

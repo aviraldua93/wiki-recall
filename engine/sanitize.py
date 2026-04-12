@@ -92,12 +92,28 @@ def load_internal_patterns(root: Path) -> list[str]:
             except Exception:
                 pass
 
-    # 4. Internal URLs (corp domains)
-    corp_domains = [
-        "eng.ms", "aka.ms", "dev.azure.com", "microsoft.com",
-        "microsoftstream.com", "sharepoint.com", "visualstudio.com",
+    # 4. Internal URLs (corp domains loaded from config, not hardcoded)
+    # Users define their corp domains in brain.md or a config file
+    # Default: scan for common patterns without hardcoding specific companies
+    corp_patterns = [
+        "eng.ms", "aka.ms",
     ]
-    patterns.update(corp_domains)
+    # Dynamically detect corp domains from brain.md auth section
+    brain_path = root / "brain.md"
+    if brain_path.exists():
+        try:
+            brain = brain_path.read_text(encoding="utf-8", errors="replace")
+            # Extract domain patterns from auth/org references
+            for m in re.finditer(r"@([\w.-]+\.(?:com|org|net|io))", brain):
+                domain = m.group(1)
+                if len(domain) > 5:
+                    corp_patterns.append(domain)
+            # Extract ADO/GitHub org URLs
+            for m in re.finditer(r"dev\.azure\.com/(\w+)", brain):
+                corp_patterns.append(f"dev.azure.com/{m.group(1)}")
+        except Exception:
+            pass
+    patterns.update(p for p in corp_patterns if len(p) > 3)
 
     # Filter out very short or generic patterns
     return sorted(p for p in patterns if len(p) > 2)

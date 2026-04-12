@@ -1,16 +1,34 @@
 # RESOLVER -- Where Does This Go?
 
+## Taxonomy
+
+| Entity | Definition | Gets a page? | Location |
+|--------|-----------|-------------|----------|
+| **Domain** | Persistent area of work. You "belong to" it. | Yes | domains/X.md |
+| **Project** | Something you ship. Has a repo and lifecycle. | Yes | wiki/projects/X.md |
+| **Task** | One PR, one fix, one investigation. | No -- timeline entry | Inside project page |
+| **Person** | Someone you collaborate with. | Yes | wiki/people/X.md |
+| **Pattern** | Bug, fix, workaround, lesson learned. | Scoped | Global: wiki/patterns/ or scoped: ## Patterns |
+| **Concept** | Tech concept to remember. | Yes | wiki/concepts/X.md |
+| **Reference** | Static docs (hard gates, multi-agent rules). | Yes | reference/X.md |
+
+**Key rule:** Projects have a `parent_domain` in frontmatter. Every project belongs to exactly one domain.
+**Key rule:** Tasks do NOT get their own page. They are timeline entries inside project pages.
+
+## Filing Rules
+
 When new knowledge arrives, file it here:
 
 1. Is it about a **PERSON**? -> wiki/people/<name>.md
-2. Is it about a **PROJECT** you're building? -> wiki/projects/<name>.md
-3. Is it about a **BUG/FIX/WORKAROUND**? -> See **Pattern Routing** below
-4. Is it a **TECH CONCEPT** to remember? -> wiki/concepts/<name>.md
-5. Is it a **DECISION** that was made? -> See **Decision Routing** below
-6. Is it a **HARD GATE**? -> See **Gate Routing** below
-7. Is it a **COMMITMENT** to someone? -> actions.md (append)
-8. Is it a **VISION/STRATEGY**? -> tag as `type: strategy` in frontmatter
-9. None of the above? -> harvest-suggestions.md (for review)
+2. Is it about a **PROJECT** you're building? -> wiki/projects/<name>.md (set parent_domain)
+3. Is it a **TASK** (one PR, one fix)? -> timeline entry in the parent project page (NOT a new page)
+4. Is it about a **BUG/FIX/WORKAROUND**? -> See **Pattern Routing** below
+5. Is it a **TECH CONCEPT** to remember? -> wiki/concepts/<name>.md
+6. Is it a **DECISION** that was made? -> See **Decision Routing** below
+7. Is it a **HARD GATE**? -> See **Gate Routing** below
+8. Is it a **COMMITMENT** to someone? -> actions.md (append)
+9. Is it a **VISION/STRATEGY**? -> tag as `type: strategy` in frontmatter
+10. None of the above? -> harvest-suggestions.md (for review)
 
 ## Decision Routing (scope + tier)
 
@@ -56,6 +74,12 @@ Do NOT confuse patterns with gates. Patterns = lessons learned. Gates = mandator
 Every page has two layers separated by `---`:
 - **Compiled Truth** -- always current, rewritten on update (max 5-10 lines)
 - **Timeline** -- append-only, never delete, always dated, always attributed
+
+## Frontmatter Rules
+Required fields: `title`, `type`, `tier`, `updated`
+Project pages also need: `parent_domain`
+Do NOT use freeform `tags:` (zero tags principle -- use wiki-links in prose instead)
+Dates use `YYYY-MM-DD` format in the user's local timezone.
 
 ## Source Attribution
 Every claim gets a source type:

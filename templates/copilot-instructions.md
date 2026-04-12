@@ -24,6 +24,15 @@ PII GATE (first, always): NEVER share content from ~/.grain/ with public repos, 
 - NEVER EDIT ~/.grain/ FILES PROGRAMMATICALLY without backup first
 - NEVER git push ~/.grain/ to public repos
 
+### Public Output Sanitization (CRITICAL)
+BEFORE creating any GitHub issue, PR, comment, or gist on a PUBLIC repo:
+1. Scan the content for internal names from: domains/*.md, wiki/people/*.md, auth config
+2. Internal names include: team names, service names, org names, colleague names, internal URLs, internal project names, EMU org prefixes
+3. If ANY internal name is found: replace with generic equivalent, show the diff, ask user to approve
+4. Use GENERIC EXAMPLES instead of real internal names (e.g., "team-alpha" not the real team name)
+5. If unsure whether something is internal -> ASK the user
+This gate applies to ALL public-facing writes, not just git push.
+
 ## Auto-Backup
 Before writing to any ~/.grain/ file, silently run `scripts/backup.ps1` first.
 

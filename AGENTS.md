@@ -106,7 +106,7 @@ tier: 1 | 2 | 3
 ### Enrichment Tiers
 
 The `tier` field controls how much detail an entity contains. It is used by
-`harvest.py` and `dream.ps1` to decide what to generate and how to upgrade pages.
+`harvest.py` and dream protocol to decide what to generate and how to upgrade pages.
 
 | Tier | Label | Content |
 |:----:|:------|:--------|
@@ -116,10 +116,28 @@ The `tier` field controls how much detail an entity contains. It is used by
 
 Tier assignment rules:
 - `harvest.py` creates new entities as **tier 3** (stubs).
-- `dream.ps1` Phase 1 (entity sweep) creates stubs at **tier 3**.
+- Dream protocol Phase 1 (entity sweep) creates stubs at **tier 3**.
 - Interview protocol Step 4 (people) creates pages at **tier 1** or **tier 2** based on mention count.
 - Manually-created entities default to **tier 2** unless the author specifies otherwise.
-- Promotion from tier 3 → 2 → 1 happens as more data accumulates (via dream consolidation or manual edits).
+- Promotion from tier 3 -> 2 -> 1 happens as more data accumulates.
+
+### Zero Tags (Karpathy Principle)
+
+Do NOT use freeform `tags:` in YAML frontmatter. Tags are invisible to the LLM
+(it reads prose, not YAML). Use wiki-links `[[page-name]]` in prose instead.
+Use `type:` and `tier:` for structured classification. Use `parent_domain:` to
+link projects to domains.
+
+### Taxonomy (domain > project > task)
+
+| Entity | Definition | Gets a page? |
+|--------|-----------|-------------|
+| Domain | Persistent area of work ("I belong to it") | Yes (domains/X.md) |
+| Project | Something you ship, has a repo ("I ship it") | Yes (wiki/projects/X.md) |
+| Task | One PR, one fix, one investigation ("I do it") | No -- timeline entry in parent project |
+
+Projects have `parent_domain:` in frontmatter linking them to their domain.
+Tasks do NOT get pages -- they are `## Timeline` entries inside project pages.
 
 ### Entity Body Structure
 ```markdown

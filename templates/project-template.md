@@ -1,8 +1,8 @@
 ---
 title: "[PROJECT_NAME]"
 type: project
+parent_domain: "[DOMAIN_NAME]"
 updated: [DATE]
-tags: []
 # tier: 1 = deep (compiled truth + timeline + architecture + key decisions)
 # tier: 2 = notable (compiled truth + timeline, no architecture detail)
 # tier: 3 = stub (name + description only, placeholder for future enrichment)

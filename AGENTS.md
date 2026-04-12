@@ -342,16 +342,23 @@ scripts/hygiene.ps1 -Retrofit               # PowerShell wrapper
 
 Safety: Always backs up first. Interactive confirmation. Archive, don't delete.
 
-### Decision Routing (3 Tiers)
+### Decision and Gate Routing (scoped + tiered)
 
-Decisions detected in conversation are classified into tiers:
+Decisions and gates live at the **narrowest scope** where they apply:
 
-- **Tier 1 — Behavioral Rules:** "always/never/prefer" → written to copilot-instructions.md (live) + decisions.md
-- **Tier 2 — Architectural:** "decided to/going with" → decisions.md + brain.md L1
-- **Tier 3 — Historical:** project-specific/lower impact → decisions.md only
+| Scope | Decisions file | Gates file | Max entries |
+|-------|---------------|------------|-------------|
+| Global | decisions.md | reference/hard-gates.md | 15-20 / 3-5 |
+| Domain | domains/X.md ## Decisions | domains/X.md ## Gates | 2-4 each |
+| Project | wiki/projects/X.md ## Decisions | wiki/projects/X.md ## Gates | 0-10 each |
+
+When a decision/gate is detected, ask: "Global, domain, or project scope?"
+- Tier 1 (behavioral): "always/never" -> scope file + copilot-instructions.md
+- Tier 2 (architectural): "decided to" -> scope file + brain.md L1
+- Tier 3 (historical): project-specific -> scope file only
 
 Format: `- [YYYY-MM-DD] [tier:N] description`
-See `templates/RESOLVER.md` for trigger words and detection logic.
+See `templates/RESOLVER.md` for full routing rules.
 
 ## Testing
 

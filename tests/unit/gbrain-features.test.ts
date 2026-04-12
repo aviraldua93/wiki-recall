@@ -168,8 +168,8 @@ describe("1.1 project-template.md — compiled truth + timeline", () => {
     expect(content.project).toContain("## Architecture");
   });
 
-  test("has Key Decisions section", () => {
-    expect(content.project).toContain("## Key Decisions");
+  test("has Decisions section", () => {
+    expect(content.project).toContain("## Decisions");
   });
 
   test("has Timeline section with append-only note", () => {

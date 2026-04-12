@@ -31,8 +31,14 @@ tier: 2
 ## Architecture Notes
 [No data yet]
 
-## Active Decisions
-[No data yet]
+## Decisions
+<!-- Domain-specific decisions. Format: - [YYYY-MM-DD] [tier:N] description -->
+
+## Gates
+<!-- Domain-specific hard gates. Format: - [YYYY-MM-DD] gate description -->
+
+## Patterns
+<!-- Domain-specific bugs, fixes, workarounds. -->
 
 ## Notes
 [No data yet]

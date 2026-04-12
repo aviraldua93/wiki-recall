@@ -10,13 +10,19 @@ tier: 3
 ---
 
 ## Compiled Truth
-[No data yet — rewrite this section on every update, max 5-10 lines summarizing current state]
+[No data yet -- rewrite this section on every update, max 5-10 lines summarizing current state]
 
 ## Architecture
 [No data yet]
 
-## Key Decisions
-[No data yet]
+## Decisions
+<!-- Project-specific decisions. Format: - [YYYY-MM-DD] [tier:N] description -->
+
+## Gates
+<!-- Project-specific hard gates. Format: - [YYYY-MM-DD] gate description -->
+
+## Patterns
+<!-- Project-specific bugs, fixes, workarounds. -->
 
 ---
 

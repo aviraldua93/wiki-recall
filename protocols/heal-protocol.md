@@ -206,8 +206,47 @@ Report: "Fixed N cross-reference issues"
 
 Report: "Applied N quality pattern fixes"
 
-## Step 10: Verify
+## Step 10: Co-locate Decisions and Gates
 
+**When:** decisions.md has entries that mention specific projects or domains.
+
+### 10a. Scan decisions.md
+- Read every entry in decisions.md
+- For each entry, determine scope:
+  - Mentions a specific project name from wiki/projects/? -> project-specific
+  - Mentions a domain keyword from domains/? -> domain-specific
+  - Neither? -> universal (stays in decisions.md)
+
+### 10b. Show migration plan
+- Show a summary: "Found N decisions. Proposed migration:"
+  - KEEP in decisions.md (universal): X entries
+  - MOVE to project pages: Y entries (list target pages)
+  - MOVE to domain pages: Z entries (list target pages)
+- Ask: "Proceed with migration?"
+
+### 10c. Migrate decisions
+- For each entry to move:
+  - Append to the target page's ## Decisions section
+  - Remove from decisions.md
+- Target: decisions.md has 15-20 universal entries max
+
+### 10d. Scan reference/hard-gates.md
+- Same process for gates:
+  - Project-specific gates -> wiki/projects/X.md ## Gates
+  - Domain-specific gates -> domains/X.md ## Gates
+  - Universal gates stay in reference/hard-gates.md (3-5 max)
+
+### 10e. Scan wiki/patterns/
+- For each pattern page in wiki/patterns/:
+  - Does it mention a specific project? -> move to wiki/projects/X.md ## Patterns
+  - Does it mention a specific domain? -> move to domains/X.md ## Patterns
+  - Universal? -> stays in wiki/patterns/
+
+Report: "Migrated N decisions, M gates, P patterns to co-located pages"
+
+## Step 11: Verify and Review
+
+### 11a. Run hygiene again
 - Run: `python ~/.grain/engine/hygiene.py --json`
 - Show before/after comparison:
 
@@ -221,11 +260,23 @@ duplication  | ?      | ?
 brain        | ?      | ?
 ```
 
+### 11b. Show diff summary
+- List all files that were modified, created, or moved during this heal session
+- For key files (brain.md, decisions.md), show what changed:
+  - Lines added/removed
+  - Entries moved (from where to where)
+  - Content trimmed or expanded
+- Example: "12 files modified. 5 decisions moved from decisions.md to project pages. brain.md trimmed 61 to 26 lines. 3 people pages enriched."
+
+### 11c. Confirm with user
+- Ask: "These changes look correct? If not, restore from backup."
+- If user says no: point them to the backup from Step 1
+
 - Count improvements and remaining issues
 - If any category is still C or worse, mention what needs user input to fix
 - Report: "Heal complete. Improved N categories. M issues remain (need user input)."
 
-## Step 11: Update Log
+## Step 12: Update Log
 
 - Append a heal entry to `~/.grain/wiki/log.md`:
 ```

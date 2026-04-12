@@ -60,9 +60,18 @@ If found, surface them without being asked.
 - "heal my brain" -> read `protocols/heal-protocol.md`
 - "retrofit" -> read `protocols/retrofit-protocol.md`
 
-## Decision Write-Back (Tiered)
-See `templates/RESOLVER.md` for the full routing decision tree.
-- Tier 1 (behavioral): write to THIS FILE + decisions.md
-- Tier 2 (architectural): decisions.md + brain.md L1
-- Tier 3 (historical): decisions.md only
+## Decision Write-Back (scoped + tiered)
+Decisions live at the narrowest scope. See `templates/RESOLVER.md` for full rules.
+When a decision is detected, ask: "Global, domain, or project scope?"
+- **Global** -> decisions.md + (Tier 1: also THIS FILE)
+- **Domain** -> domains/X.md ## Decisions
+- **Project** -> wiki/projects/X.md ## Decisions
+- Tier 1 (behavioral): "always/never/prefer" -> scope file + THIS FILE
+- Tier 2 (architectural): "decided to/going with" -> scope file + brain.md L1
+- Tier 3 (historical): project-specific -> scope file only
 Format: `- [YYYY-MM-DD] [tier:N] description`
+
+Gates follow the same model:
+- **Global** -> reference/hard-gates.md
+- **Domain** -> domains/X.md ## Gates
+- **Project** -> wiki/projects/X.md ## Gates

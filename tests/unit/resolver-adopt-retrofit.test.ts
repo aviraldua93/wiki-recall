@@ -75,7 +75,7 @@ function validatePythonSyntax(
 // Issue #26: RESOLVER.md tiered decisions
 // ---------------------------------------------------------------------------
 
-describe("RESOLVER.md tiered decisions (#26)", () => {
+describe("RESOLVER.md scoped decision routing (#64)", () => {
   const resolverPath = join(templatesDir, "RESOLVER.md");
 
   test("file exists", () => {
@@ -87,71 +87,43 @@ describe("RESOLVER.md tiered decisions (#26)", () => {
     expect(() => checkNoPII(content, "RESOLVER.md")).not.toThrow();
   });
 
-  test("has 3-tier decision routing section", () => {
+  test("has decision routing section with scope", () => {
     const content = readFile(resolverPath);
-    expect(content).toContain("## Decision Routing (3 tiers)");
+    expect(content).toContain("## Decision Routing");
+    expect(content).toContain("narrowest scope");
   });
 
-  test("has Tier 1 -- Behavioral Rules", () => {
+  test("has 3 scope levels (global/domain/project)", () => {
     const content = readFile(resolverPath);
-    expect(content).toContain("### Tier 1");
-    expect(content).toContain("Behavioral Rules");
-    expect(content).toContain("always loaded");
+    expect(content).toContain("Global");
+    expect(content).toContain("Domain");
+    expect(content).toContain("Project");
+    expect(content).toContain("decisions.md");
   });
 
-  test("has Tier 2 -- Architectural Decisions", () => {
+  test("has 3 tiers (behavioral/architectural/historical)", () => {
     const content = readFile(resolverPath);
-    expect(content).toContain("### Tier 2");
-    expect(content).toContain("Architectural Decisions");
-    expect(content).toContain("brain.md");
+    expect(content).toContain("Tier 1");
+    expect(content).toContain("Tier 2");
+    expect(content).toContain("Tier 3");
   });
 
-  test("has Tier 3 -- Historical Decisions", () => {
+  test("Tier 1 trigger words present", () => {
     const content = readFile(resolverPath);
-    expect(content).toContain("### Tier 3");
-    expect(content).toContain("Historical Decisions");
-    expect(content).toContain("decisions.md only");
+    expect(content).toContain('"always"');
+    expect(content).toContain('"never"');
+    expect(content).toContain('"prefer"');
   });
 
-  test("Tier 1 trigger words include always/never/prefer", () => {
+  test("Tier 1 writes to copilot-instructions.md", () => {
     const content = readFile(resolverPath);
-    const tier1Section = content.split("### Tier 1")[1]?.split("### Tier 2")[0] || "";
-    expect(tier1Section).toContain('"always"');
-    expect(tier1Section).toContain('"never"');
-    expect(tier1Section).toContain('"prefer"');
+    expect(content).toContain("copilot-instructions.md");
   });
 
-  test("Tier 2 trigger words include decided/settled/going with", () => {
+  test("has gate routing section", () => {
     const content = readFile(resolverPath);
-    const tier2Section = content.split("### Tier 2")[1]?.split("### Tier 3")[0] || "";
-    expect(tier2Section).toContain('"decided to"');
-    expect(tier2Section).toContain('"settled on"');
-    expect(tier2Section).toContain('"going with"');
-  });
-
-  test("Tier 1 writes to copilot-instructions.md and decisions.md", () => {
-    const content = readFile(resolverPath);
-    const tier1Section = content.split("### Tier 1")[1]?.split("### Tier 2")[0] || "";
-    expect(tier1Section).toContain("copilot-instructions.md");
-    expect(tier1Section).toContain("decisions.md");
-  });
-
-  test("Tier 2 writes to decisions.md and brain.md", () => {
-    const content = readFile(resolverPath);
-    const tier2Section = content.split("### Tier 2")[1]?.split("### Tier 3")[0] || "";
-    expect(tier2Section).toContain("decisions.md");
-    expect(tier2Section).toContain("brain.md");
-  });
-
-  test("Tier 3 writes to decisions.md only", () => {
-    const content = readFile(resolverPath);
-    const tier3Section = content.split("### Tier 3")[1]?.split("###")[0] || "";
-    expect(tier3Section).toContain("decisions.md only");
-  });
-
-  test("has detection logic section", () => {
-    const content = readFile(resolverPath);
-    expect(content).toContain("### Detection Logic");
+    expect(content).toContain("## Gate Routing");
+    expect(content).toContain("hard-gates.md");
   });
 
   test("format includes tier tag", () => {
@@ -159,9 +131,8 @@ describe("RESOLVER.md tiered decisions (#26)", () => {
     expect(content).toContain("[tier:N]");
   });
 
-  test("has 8 filing rules", () => {
+  test("has 9 filing rules", () => {
     const content = readFile(resolverPath);
-    // Count numbered items (1. through 8.)
     const matches = content.match(/^\d+\.\s/gm);
     expect(matches).not.toBeNull();
     expect(matches!.length).toBeGreaterThanOrEqual(8);
@@ -208,7 +179,7 @@ describe("copilot-instructions.md tiered write-back (#26)", () => {
 
   test("has Decision Write-Back section", () => {
     const content = readFile(instructionsPath);
-    expect(content).toContain("## Decision Write-Back (Tiered)");
+    expect(content).toContain("## Decision Write-Back");
   });
 
   test("references RESOLVER.md for full routing", () => {

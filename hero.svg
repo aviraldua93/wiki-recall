@@ -239,6 +239,6 @@
   <text x="125" y="393" class="status-text" fill="#1e1e4a">│</text>
   <text x="140" y="393" class="status-text">mempalace layers</text>
   <text x="265" y="393" class="status-text" fill="#1e1e4a">│</text>
-  <text x="280" y="393" class="status-text">1,060 tests</text>
+  <text x="280" y="393" class="status-text">1,748 tests</text>
   <text x="690" y="393" class="status-text" fill="#8b5cf6" font-size="8">▸ WIKI RECALL v1.0</text>
 </svg>

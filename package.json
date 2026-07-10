@@ -1,7 +1,7 @@
 {
   "name": "wiki-recall",
   "version": "0.1.0",
-  "description": "Portable AI-driven working scenarios — Docker for your engineering brain",
+  "description": "CLI for saving, recalling, and searching project context",
   "type": "module",
   "bin": {
     "wiki-recall": "src/cli/index.ts"

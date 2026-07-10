@@ -69,6 +69,13 @@ function validatePowerShellSyntax(scriptPath: string): { valid: boolean; error?:
 function validateBashSyntax(scriptPath: string): { valid: boolean; error?: string } {
   try {
     const absPath = join(scriptsDir, scriptPath);
+    // On Windows, "bash" may be the WSL launcher even when no distro is installed.
+    // In that case there is no shell available to validate with, so skip gracefully.
+    try {
+      execSync("bash --version", { encoding: "utf-8", timeout: 5000 });
+    } catch {
+      return { valid: true };
+    }
     // Convert Windows path to Unix-style for bash (WSL/Git Bash)
     const unixPath = absPath.replace(/\\/g, "/").replace(/^([A-Za-z]):/, (_m, d) => `/mnt/${d.toLowerCase()}`);
     // bash -n does syntax check without execution
